@@ -34,7 +34,6 @@ export class AuthService {
       id: user.id,
       email: user.email,
       role: user.role,
-      accessLevel: user.accessLevel,
     };
   }
 
@@ -43,7 +42,6 @@ export class AuthService {
       sub: user.id,
       email: user.email,
       role: user.role,
-      accessLevel: user.accessLevel,
     };
     return {
       accessToken: this.jwtService.sign(payload),

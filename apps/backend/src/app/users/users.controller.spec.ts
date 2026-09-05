@@ -4,7 +4,7 @@ import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
 
 function currentUser(id: string): AuthenticatedUser {
-  return { id, email: 'porteiro@petsystem.local', role: 'porteiro', accessLevel: 5 };
+  return { id, email: 'porteiro@petsystem.local', role: 'porteiro' };
 }
 
 describe('UsersController', () => {

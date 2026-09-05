@@ -3,6 +3,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AuthModule } from './auth/auth.module';
+import { Employee } from './employees/entities/employee.entity';
+import { EmployeesModule } from './employees/employees.module';
 import { User } from './users/entities/user.entity';
 import { UsersModule } from './users/users.module';
 import { AccessEvent } from './qr-validation/entities/access-event.entity';
@@ -21,11 +23,12 @@ import { QrValidationModule } from './qr-validation/qr-validation.module';
         username: configService.get<string>('DB_USERNAME', 'petsystem'),
         password: configService.get<string>('DB_PASSWORD', 'petsystem'),
         database: configService.get<string>('DB_NAME', 'petsystem'),
-        entities: [User, AccessEvent],
+        entities: [User, Employee, AccessEvent],
         synchronize: true,
       }),
     }),
     UsersModule,
+    EmployeesModule,
     AuthModule,
     QrValidationModule,
   ],

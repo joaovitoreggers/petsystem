@@ -66,7 +66,6 @@ describe('JwtAuthGuard', () => {
       sub: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
       email: 'porteiro@petsystem.local',
       role: 'porteiro',
-      accessLevel: 5,
     });
 
     const response = await request(app.getHttpServer())

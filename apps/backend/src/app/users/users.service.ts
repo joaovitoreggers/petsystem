@@ -13,7 +13,6 @@ export interface CreateUserInput {
   email: string;
   password: string;
   role: string;
-  accessLevel: number;
 }
 
 export interface UpdateUserInput {
@@ -21,7 +20,6 @@ export interface UpdateUserInput {
   email?: string;
   password?: string;
   role?: string;
-  accessLevel?: number;
 }
 
 /**
@@ -58,7 +56,6 @@ export class UsersService {
       email: data.email,
       passwordHash,
       role: data.role,
-      accessLevel: data.accessLevel,
     });
   }
 
@@ -79,7 +76,6 @@ export class UsersService {
       email: data.email,
       passwordHash,
       role: data.role,
-      accessLevel: data.accessLevel,
     });
 
     if (!updated) {

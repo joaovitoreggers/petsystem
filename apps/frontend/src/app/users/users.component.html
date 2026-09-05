@@ -18,7 +18,6 @@
           <th>Nome</th>
           <th>Email</th>
           <th>Papel</th>
-          <th>Nível de acesso</th>
           <th></th>
         </tr>
       </thead>
@@ -28,7 +27,6 @@
             <td>{{ user.name }}</td>
             <td>{{ user.email }}</td>
             <td>{{ user.role }}</td>
-            <td>{{ user.accessLevel }}</td>
             <td class="actions">
               <button (click)="openEditForm(user)">Editar</button>
               <button class="danger" (click)="remove(user)">Excluir</button>
@@ -66,16 +64,6 @@
 
         <label for="role">Papel</label>
         <input id="role" name="role" type="text" [(ngModel)]="role" required />
-
-        <label for="accessLevel">Nível de acesso</label>
-        <input
-          id="accessLevel"
-          name="accessLevel"
-          type="number"
-          min="0"
-          [(ngModel)]="accessLevel"
-          required
-        />
 
         @if (formError()) {
           <p class="error">{{ formError() }}</p>

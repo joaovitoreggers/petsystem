@@ -12,7 +12,7 @@ export type AttemptStatus =
 
 export interface ReadDto {
   qrCode: string;
-  userId: string | null;
+  employeeId: string | null;
   result: ReadResult;
 }
 

@@ -25,7 +25,6 @@ interface UserSummaryDto {
   name: string;
   email: string;
   role: string;
-  accessLevel: number;
 }
 
 function toSummary(user: User): UserSummaryDto {
@@ -34,13 +33,12 @@ function toSummary(user: User): UserSummaryDto {
     name: user.name,
     email: user.email,
     role: user.role,
-    accessLevel: user.accessLevel,
   };
 }
 
 /**
- * CRUD de usuários. O `id` (uuid) também é o conteúdo do QR do crachá — ver a
- * nota em User.entity.ts. O `password` nunca sai daqui.
+ * CRUD de usuários (contas de login — porteiro/operador). O `password` nunca
+ * sai daqui. Ver EmployeesController para o CRUD de funcionários de campo.
  */
 @Controller('users')
 @UseGuards(JwtAuthGuard)

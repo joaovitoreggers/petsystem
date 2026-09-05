@@ -17,8 +17,8 @@ export class AccessEvent {
   @PrimaryGeneratedColumn()
   id!: number;
 
-  @Column({ name: 'user_id', type: 'uuid', nullable: true })
-  userId!: string | null;
+  @Column({ name: 'employee_id', type: 'uuid', nullable: true })
+  employeeId!: string | null;
 
   @Column({ type: 'varchar' })
   result!: AccessResult;

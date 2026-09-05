@@ -8,7 +8,6 @@ export interface UserSummary {
   name: string;
   email: string;
   role: string;
-  accessLevel: number;
 }
 
 export interface CreateUserPayload {
@@ -16,7 +15,6 @@ export interface CreateUserPayload {
   email: string;
   password: string;
   role: string;
-  accessLevel: number;
 }
 
 export interface UpdateUserPayload {
@@ -24,7 +22,6 @@ export interface UpdateUserPayload {
   email?: string;
   password?: string;
   role?: string;
-  accessLevel?: number;
 }
 
 @Injectable({ providedIn: 'root' })

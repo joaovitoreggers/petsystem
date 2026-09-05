@@ -1,6 +1,6 @@
 <div class="badges-page">
   <header>
-    <h1>Usuários de teste</h1>
+    <h1>Funcionários de teste</h1>
     <p class="subtitle">
       Gere um crachá temporário para testar a leitura de QR — provisório
       enquanto o design final do crachá não é definido.
@@ -20,18 +20,18 @@
         <tr>
           <th>Nome</th>
           <th>Papel</th>
-          <th>Nível de acesso</th>
+          <th>Acesso a áreas de risco</th>
           <th></th>
         </tr>
       </thead>
       <tbody>
-        @for (user of users(); track user.id) {
+        @for (employee of employees(); track employee.id) {
           <tr>
-            <td>{{ user.name }}</td>
-            <td>{{ user.role }}</td>
-            <td>{{ user.accessLevel }}</td>
+            <td>{{ employee.name }}</td>
+            <td>{{ employee.role }}</td>
+            <td>{{ employee.canAccessRiskAreas ? 'Sim' : 'Não' }}</td>
             <td>
-              <button (click)="generateBadge(user)">Gerar crachá</button>
+              <button (click)="generateBadge(employee)">Gerar crachá</button>
             </td>
           </tr>
         }
@@ -39,16 +39,16 @@
     </table>
   }
 
-  @if (selectedUser(); as user) {
+  @if (selectedEmployee(); as employee) {
     <div class="badge-overlay" (click)="closeBadge()">
       <div class="badge-card" (click)="$event.stopPropagation()">
         <p class="badge-tag">Crachá temporário — design provisório</p>
-        <h2>{{ user.name }}</h2>
-        <p class="badge-role">{{ user.role }}</p>
+        <h2>{{ employee.name }}</h2>
+        <p class="badge-role">{{ employee.role }}</p>
         @if (qrDataUrl(); as qr) {
-          <img [src]="qr" alt="QR code de {{ user.name }}" />
+          <img [src]="qr" alt="QR code de {{ employee.name }}" />
         }
-        <p class="badge-code">{{ user.id }}</p>
+        <p class="badge-code">{{ employee.id }}</p>
         <button (click)="closeBadge()">Fechar</button>
       </div>
     </div>

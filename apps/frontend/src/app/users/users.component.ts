@@ -8,8 +8,9 @@ import {
 } from '../core/services/users-api.service';
 
 /**
- * CRUD de usuários — tela utilitária, propositalmente no mesmo estilo simples
- * do login/crachás enquanto o design definitivo não é feito.
+ * CRUD de usuários (contas de login) — tela utilitária, propositalmente no
+ * mesmo estilo simples do login/crachás enquanto o design definitivo não é
+ * feito. Ver EmployeesComponent para o CRUD de funcionários de campo.
  */
 @Component({
   selector: 'app-users',
@@ -32,7 +33,6 @@ export class UsersComponent implements OnInit {
   email = '';
   password = '';
   role = '';
-  accessLevel = 1;
 
   constructor(private readonly usersApi: UsersApiService) {}
 
@@ -61,7 +61,6 @@ export class UsersComponent implements OnInit {
     this.email = '';
     this.password = '';
     this.role = '';
-    this.accessLevel = 1;
     this.formError.set(null);
     this.formOpen.set(true);
   }
@@ -72,7 +71,6 @@ export class UsersComponent implements OnInit {
     this.email = user.email;
     this.password = '';
     this.role = user.role;
-    this.accessLevel = user.accessLevel;
     this.formError.set(null);
     this.formOpen.set(true);
   }
@@ -91,7 +89,6 @@ export class UsersComponent implements OnInit {
           name: this.name,
           email: this.email,
           role: this.role,
-          accessLevel: Number(this.accessLevel),
           ...(this.password ? { password: this.password } : {}),
         })
       : this.usersApi.create({
@@ -99,7 +96,6 @@ export class UsersComponent implements OnInit {
           email: this.email,
           password: this.password,
           role: this.role,
-          accessLevel: Number(this.accessLevel),
         });
 
     request.subscribe({

@@ -10,7 +10,6 @@ function user(overrides: Partial<User>): User {
     email: 'test@petsystem.local',
     password: 'hash',
     role: 'funcionario',
-    accessLevel: 3,
     createdAt: new Date(),
     ...overrides,
   };
@@ -42,7 +41,6 @@ describe('UsersService', () => {
           email: 'test@petsystem.local',
           password: 'senha123',
           role: 'funcionario',
-          accessLevel: 1,
         }),
       ).rejects.toThrow(ConflictException);
 
@@ -58,7 +56,6 @@ describe('UsersService', () => {
         email: 'new@petsystem.local',
         password: 'senha123',
         role: 'funcionario',
-        accessLevel: 1,
       });
 
       const passedData = repository.create.mock.calls[0][0];

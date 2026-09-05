@@ -5,7 +5,6 @@ export interface CreateUserData {
   email: string;
   passwordHash: string;
   role: string;
-  accessLevel: number;
 }
 
 export interface UpdateUserData {
@@ -13,7 +12,6 @@ export interface UpdateUserData {
   email?: string;
   passwordHash?: string;
   role?: string;
-  accessLevel?: number;
 }
 
 /**

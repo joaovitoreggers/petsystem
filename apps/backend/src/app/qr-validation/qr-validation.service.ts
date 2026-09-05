@@ -1,6 +1,5 @@
 import { ConflictException, Inject, Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { UsersService } from '../users/users.service';
+import { EmployeesService } from '../employees/employees.service';
 import { AccessResult } from './entities/access-event.entity';
 import {
   ACCESS_EVENT_REPOSITORY,
@@ -10,26 +9,19 @@ import { AccessAttemptStoreService } from './access-attempt-store.service';
 import { AccessAttempt } from './access-attempt';
 import { RecordedRead } from './access-attempt.types';
 
-// O conteúdo do QR é o User.id (uuid) — checar o formato aqui evita bater no
-// Postgres com um literal inválido para a coluna uuid (o driver rejeitaria
+// O conteúdo do QR é o Employee.id (uuid) — checar o formato aqui evita bater
+// no Postgres com um literal inválido para a coluna uuid (o driver rejeitaria
 // com um erro de sintaxe em vez de simplesmente não encontrar ninguém).
 const UUID_SHAPE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 @Injectable()
 export class QrValidationService {
-  private readonly minimumAccessLevel: number;
-
   constructor(
-    private readonly usersService: UsersService,
+    private readonly employeesService: EmployeesService,
     @Inject(ACCESS_EVENT_REPOSITORY)
     private readonly accessEventRepository: IAccessEventRepository,
     private readonly attemptStore: AccessAttemptStoreService,
-    configService: ConfigService,
-  ) {
-    this.minimumAccessLevel = Number(
-      configService.get<string>('ACCESS_MIN_LEVEL', '2'),
-    );
-  }
+  ) {}
 
   startAttempt(): AccessAttempt {
     return this.attemptStore.create();
@@ -46,9 +38,10 @@ export class QrValidationService {
   }
 
   /**
-   * Valida uma leitura de QR (autorização por accessLevel + checagem de
-   * duplicidade), persiste o AccessEvent correspondente, e avança a máquina
-   * de estados da tentativa quando a leitura é aceita como uma nova pessoa distinta.
+   * Valida uma leitura de QR (o funcionário precisa de `canAccessRiskAreas`)
+   * + checagem de duplicidade, persiste o AccessEvent correspondente, e
+   * avança a máquina de estados da tentativa quando a leitura é aceita como
+   * uma nova pessoa distinta.
    */
   async recordRead(
     attemptId: string,
@@ -58,7 +51,7 @@ export class QrValidationService {
 
     if (attempt.hasRead(qrCode)) {
       await this.accessEventRepository.record({
-        userId: null,
+        employeeId: null,
         result: AccessResult.DUPLICATE,
         qrCodeRead: qrCode,
       });
@@ -67,20 +60,20 @@ export class QrValidationService {
       );
     }
 
-    const user = UUID_SHAPE.test(qrCode)
-      ? await this.usersService.findById(qrCode)
+    const employee = UUID_SHAPE.test(qrCode)
+      ? await this.employeesService.findById(qrCode)
       : null;
-    const result = this.evaluateAuthorization(user?.accessLevel);
+    const result = this.evaluateAuthorization(employee);
 
     await this.accessEventRepository.record({
-      userId: user?.id ?? null,
+      employeeId: employee?.id ?? null,
       result,
       qrCodeRead: qrCode,
     });
 
     const read: RecordedRead = {
       qrCode,
-      userId: user?.id ?? null,
+      employeeId: employee?.id ?? null,
       result,
     };
 
@@ -91,12 +84,12 @@ export class QrValidationService {
     return { attempt, read };
   }
 
-  private evaluateAuthorization(accessLevel: number | undefined): AccessResult {
-    if (accessLevel === undefined) {
+  private evaluateAuthorization(
+    employee: { canAccessRiskAreas: boolean } | null,
+  ): AccessResult {
+    if (!employee) {
       return AccessResult.INVALID_QR;
     }
-    return accessLevel >= this.minimumAccessLevel
-      ? AccessResult.AUTHORIZED
-      : AccessResult.DENIED;
+    return employee.canAccessRiskAreas ? AccessResult.AUTHORIZED : AccessResult.DENIED;
   }
 }
