@@ -4,7 +4,7 @@ import { Observable, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
 export interface AuthenticatedUser {
-  id: number;
+  id: string;
   email: string;
   role: string;
   accessLevel: number;

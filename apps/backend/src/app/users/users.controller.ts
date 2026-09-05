@@ -4,12 +4,11 @@ import { User } from './entities/user.entity';
 import { UsersService } from './users.service';
 
 interface UserSummaryDto {
-  id: number;
+  id: string;
   name: string;
   email: string;
   role: string;
   accessLevel: number;
-  qrCode: string;
 }
 
 function toSummary(user: User): UserSummaryDto {
@@ -19,13 +18,13 @@ function toSummary(user: User): UserSummaryDto {
     email: user.email,
     role: user.role,
     accessLevel: user.accessLevel,
-    qrCode: user.qrCode,
   };
 }
 
 /**
  * Lista de usuários para a tela de crachás temporários (apps/frontend/src/app/badges):
- * o password nunca sai daqui.
+ * o password nunca sai daqui. O `id` (uuid) É o conteúdo do QR do crachá —
+ * ver a nota em User.entity.ts.
  */
 @Controller('users')
 @UseGuards(JwtAuthGuard)

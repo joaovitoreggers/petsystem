@@ -41,7 +41,9 @@ export class BadgesComponent implements OnInit {
 
   async generateBadge(user: UserSummary): Promise<void> {
     this.selectedUser.set(user);
-    this.qrDataUrl.set(await QRCode.toDataURL(user.qrCode, { margin: 1, width: 240 }));
+    // O QR do crachá é o próprio id (uuid) do usuário — nunca muda, então uma
+    // edição futura no cadastro não invalida um crachá já gerado.
+    this.qrDataUrl.set(await QRCode.toDataURL(user.id, { margin: 1, width: 240 }));
   }
 
   closeBadge(): void {

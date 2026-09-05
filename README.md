@@ -85,14 +85,18 @@ Variáveis de ambiente (mesmas da tabela acima, mais):
 
 ### Usuários de teste (criados por `npm run backend:seed`)
 
-| Email                             | Senha       | Role         | Nível de acesso | Código do QR (crachá) |
-|-----------------------------------|-------------|--------------|------------------|-------------------------|
-| porteiro@petsystem.local          | senha123    | porteiro     | 5 (autorizado)   | QR-PORTEIRO-001         |
-| joao.silva@petsystem.local        | senha123    | funcionario  | 3 (autorizado)   | QR-FUNC-AUTORIZADO      |
-| maria.souza@petsystem.local       | senha123    | estagiario   | 1 (negado)       | QR-ESTAGIARIO-NEGADO    |
+| Email                             | Senha       | Role         | Nível de acesso |
+|-----------------------------------|-------------|--------------|------------------|
+| porteiro@petsystem.local          | senha123    | porteiro     | 5 (autorizado)   |
+| joao.silva@petsystem.local        | senha123    | funcionario  | 3 (autorizado)   |
+| maria.souza@petsystem.local       | senha123    | estagiario   | 1 (negado)       |
 
-Gere QR codes reais com o texto de `qrCode` acima (qualquer gerador de QR) para
-testar a leitura pela câmera.
+O QR do crachá de cada usuário é o próprio `id` (uuid) — gerado uma vez na
+criação e nunca reaproveitado como um campo separado, então uma edição futura
+no cadastro nunca invalida um crachá já impresso/gerado. Como o valor é
+gerado no banco, não dá para listá-lo aqui: faça login e abra a tela
+**Crachás** (`/badges`) para ver a lista de usuários e gerar o QR de cada um
+sob demanda — ela também aparece no log do `npm run backend:seed`.
 
 Front-end local (aponta para `http://localhost:3000/api` por padrão):
 
@@ -146,6 +150,13 @@ contar como uma leitura distinta.
 
 ## Observações e riscos conhecidos
 
+- **O `id` do usuário é um uuid, não mais um número sequencial**, e é
+  exatamente esse valor que vira o QR do crachá (`UsersController` nunca
+  expõe um campo `qrCode` separado — o `id` já cumpre esse papel). Se você
+  tiver um volume `petsystem_db_data` de antes dessa mudança, apague-o e
+  recrie (`docker compose down -v`) — o schema antigo (id numérico + coluna
+  `qr_code`) não é compatível e o `synchronize: true` do TypeORM não migra
+  esse tipo de mudança de coluna automaticamente.
 - **Contagem de pessoas via câmera é o maior risco técnico do projeto.** O
   modelo (TensorFlow.js + COCO-SSD) roda inteiramente no navegador; seu
   desempenho varia bastante por hardware. **Teste cedo, no dispositivo e na

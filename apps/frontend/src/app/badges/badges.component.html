@@ -48,7 +48,7 @@
         @if (qrDataUrl(); as qr) {
           <img [src]="qr" alt="QR code de {{ user.name }}" />
         }
-        <p class="badge-code">{{ user.qrCode }}</p>
+        <p class="badge-code">{{ user.id }}</p>
         <button (click)="closeBadge()">Fechar</button>
       </div>
     </div>
