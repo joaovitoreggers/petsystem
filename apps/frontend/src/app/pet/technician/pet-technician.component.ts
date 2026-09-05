@@ -133,6 +133,36 @@ export class PetTechnicianComponent implements OnDestroy {
     this.state.startAuth();
   }
 
+  readonly cancelDialogOpen = signal(false);
+  readonly cancelReason = signal('');
+  readonly cancelClosedBy = signal('');
+
+  readonly canConfirmCancel = computed(() => this.cancelReason().trim().length > 0 && this.cancelClosedBy().trim().length > 0);
+
+  openCancelDialog(): void {
+    this.cancelReason.set('');
+    this.cancelClosedBy.set('');
+    this.cancelDialogOpen.set(true);
+  }
+
+  closeCancelDialog(): void {
+    this.cancelDialogOpen.set(false);
+  }
+
+  onCancelReasonChange(event: Event): void {
+    this.cancelReason.set((event.target as HTMLTextAreaElement).value);
+  }
+
+  onCancelClosedByChange(event: Event): void {
+    this.cancelClosedBy.set((event.target as HTMLInputElement).value);
+  }
+
+  confirmCancel(): void {
+    if (!this.canConfirmCancel()) return;
+    this.state.encerrarPet(this.cancelReason().trim(), this.cancelClosedBy().trim());
+    this.cancelDialogOpen.set(false);
+  }
+
   private toCard(pet: Pet): PetCardView {
     const status = PET_STATUS[pet.alarm ? 'alarme' : pet.status];
     const gasLabel = pet.gas ? `O₂ ${pet.gas.o2.toFixed(1)}%` : 'sem gases';

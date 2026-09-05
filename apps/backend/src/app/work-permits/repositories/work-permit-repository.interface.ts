@@ -17,11 +17,14 @@ export interface CreateWorkPermitData {
   alarm?: boolean;
   durationMinutes?: number;
   criticalAlerts?: WorkPermitCriticalAlert[];
+  companyPhone?: string;
 }
 
 export interface CloseWorkPermitData {
   end: string;
   durationMinutes: number;
+  reason?: string;
+  closedBy?: string;
 }
 
 /**

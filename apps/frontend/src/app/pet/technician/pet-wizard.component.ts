@@ -3,6 +3,8 @@ import { PetStateService } from '../pet-state.service';
 import {
   AREA_NOTE,
   CHECKLISTS,
+  ChecklistAnswer,
+  EPI_CHECKLIST,
   GAS_LIMITS,
   MOCK_BADGES,
   RISK_AREAS,
@@ -22,7 +24,33 @@ interface GaugeView {
   limitText: string;
 }
 
-type WizardFieldName = 'descricao' | 'tipo' | 'empresa' | 'inicio' | 'fim' | 'local';
+type WizardFieldName = 'descricao' | 'tipo' | 'empresa' | 'telefone' | 'inicio' | 'fim' | 'local' | 'unidade';
+
+export const PET_UNITS = ['Matelândia', 'Medianeira', 'Céu Azul', 'Itaipulândia', 'Missal'];
+
+export const EXECUTING_COMPANIES = [
+  'Lar · Manutenção',
+  'Lar · Armazéns',
+  'Lar · SESMT',
+  'Lar · Utilidades',
+  'Termoeletro Ltda',
+  'Altura Serviços ME',
+];
+
+export const SITE_LOCATIONS = [
+  'Silo de milho 04',
+  'Silo de soja 09',
+  'Elevatória da ETE',
+  'Casa de caldeiras 02',
+  'Moega de recebimento 01',
+  'Tanque de efluente 02',
+  'Túnel de congelamento',
+  'Torre de resfriamento',
+  'Linha de extrusão',
+  'Oficina de manutenção',
+  'Subestação — pórtico 1',
+  'Linha de abate — nória',
+];
 
 @Component({
   selector: 'app-pet-wizard',
@@ -64,18 +92,6 @@ export class PetWizardComponent {
   readonly selectedNrs = computed(() => riskAreaNrs(this.state.selectedAreas()));
   readonly areaNotes = computed(() => this.state.selectedAreas().map((id) => ({ id, text: AREA_NOTE[id] })));
 
-  readonly extraGroups = computed(() =>
-    this.state.extraFieldsForSelection().map((group) => {
-      const nr = RISK_AREAS.find((a) => a.id === group.areaId)?.nr ?? '';
-      return {
-        ...group,
-        nr,
-        title: `Dados específicos · ${nr}`,
-        manualFields: this.state.manualExtraFields()[group.areaId] ?? [],
-      };
-    }),
-  );
-
   readonly gauges = computed<GaugeView[]>(() => {
     const gas = this.state.liveGas();
     const keys: GaugeView['key'][] = ['o2', 'co', 'h2s', 'lel'];
@@ -98,18 +114,54 @@ export class PetWizardComponent {
 
   readonly atmosphereOk = computed(() => !this.state.atmosphereOutOfRange());
 
-  readonly checkGroups = computed(() =>
-    this.state.selectedAreas().flatMap((areaId) =>
+  // EPI é um bloco único da PET (não repete por área), seguido pelo
+  // checklist específico de cada área de risco selecionada.
+  readonly checkGroups = computed(() => {
+    const epiGroup = {
+      title: EPI_CHECKLIST.title,
+      areaId: null as RiskAreaId | null,
+      items: EPI_CHECKLIST.items.map((label, itemIndex) => ({ key: `epi:0:${itemIndex}`, label })),
+    };
+    const areaGroups = this.state.selectedAreas().flatMap((areaId) =>
       CHECKLISTS[areaId].map((group, groupIndex) => ({
         title: `${group.title}`,
-        areaId,
+        areaId: areaId as RiskAreaId | null,
         items: group.items.map((label, itemIndex) => ({
           key: `${areaId}:${groupIndex}:${itemIndex}`,
           label,
         })),
       })),
-    ),
-  );
+    );
+    return [epiGroup, ...areaGroups];
+  });
+
+  readonly checklistOptions: { value: ChecklistAnswer; label: string }[] = [
+    { value: 'sim', label: 'SIM' },
+    { value: 'nao', label: 'NÃO' },
+    { value: 'na', label: 'NA' },
+  ];
+
+  checklistAnswer(key: string): ChecklistAnswer | undefined {
+    return this.state.checklistAnswer(key);
+  }
+
+  setChecklistAnswer(key: string, answer: ChecklistAnswer): void {
+    this.state.setChecklistAnswer(key, answer);
+  }
+
+  readonly needsFireWatch = computed(() => this.state.selectedAreas().includes('quente'));
+
+  onFireWatchTimeChange(index: number, event: Event): void {
+    this.state.updateFireWatchRound(index, { hora: (event.target as HTMLInputElement).value });
+  }
+
+  onFireWatchNameChange(index: number, event: Event): void {
+    this.state.updateFireWatchRound(index, { nome: (event.target as HTMLInputElement).value });
+  }
+
+  readonly unitOptions = PET_UNITS;
+  readonly companyOptions = EXECUTING_COMPANIES;
+  readonly locationOptions = SITE_LOCATIONS;
 
   readonly badgeStatusLabel = (status: 'ok' | 'prox' | 'venc') =>
     status === 'ok' ? '✓' : status === 'prox' ? '!' : '✕';
@@ -117,6 +169,16 @@ export class PetWizardComponent {
     status === 'ok' ? 'var(--status-ok)' : status === 'prox' ? 'var(--status-warn)' : 'var(--status-bad)';
 
   readonly hasMoreBadgesToScan = computed(() => this.state.badgeCycleIndex() < MOCK_BADGES.length * 2);
+
+  addToTeam(): void {
+    this.state.addBadgeToTeam();
+  }
+  addToVigia(): void {
+    this.state.addBadgeToVigia();
+  }
+  addToResgate(): void {
+    this.state.addBadgeToResgate();
+  }
 
   toggleArea(id: RiskAreaId): void {
     this.state.toggleArea(id);
@@ -129,29 +191,6 @@ export class PetWizardComponent {
   onFieldChange(name: WizardFieldName, event: Event): void {
     const value = (event.target as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement).value;
     this.state.setField(name, value);
-  }
-
-  onExtraChange(name: string, event: Event): void {
-    const value = (event.target as HTMLInputElement).value;
-    this.state.setExtra(name, value);
-  }
-
-  addManualField(areaId: RiskAreaId): void {
-    this.state.addManualExtraField(areaId);
-  }
-
-  onManualLabelChange(areaId: RiskAreaId, id: string, event: Event): void {
-    const value = (event.target as HTMLInputElement).value;
-    this.state.updateManualExtraField(areaId, id, { label: value });
-  }
-
-  onManualValueChange(areaId: RiskAreaId, id: string, event: Event): void {
-    const value = (event.target as HTMLInputElement).value;
-    this.state.updateManualExtraField(areaId, id, { value });
-  }
-
-  removeManualField(areaId: RiskAreaId, id: string): void {
-    this.state.removeManualExtraField(areaId, id);
   }
 
   clearSignature(which: 'tecnico' | 'exec'): void {

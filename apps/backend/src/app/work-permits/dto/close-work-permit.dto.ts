@@ -1,4 +1,4 @@
-import { IsInt, IsString, Min } from 'class-validator';
+import { IsInt, IsOptional, IsString, Min } from 'class-validator';
 
 export class CloseWorkPermitDto {
   @IsString()
@@ -7,4 +7,12 @@ export class CloseWorkPermitDto {
   @IsInt()
   @Min(0)
   durationMinutes!: number;
+
+  @IsOptional()
+  @IsString()
+  reason?: string;
+
+  @IsOptional()
+  @IsString()
+  closedBy?: string;
 }

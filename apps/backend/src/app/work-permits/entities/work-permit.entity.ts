@@ -76,6 +76,15 @@ export class WorkPermit {
   @Column({ name: 'critical_alerts', type: 'jsonb', nullable: true })
   criticalAlerts?: WorkPermitCriticalAlert[];
 
+  @Column({ name: 'company_phone', nullable: true })
+  companyPhone?: string;
+
+  @Column({ name: 'close_reason', nullable: true })
+  closeReason?: string;
+
+  @Column({ name: 'closed_by', nullable: true })
+  closedBy?: string;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt!: Date;
 }

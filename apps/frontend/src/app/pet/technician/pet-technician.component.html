@@ -207,7 +207,9 @@
                   @if (pet.end) {
                     <div class="timeline__row">
                       <div class="timeline__time">{{ pet.end }}</div>
-                      <div class="timeline__text">PET encerrada.</div>
+                      <div class="timeline__text">
+                        PET encerrada{{ pet.closeReason ? ' · ' + pet.closeReason : '' }}{{ pet.closedBy ? ' · responsável: ' + pet.closedBy : '' }}.
+                      </div>
                     </div>
                   }
                 </div>
@@ -217,7 +219,7 @@
             <div class="detalhe__footer">
               <button type="button" class="btn btn-secondary detalhe__footer-btn">Nova medição</button>
               @if (pet.status !== 'fechada') {
-                <button type="button" class="btn btn-primary detalhe__footer-btn" (click)="state.encerrarPet()">
+                <button type="button" class="btn btn-primary detalhe__footer-btn" (click)="openCancelDialog()">
                   Encerrar PET
                 </button>
               }
@@ -227,4 +229,28 @@
       }
     }
   </div>
+
+  @if (cancelDialogOpen()) {
+    <div class="dialog-backdrop" (click)="closeCancelDialog()">
+      <div class="dialog blueprint cancel-dialog" (click)="$event.stopPropagation()">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div class="dialog-title">Cancelamento da PET</div>
+        <div class="dialog-body">Registre o motivo do encerramento e o responsável pela decisão.</div>
+        <div class="field">
+          <label>Motivo</label>
+          <textarea class="input" [value]="cancelReason()" (input)="onCancelReasonChange($event)"></textarea>
+        </div>
+        <div class="field">
+          <label>Supervisor / responsável</label>
+          <input class="input" placeholder="Nome · matrícula" [value]="cancelClosedBy()" (input)="onCancelClosedByChange($event)" />
+        </div>
+        <div class="dialog-actions">
+          <button type="button" class="btn btn-secondary" (click)="closeCancelDialog()">Cancelar</button>
+          <button type="button" class="btn btn-primary" [disabled]="!canConfirmCancel()" (click)="confirmCancel()">
+            Confirmar encerramento
+          </button>
+        </div>
+      </div>
+    </div>
+  }
 </div>
