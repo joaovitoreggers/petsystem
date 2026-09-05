@@ -92,6 +92,24 @@
 .chart-legend { display: flex; align-items: center; gap: 16px; margin-left: auto; font-size: 12px; color: var(--color-neutral-700); flex-wrap: wrap; }
 .chart-legend__dot { display: inline-block; width: 10px; height: 10px; margin-right: 6px; }
 
+.area-profile-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 22px; margin-bottom: 52px;
+}
+.area-profile-card { padding: 16px 18px; gap: 10px; }
+.area-profile-card__head { display: flex; align-items: baseline; gap: 8px; }
+.area-profile-card__name { font-family: var(--font-heading); font-weight: 600; font-size: 17px; }
+.area-profile-card__desc { font-size: 12px; color: var(--color-neutral-700); }
+.area-profile-card__status {
+  font-size: 11px; letter-spacing: 0.04em; color: var(--color-accent-700); padding-top: 8px;
+  border-top: 1px solid var(--color-divider);
+}
+.area-profile-card__status--idle { color: var(--color-neutral-600); }
+.area-profile-card__limits { display: flex; flex-direction: column; gap: 4px; }
+.area-profile-card__limit { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; }
+.area-profile-card__limit-label { color: var(--color-neutral-700); }
+.area-profile-card__note { font-size: 12px; color: var(--color-neutral-700); line-height: 1.4; }
+.area-profile-card__foot { font-size: 11px; color: var(--color-neutral-600); margin-top: auto; }
+
 .monitor-list { display: flex; flex-direction: column; gap: 26px; }
 .monitor-card { padding: 18px 20px; }
 .monitor-card__head { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }

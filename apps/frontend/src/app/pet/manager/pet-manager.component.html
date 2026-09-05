@@ -56,6 +56,39 @@
     </div>
 
     <div class="dashboard__section-head">
+      <h3>Áreas de risco</h3>
+      <span class="dashboard__section-sub">perfil e limites de cada área · inclui as sem PET aberta agora</span>
+    </div>
+    <div class="area-profile-grid">
+      @for (p of riskAreaProfiles(); track p.area.id) {
+        <div class="area-profile-card blueprint">
+          <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          <div class="area-profile-card__head">
+            <span class="area-profile-card__name">{{ p.area.name }}</span>
+            <span class="tag tag-accent">{{ p.area.nr }}</span>
+          </div>
+          <div class="area-profile-card__desc">{{ p.area.description }}</div>
+          <div class="area-profile-card__status" [class.area-profile-card__status--idle]="p.activeCount === 0">
+            {{ p.statusLabel }}
+          </div>
+          @if (p.hasGas) {
+            <div class="area-profile-card__limits">
+              @for (l of p.limits; track l.key) {
+                <div class="area-profile-card__limit">
+                  <span class="area-profile-card__limit-label">{{ l.label }}</span>
+                  <span class="area-profile-card__limit-value mono">{{ l.limitText }}</span>
+                </div>
+              }
+            </div>
+          } @else {
+            <div class="area-profile-card__note">Sem monitoramento atmosférico — checklist de bloqueio/isolamento aplicável.</div>
+          }
+          <div class="area-profile-card__foot">{{ p.totalCount }} PETs no histórico</div>
+        </div>
+      }
+    </div>
+
+    <div class="dashboard__section-head">
       <h3>Monitoramento em tempo real</h3>
       <span class="dashboard__section-sub">medidores pareados · leitura contínua</span>
     </div>

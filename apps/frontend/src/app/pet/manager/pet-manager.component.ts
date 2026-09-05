@@ -11,6 +11,7 @@ import {
   buildMonitorArchive,
   dateToBr,
   minutesToLabel,
+  requiresGasMonitoring,
   riskAreaNames,
   riskAreaNrs,
 } from '../pet-mock-data';
@@ -141,6 +142,27 @@ export class PetManagerComponent implements OnDestroy {
       { label: 'Duração média', value: minutesToLabel(avgMinutes), note: 'permissões encerradas', color: 'var(--color-text)' },
       { label: 'Conformidade atmosférica', value: `${compliance}%`, note: 'leituras dentro do limite', color: 'var(--color-text)' },
     ];
+  });
+
+  // Perfil de cada área de risco — ao contrário de monitoredPetsView (só
+  // PETs abertas agora), isto sempre lista as 5 áreas, mesmo as que não têm
+  // nenhuma PET aberta no momento.
+  readonly riskAreaProfiles = computed(() => {
+    const pets = this.state.pets();
+    return RISK_AREAS.map((area) => {
+      const areaPets = pets.filter((p) => p.areas.includes(area.id));
+      const activeCount = areaPets.filter((p) => p.status !== 'fechada').length;
+      const hasGas = requiresGasMonitoring([area.id]);
+      return {
+        area,
+        hasGas,
+        limits: hasGas ? this.gasKeys.map((key) => ({ key, ...GAS_LIMITS[key] })) : [],
+        activeCount,
+        totalCount: areaPets.length,
+        statusLabel:
+          activeCount > 0 ? `${activeCount} PET${activeCount > 1 ? 's' : ''} aberta${activeCount > 1 ? 's' : ''} agora` : 'nenhuma PET aberta no momento',
+      };
+    });
   });
 
   readonly monitoredPetsView = computed(() =>
