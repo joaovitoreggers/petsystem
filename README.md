@@ -12,8 +12,16 @@ apenas este README e os comentários no código ficam em português.
 ```
 apps/
   backend/    # NestJS — AuthModule, UsersModule, EmployeesModule, QrValidationModule
-  frontend/   # Angular — Auth (lazy), QrScanner (lazy), Users e Employees
+  frontend/   # Angular — telas do design PET Digital (rota /pet), sem integração com o back-end
 ```
+
+> **Estado atual do front-end:** o Angular hoje renderiza só o design/protótipo
+> do PET Digital (fluxo do técnico no celular e painel do gestor no desktop),
+> com dados mockados localmente — não faz nenhuma chamada HTTP. As telas
+> antigas (login, CRUD de usuários/funcionários, crachás, scanner de QR) foram
+> removidas do front-end porque não faziam parte do design entregue; o
+> back-end e as APIs abaixo continuam existindo e podem ser testados
+> diretamente (curl/Postman) enquanto a integração real não é refeita.
 
 `Usuario` (login — porteiro/operador, autentica via `/auth/login`) e
 `Employee`/funcionário (pessoa de campo validada nas tentativas de entrada,
