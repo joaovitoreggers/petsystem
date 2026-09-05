@@ -137,6 +137,11 @@
   font-family: var(--font-heading); font-weight: 600; font-size: 14px; letter-spacing: 0.04em;
 }
 .badge-card__verdict--bad { background: var(--status-bad); color: #fdf3f3; }
+.badge-card__warning {
+  display: flex; gap: 8px; align-items: flex-start; margin-top: 10px; padding: 9px 11px;
+  background: #f6e6c4; color: #6b4600; font-size: 12px; line-height: 1.45;
+}
+.badge-card__warning-icon { flex: none; font-size: 14px; }
 
 .team-row {
   display: flex; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--color-divider); font-size: 13px;
@@ -146,6 +151,18 @@
   font-family: var(--font-heading); font-size: 11px;
 }
 .team-row__status { margin-left: auto; font-size: 11px; color: var(--status-ok); }
+.team-row__status--critical { color: var(--status-bad); font-weight: 600; }
+
+.critical-alerts {
+  display: flex; flex-direction: column; gap: 8px; padding-top: 10px; border-top: 1px solid var(--color-divider);
+}
+.critical-alerts__kicker { color: var(--status-bad); }
+.critical-alerts__row {
+  display: flex; gap: 8px; align-items: flex-start; font-size: 12px; background: #f9eded; color: #6b1414;
+  padding: 8px 10px; line-height: 1.4;
+}
+.critical-alerts__icon { flex: none; }
+.critical-alerts__time { font-family: ui-monospace, monospace; font-size: 11px; flex: none; }
 
 /* — checklist — */
 .step--check { gap: 18px; }

@@ -2,6 +2,8 @@ import { Injectable, computed, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import {
   Badge,
+  BadgeItem,
+  CriticalAlert,
   EXTRA_FIELDS,
   GasReading,
   MOCK_BADGES,
@@ -192,6 +194,11 @@ export class PetStateService {
   readonly technicianSigned = signal(false);
   readonly executorSigned = signal(false);
 
+  // Liberações com ressalva: funcionário com documentação vencida foi
+  // admitido mesmo assim, por decisão do técnico. Fica visível durante o
+  // assistente e vai junto no registro da PET (ver finishPet()).
+  readonly criticalAlerts = signal<CriticalAlert[]>([]);
+
   readonly steps = computed<WizardStepId[]>(() => stepsFor(this.selectedAreas()));
   readonly currentStep = computed<WizardStepId | undefined>(() => this.steps()[this.stepIndex()]);
   readonly needsGasMonitoring = computed(() => requiresGasMonitoring(this.selectedAreas()));
@@ -266,6 +273,7 @@ export class PetStateService {
     this.authorizedTeam.set([]);
     this.technicianSigned.set(false);
     this.executorSigned.set(false);
+    this.criticalAlerts.set([]);
     this.screen.set('nova');
   }
 
@@ -385,12 +393,28 @@ export class PetStateService {
     if (!badge) return;
     if (!this.authorizedTeam().some((b) => b.registration === badge.registration)) {
       this.authorizedTeam.update((team) => [...team, badge]);
+      const expiredDocs = badge.items.filter((i) => i.status === 'venc');
+      if (expiredDocs.length > 0) {
+        const timestamp = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        const alerts: CriticalAlert[] = expiredDocs.map((doc) => ({
+          employeeName: badge.name,
+          registration: badge.registration,
+          documentName: doc.name,
+          message: `${badge.name} (mat. ${badge.registration}) liberado com ${doc.name} vencido — decisão do técnico responsável.`,
+          timestamp,
+        }));
+        this.criticalAlerts.update((list) => [...alerts, ...list]);
+      }
     }
     this.currentBadge.set(null);
   }
 
   badgeIsCleared(badge: Badge): boolean {
     return !badge.items.some((i) => i.status === 'venc');
+  }
+
+  badgeExpiredDocs(badge: Badge): BadgeItem[] {
+    return badge.items.filter((i) => i.status === 'venc');
   }
 
   // ── Assinaturas ──────────────────────────────────────────────────
@@ -449,6 +473,7 @@ export class PetStateService {
     const time = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     const areas = this.selectedAreas();
     const gas = this.needsGasMonitoring() ? this.liveGas() : undefined;
+    const criticalAlerts = this.criticalAlerts();
     const payload = {
       areas,
       location: fields.local || 'Local não informado',
@@ -459,6 +484,7 @@ export class PetStateService {
       technician: 'Bárbara M. Garlini',
       coordinates: '-25.2531, -53.9927',
       gas,
+      criticalAlerts,
     };
 
     let pet: Pet;
@@ -479,6 +505,7 @@ export class PetStateService {
         status: 'aberta',
         coordinates: payload.coordinates,
         gas,
+        criticalAlerts,
       };
     }
     this.pets.update((list) => [pet, ...list]);

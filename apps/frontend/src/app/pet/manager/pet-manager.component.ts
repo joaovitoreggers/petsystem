@@ -110,11 +110,18 @@ export class PetManagerComponent {
     const totalReadings = this.thirtyDays.reduce((sum, d) => sum + d.total, 0);
     const totalOut = this.thirtyDays.reduce((sum, d) => sum + d.outOfRange, 0);
     const compliance = totalReadings ? (((totalReadings - totalOut) / totalReadings) * 100).toFixed(1) : '100.0';
+    const criticalAlerts = pets.reduce((sum, p) => sum + (p.criticalAlerts?.length ?? 0), 0);
     return [
       { label: 'PETs ativas agora', value: String(open), note: 'em campo nas 5 unidades', color: 'var(--color-text)' },
       { label: 'Ocorrências registradas', value: String(occurrences30d), note: 'nos últimos 30 dias', color: occurrences30d > 0 ? 'var(--status-bad)' : 'var(--color-text)' },
       { label: 'Duração média', value: minutesToLabel(avgMinutes), note: 'permissões encerradas', color: 'var(--color-text)' },
       { label: 'Conformidade atmosférica', value: `${compliance}%`, note: 'leituras dentro do limite', color: 'var(--color-text)' },
+      {
+        label: 'Alertas críticos de documentação',
+        value: String(criticalAlerts),
+        note: 'liberações com ressalva por NR vencida',
+        color: criticalAlerts > 0 ? 'var(--status-bad)' : 'var(--color-text)',
+      },
     ];
   });
 

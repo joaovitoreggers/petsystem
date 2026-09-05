@@ -244,6 +244,16 @@ export interface GasReading {
   lel: number;
 }
 
+// Registro de uma liberação com ressalva: um funcionário com documentação
+// vencida foi admitido na equipe mesmo assim, sob decisão do técnico.
+export interface CriticalAlert {
+  employeeName: string;
+  registration: string;
+  documentName: string;
+  message: string;
+  timestamp: string;
+}
+
 export interface Pet {
   id: string;
   areas: RiskAreaId[];
@@ -260,6 +270,7 @@ export interface Pet {
   gas?: GasReading;
   alarm?: boolean;
   durationMinutes?: number;
+  criticalAlerts?: CriticalAlert[];
 }
 
 export const MOCK_PETS: Pet[] = [

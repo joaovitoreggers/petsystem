@@ -196,6 +196,14 @@
                     <div class="timeline__time">{{ pet.start }}</div>
                     <div class="timeline__text">PET emitida por {{ pet.technician }} · equipe de {{ pet.teamSize }}.</div>
                   </div>
+                  @for (alert of pet.criticalAlerts ?? []; track alert.timestamp + alert.registration + alert.documentName) {
+                    <div class="timeline__row timeline__row--critical">
+                      <div class="timeline__time">{{ alert.timestamp }}</div>
+                      <div class="timeline__text">
+                        <span class="timeline__critical-icon">⚠</span> {{ alert.message }}
+                      </div>
+                    </div>
+                  }
                   @if (pet.end) {
                     <div class="timeline__row">
                       <div class="timeline__time">{{ pet.end }}</div>
