@@ -28,18 +28,18 @@ describe('AccessAttempt (State pattern)', () => {
   it('completes automatically once the expected number of distinct reads is reached', () => {
     const attempt = new AccessAttempt(60_000);
     attempt.startDetection(2);
-    attempt.recordRead({ qrCode: 'A', userId: 1, result: AccessResult.AUTHORIZED });
+    attempt.recordRead({ qrCode: 'A', userId: 'user-a', result: AccessResult.AUTHORIZED });
     expect(attempt.status).toBe(AttemptStatus.AWAITING_READS);
-    attempt.recordRead({ qrCode: 'B', userId: 2, result: AccessResult.AUTHORIZED });
+    attempt.recordRead({ qrCode: 'B', userId: 'user-b', result: AccessResult.AUTHORIZED });
     expect(attempt.status).toBe(AttemptStatus.COMPLETE);
   });
 
   it('does not accept new reads once complete', () => {
     const attempt = new AccessAttempt(60_000);
     attempt.startDetection(1);
-    attempt.recordRead({ qrCode: 'A', userId: 1, result: AccessResult.AUTHORIZED });
+    attempt.recordRead({ qrCode: 'A', userId: 'user-a', result: AccessResult.AUTHORIZED });
     expect(() =>
-      attempt.recordRead({ qrCode: 'B', userId: 2, result: AccessResult.AUTHORIZED }),
+      attempt.recordRead({ qrCode: 'B', userId: 'user-b', result: AccessResult.AUTHORIZED }),
     ).toThrow(ConflictException);
   });
 

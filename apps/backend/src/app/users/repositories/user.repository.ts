@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -15,7 +16,7 @@ export class UserRepository implements IUserRepository {
     return this.repository.find({ order: { name: 'ASC' } });
   }
 
-  findById(id: number): Promise<User | null> {
+  findById(id: string): Promise<User | null> {
     return this.repository.findOneBy({ id });
   }
 
@@ -23,18 +24,14 @@ export class UserRepository implements IUserRepository {
     return this.repository.findOneBy({ email });
   }
 
-  findByQrCode(qrCode: string): Promise<User | null> {
-    return this.repository.findOneBy({ qrCode });
-  }
-
   create(data: CreateUserData): Promise<User> {
     const user = this.repository.create({
+      id: randomUUID(),
       name: data.name,
       email: data.email,
       password: data.passwordHash,
       role: data.role,
       accessLevel: data.accessLevel,
-      qrCode: data.qrCode,
     });
     return this.repository.save(user);
   }

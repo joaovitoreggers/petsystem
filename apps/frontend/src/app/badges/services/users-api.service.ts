@@ -4,12 +4,11 @@ import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
 export interface UserSummary {
-  id: number;
+  id: string;
   name: string;
   email: string;
   role: string;
   accessLevel: number;
-  qrCode: string;
 }
 
 @Injectable({ providedIn: 'root' })

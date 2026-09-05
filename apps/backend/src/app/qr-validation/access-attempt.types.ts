@@ -9,6 +9,6 @@ export enum AttemptStatus {
 
 export interface RecordedRead {
   qrCode: string;
-  userId: number | null;
+  userId: string | null;
   result: AccessResult;
 }

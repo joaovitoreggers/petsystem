@@ -10,7 +10,6 @@ const SEED_USERS = [
     password: 'senha123',
     role: 'porteiro',
     accessLevel: 5,
-    qrCode: 'QR-PORTEIRO-001',
   },
   {
     name: 'João Silva',
@@ -18,7 +17,6 @@ const SEED_USERS = [
     password: 'senha123',
     role: 'funcionario',
     accessLevel: 3,
-    qrCode: 'QR-FUNC-AUTORIZADO',
   },
   {
     name: 'Maria Souza',
@@ -26,7 +24,6 @@ const SEED_USERS = [
     password: 'senha123',
     role: 'estagiario',
     accessLevel: 1,
-    qrCode: 'QR-ESTAGIARIO-NEGADO',
   },
 ];
 
@@ -37,11 +34,11 @@ async function seed() {
   for (const data of SEED_USERS) {
     const existing = await usersService.findByEmail(data.email);
     if (existing) {
-      Logger.log(`User already exists, skipping: ${data.email}`);
+      Logger.log(`User already exists, skipping: ${data.email} (id/qrCode: ${existing.id})`);
       continue;
     }
-    await usersService.create(data);
-    Logger.log(`User created: ${data.email} (level ${data.accessLevel})`);
+    const user = await usersService.create(data);
+    Logger.log(`User created: ${data.email} (level ${data.accessLevel}, id/qrCode: ${user.id})`);
   }
 
   await app.close();

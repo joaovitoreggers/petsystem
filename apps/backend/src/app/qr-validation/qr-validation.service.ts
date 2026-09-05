@@ -10,6 +10,11 @@ import { AccessAttemptStoreService } from './access-attempt-store.service';
 import { AccessAttempt } from './access-attempt';
 import { RecordedRead } from './access-attempt.types';
 
+// O conteúdo do QR é o User.id (uuid) — checar o formato aqui evita bater no
+// Postgres com um literal inválido para a coluna uuid (o driver rejeitaria
+// com um erro de sintaxe em vez de simplesmente não encontrar ninguém).
+const UUID_SHAPE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 @Injectable()
 export class QrValidationService {
   private readonly minimumAccessLevel: number;
@@ -62,7 +67,9 @@ export class QrValidationService {
       );
     }
 
-    const user = await this.usersService.findByQrCode(qrCode);
+    const user = UUID_SHAPE.test(qrCode)
+      ? await this.usersService.findById(qrCode)
+      : null;
     const result = this.evaluateAuthorization(user?.accessLevel);
 
     await this.accessEventRepository.record({

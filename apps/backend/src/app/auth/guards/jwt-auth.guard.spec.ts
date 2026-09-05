@@ -63,7 +63,7 @@ describe('JwtAuthGuard', () => {
 
   it('allows the request with a valid JWT token', async () => {
     const token = jwtService.sign({
-      sub: 1,
+      sub: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
       email: 'porteiro@petsystem.local',
       role: 'porteiro',
       accessLevel: 5,
