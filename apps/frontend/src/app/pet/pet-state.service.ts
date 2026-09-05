@@ -1,7 +1,6 @@
 import { Injectable, computed, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import {
-  BASE_ACTIVITY,
   Badge,
   EXTRA_FIELDS,
   GasReading,
@@ -275,15 +274,7 @@ export class PetStateService {
   }
 
   toggleArea(id: RiskAreaId): void {
-    this.selectedAreas.update((ids) => {
-      if (ids.includes(id)) return ids.filter((x) => x !== id);
-      const next = [...ids, id];
-      const base = BASE_ACTIVITY[id];
-      if (ids.length === 0) {
-        this.fields.update((f) => ({ ...f, descricao: base.description, tipo: base.type, local: base.location }));
-      }
-      return next;
-    });
+    this.selectedAreas.update((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]));
   }
 
   setField<K extends keyof WizardFields>(name: K, value: string): void {
@@ -298,7 +289,9 @@ export class PetStateService {
     return this.selectedAreas().map((id) => ({
       areaId: id,
       areaLabel: id,
-      fields: EXTRA_FIELDS[id].map((f) => ({ name: `${id}:${f.name}`, label: f.label, value: this.extraValues()[`${id}:${f.name}`] ?? f.value })),
+      // Preenchimento manual: os campos começam vazios — EXTRA_FIELDS só
+      // fornece o rótulo, não é mais usado como valor pré-preenchido.
+      fields: EXTRA_FIELDS[id].map((f) => ({ name: `${id}:${f.name}`, label: f.label, value: this.extraValues()[`${id}:${f.name}`] ?? '' })),
     }));
   }
 
