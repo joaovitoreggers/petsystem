@@ -245,13 +245,21 @@
                 class="badge-card__verdict"
                 [class.badge-card__verdict--bad]="!state.badgeIsCleared(badge)"
               >
-                {{ state.badgeIsCleared(badge) ? 'LIBERADO PARA A ATIVIDADE' : 'BLOQUEADO · DOCUMENTAÇÃO VENCIDA' }}
+                {{ state.badgeIsCleared(badge) ? 'LIBERADO PARA A ATIVIDADE' : 'ALERTA CRÍTICO · DOCUMENTAÇÃO VENCIDA' }}
               </div>
-              @if (state.badgeIsCleared(badge)) {
-                <button type="button" class="btn btn-secondary btn-block" (click)="state.addBadgeToTeam()">
-                  Adicionar à equipe autorizada
-                </button>
+              @if (!state.badgeIsCleared(badge)) {
+                <div class="badge-card__warning">
+                  <span class="badge-card__warning-icon">⚠</span>
+                  <span>
+                    Entrada permitida mediante ciência do técnico responsável, mesmo com
+                    {{ state.badgeExpiredDocs(badge).length > 1 ? 'os documentos' : 'o documento' }}
+                    vencid{{ state.badgeExpiredDocs(badge).length > 1 ? 'os' : 'o' }} listad{{ state.badgeExpiredDocs(badge).length > 1 ? 'os' : 'o' }} acima. Este evento será registrado no histórico da PET.
+                  </span>
+                </div>
               }
+              <button type="button" class="btn btn-secondary btn-block" (click)="state.addBadgeToTeam()">
+                Adicionar à equipe autorizada
+              </button>
             </div>
           }
 
@@ -261,10 +269,27 @@
               <div class="team-row">
                 <span class="team-row__initials">{{ member.name.charAt(0) }}{{ member.name.split(' ')[1]?.charAt(0) }}</span>
                 <span>{{ member.name }}</span>
-                <span class="team-row__status">liberado</span>
+                @if (state.badgeExpiredDocs(member).length > 0) {
+                  <span class="team-row__status team-row__status--critical">liberado com ressalva</span>
+                } @else {
+                  <span class="team-row__status">liberado</span>
+                }
               </div>
             }
           </div>
+
+          @if (state.criticalAlerts().length > 0) {
+            <div class="critical-alerts">
+              <div class="section-kicker critical-alerts__kicker">Alertas críticos desta PET</div>
+              @for (alert of state.criticalAlerts(); track alert.timestamp + alert.registration + alert.documentName) {
+                <div class="critical-alerts__row">
+                  <span class="critical-alerts__icon">⚠</span>
+                  <span class="critical-alerts__time">{{ alert.timestamp }}</span>
+                  <span class="critical-alerts__text">{{ alert.message }}</span>
+                </div>
+              }
+            </div>
+          }
         </div>
       }
 

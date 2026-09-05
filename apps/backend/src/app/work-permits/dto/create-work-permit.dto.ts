@@ -26,6 +26,27 @@ export class WorkPermitGasReadingDto {
   lel!: number;
 }
 
+export class WorkPermitCriticalAlertDto {
+  @IsString()
+  @MinLength(1)
+  employeeName!: string;
+
+  @IsString()
+  @MinLength(1)
+  registration!: string;
+
+  @IsString()
+  @MinLength(1)
+  documentName!: string;
+
+  @IsString()
+  @MinLength(1)
+  message!: string;
+
+  @IsString()
+  timestamp!: string;
+}
+
 export class CreateWorkPermitDto {
   @IsArray()
   @ArrayMinSize(1)
@@ -65,4 +86,10 @@ export class CreateWorkPermitDto {
   @IsOptional()
   @IsBoolean()
   alarm?: boolean;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => WorkPermitCriticalAlertDto)
+  criticalAlerts?: WorkPermitCriticalAlertDto[];
 }

@@ -9,6 +9,17 @@ export interface WorkPermitGasReading {
   lel: number;
 }
 
+// Registro de uma liberação com ressalva: um funcionário com documentação
+// (ASO/NR) vencida foi admitido na equipe mesmo assim, por decisão do
+// técnico responsável, em vez de ter a entrada bloqueada.
+export interface WorkPermitCriticalAlert {
+  employeeName: string;
+  registration: string;
+  documentName: string;
+  message: string;
+  timestamp: string;
+}
+
 /**
  * PET (Permissão de Entrada e Trabalho): permissão emitida pelo técnico de
  * segurança para uma intervenção em área de risco. O id segue o formato
@@ -61,6 +72,9 @@ export class WorkPermit {
 
   @Column({ name: 'duration_minutes', nullable: true })
   durationMinutes?: number;
+
+  @Column({ name: 'critical_alerts', type: 'jsonb', nullable: true })
+  criticalAlerts?: WorkPermitCriticalAlert[];
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt!: Date;

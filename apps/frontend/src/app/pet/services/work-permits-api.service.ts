@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { GasReading, Pet, RiskAreaId } from '../pet-mock-data';
+import { CriticalAlert, GasReading, Pet, RiskAreaId } from '../pet-mock-data';
 
 export interface CreateWorkPermitPayload {
   areas: RiskAreaId[];
@@ -15,6 +15,7 @@ export interface CreateWorkPermitPayload {
   coordinates?: string;
   gas?: GasReading;
   alarm?: boolean;
+  criticalAlerts?: CriticalAlert[];
 }
 
 export interface CloseWorkPermitPayload {

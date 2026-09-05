@@ -41,6 +41,7 @@ export class WorkPermitRepository implements IWorkPermitRepository {
       gas: data.gas,
       alarm: data.alarm ?? false,
       durationMinutes: data.durationMinutes,
+      criticalAlerts: data.criticalAlerts,
     });
     return this.repository.save(permit);
   }
