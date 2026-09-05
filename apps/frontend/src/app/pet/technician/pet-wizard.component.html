@@ -111,6 +111,37 @@
                   <input class="input" [value]="f.value" (change)="onExtraChange(f.name, $event)" />
                 </div>
               }
+
+              @if (group.manualFields.length > 0) {
+                <div class="manual-fields">
+                  @for (m of group.manualFields; track m.id) {
+                    <div class="manual-field">
+                      <input
+                        class="input manual-field__label"
+                        placeholder="Nome do dado"
+                        [value]="m.label"
+                        (change)="onManualLabelChange(group.areaId, m.id, $event)"
+                      />
+                      <input
+                        class="input manual-field__value"
+                        placeholder="Valor"
+                        [value]="m.value"
+                        (change)="onManualValueChange(group.areaId, m.id, $event)"
+                      />
+                      <button
+                        type="button"
+                        class="btn btn-ghost manual-field__remove"
+                        (click)="removeManualField(group.areaId, m.id)"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  }
+                </div>
+              }
+              <button type="button" class="btn btn-secondary manual-field__add" (click)="addManualField(group.areaId)">
+                + Lançar dado manual · {{ group.nr }}
+              </button>
             </div>
           }
 

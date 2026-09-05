@@ -65,10 +65,15 @@ export class PetWizardComponent {
   readonly areaNotes = computed(() => this.state.selectedAreas().map((id) => ({ id, text: AREA_NOTE[id] })));
 
   readonly extraGroups = computed(() =>
-    this.state.extraFieldsForSelection().map((group) => ({
-      ...group,
-      title: `Dados específicos · ${RISK_AREAS.find((a) => a.id === group.areaId)?.nr}`,
-    })),
+    this.state.extraFieldsForSelection().map((group) => {
+      const nr = RISK_AREAS.find((a) => a.id === group.areaId)?.nr ?? '';
+      return {
+        ...group,
+        nr,
+        title: `Dados específicos · ${nr}`,
+        manualFields: this.state.manualExtraFields()[group.areaId] ?? [],
+      };
+    }),
   );
 
   readonly gauges = computed<GaugeView[]>(() => {
@@ -129,6 +134,24 @@ export class PetWizardComponent {
   onExtraChange(name: string, event: Event): void {
     const value = (event.target as HTMLInputElement).value;
     this.state.setExtra(name, value);
+  }
+
+  addManualField(areaId: RiskAreaId): void {
+    this.state.addManualExtraField(areaId);
+  }
+
+  onManualLabelChange(areaId: RiskAreaId, id: string, event: Event): void {
+    const value = (event.target as HTMLInputElement).value;
+    this.state.updateManualExtraField(areaId, id, { label: value });
+  }
+
+  onManualValueChange(areaId: RiskAreaId, id: string, event: Event): void {
+    const value = (event.target as HTMLInputElement).value;
+    this.state.updateManualExtraField(areaId, id, { value });
+  }
+
+  removeManualField(areaId: RiskAreaId, id: string): void {
+    this.state.removeManualExtraField(areaId, id);
   }
 
   clearSignature(which: 'tecnico' | 'exec'): void {

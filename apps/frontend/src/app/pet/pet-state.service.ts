@@ -34,7 +34,14 @@ interface WizardFields {
 
 const EMPTY_FIELDS: WizardFields = { descricao: '', tipo: 'Manutenção corretiva', empresa: '', inicio: '', fim: '', local: '' };
 
+export interface ManualExtraField {
+  id: string;
+  label: string;
+  value: string;
+}
+
 let nextPetSequence = 419;
+let nextManualFieldSequence = 1;
 
 @Injectable({ providedIn: 'root' })
 export class PetStateService {
@@ -95,6 +102,7 @@ export class PetStateService {
   readonly stepIndex = signal(0);
   readonly fields = signal<WizardFields>({ ...EMPTY_FIELDS });
   readonly extraValues = signal<Record<string, string>>({});
+  readonly manualExtraFields = signal<Record<string, ManualExtraField[]>>({});
   readonly checklistState = signal<Record<string, boolean>>({});
   readonly liveGas = signal<GasReading>({ o2: 20.9, co: 2, h2s: 0.3, lel: 1 });
   readonly ventilationOn = signal(false);
@@ -170,6 +178,7 @@ export class PetStateService {
     this.stepIndex.set(0);
     this.fields.set({ ...EMPTY_FIELDS });
     this.extraValues.set({});
+    this.manualExtraFields.set({});
     this.checklistState.set({});
     this.ventilationOn.set(false);
     this.gasReadingsLog.set([]);
@@ -210,6 +219,36 @@ export class PetStateService {
       areaId: id,
       areaLabel: id,
       fields: EXTRA_FIELDS[id].map((f) => ({ name: `${id}:${f.name}`, label: f.label, value: this.extraValues()[`${id}:${f.name}`] ?? f.value })),
+    }));
+  }
+
+  // Além dos campos pré-definidos por NR acima, o técnico também pode
+  // lançar dados manuais — um rótulo + valor livres — para a mesma NR.
+  // Cada área selecionada tem sua própria lista, e todas se combinam na
+  // mesma PET quando várias áreas são marcadas.
+  manualFieldsForArea(areaId: RiskAreaId): ManualExtraField[] {
+    return this.manualExtraFields()[areaId] ?? [];
+  }
+
+  addManualExtraField(areaId: RiskAreaId): void {
+    const field: ManualExtraField = { id: `manual-${nextManualFieldSequence++}`, label: '', value: '' };
+    this.manualExtraFields.update((state) => ({
+      ...state,
+      [areaId]: [...(state[areaId] ?? []), field],
+    }));
+  }
+
+  updateManualExtraField(areaId: RiskAreaId, id: string, patch: Partial<Pick<ManualExtraField, 'label' | 'value'>>): void {
+    this.manualExtraFields.update((state) => ({
+      ...state,
+      [areaId]: (state[areaId] ?? []).map((f) => (f.id === id ? { ...f, ...patch } : f)),
+    }));
+  }
+
+  removeManualExtraField(areaId: RiskAreaId, id: string): void {
+    this.manualExtraFields.update((state) => ({
+      ...state,
+      [areaId]: (state[areaId] ?? []).filter((f) => f.id !== id),
     }));
   }
 
