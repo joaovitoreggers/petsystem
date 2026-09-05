@@ -9,6 +9,9 @@ out-tsc
 *.sqlite
 *.sqlite3
 
+# environment
+.env
+
 # dependencies
 node_modules
 

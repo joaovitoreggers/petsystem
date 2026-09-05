@@ -21,26 +21,67 @@ acessam o repositório de `User` diretamente — sempre através de `UsersServic
 
 ## Requisitos
 
-- Node.js 20+ e npm
+- Docker e Docker Compose (caminho recomendado — sobe tudo com persistência)
+- Ou, para rodar sem Docker: Node.js 20+, npm e um PostgreSQL acessível
 - Um navegador com acesso à câmera para testar o front-end de verdade
 
-## Rodando o back-end
+## Rodando com Docker (recomendado)
+
+Sobe os três containers — front-end (Nginx), back-end (NestJS) e banco
+(PostgreSQL, com dados persistidos em um volume nomeado) — orquestrados pelo
+`docker-compose.yml`:
+
+```bash
+docker compose up --build   # ou: npm run docker:up
+```
+
+- Front-end: http://localhost:8080 (o Nginx do container serve o build do
+  Angular e faz proxy de `/api/*` para o container do back-end — sem CORS)
+- Back-end (acesso direto, opcional): http://localhost:3000/api
+- Postgres (acesso direto, opcional): `localhost:5433` (mapeado para a porta
+  interna 5432, para não colidir com um Postgres já rodando na sua máquina)
+
+Popule os usuários de teste dentro do container já em execução:
+
+```bash
+docker compose exec backend npm run backend:seed   # ou: npm run docker:seed
+```
+
+Os dados ficam no volume nomeado `petsystem_db_data`: sobrevivem a
+`docker compose down` / `up` e a reinícios dos containers. Para descartar tudo
+e começar do zero: `docker compose down -v`.
+
+Variáveis de ambiente opcionais (copie `.env.example` para `.env` na raiz para
+customizar — todas têm um default funcional no `docker-compose.yml`):
+
+| Variável           | Padrão       | Descrição                                              |
+|--------------------|--------------|----------------------------------------------------------|
+| `DB_USERNAME`       | `petsystem`  | Usuário do Postgres                                       |
+| `DB_PASSWORD`       | `petsystem`  | Senha do Postgres                                          |
+| `DB_NAME`           | `petsystem`  | Nome do banco                                              |
+| `JWT_SECRET`        | `dev-secret` | Segredo usado para assinar o JWT — troque em produção      |
+| `JWT_EXPIRES_IN`    | `8h`         | Validade do token                                          |
+| `ACCESS_MIN_LEVEL`  | `2`          | Nível mínimo de `accessLevel` para autorizar a entrada     |
+
+## Rodando sem Docker
+
+Precisa de um PostgreSQL acessível — o mais simples é subir só o banco via
+Docker (`docker compose up -d db`, exposto em `localhost:5433`) e rodar
+back-end/front-end localmente:
 
 ```bash
 npm install
-npm run backend:seed    # popula os usuários de teste (idempotente)
-npm run backend:serve   # sobe em http://localhost:3000/api
+DB_PORT=5433 npm run backend:seed    # popula os usuários de teste (idempotente)
+DB_PORT=5433 npm run backend:serve   # sobe em http://localhost:3000/api
 ```
 
-Variáveis de ambiente (arquivo `.env` na raiz, lido via `@nestjs/config`):
+Variáveis de ambiente (mesmas da tabela acima, mais):
 
-| Variável           | Padrão               | Descrição                                          |
-|--------------------|----------------------|------------------------------------------------------|
-| `JWT_SECRET`        | `dev-secret`         | Segredo usado para assinar o JWT                     |
-| `JWT_EXPIRES_IN`    | `8h`                 | Validade do token                                     |
-| `DATABASE_PATH`     | `petsystem.sqlite`   | Caminho do arquivo SQLite                             |
-| `ACCESS_MIN_LEVEL`  | `2`                  | Nível mínimo de `accessLevel` para autorizar a entrada |
-| `PORT`              | `3000`               | Porta do servidor HTTP                                |
+| Variável   | Padrão      | Descrição                          |
+|------------|-------------|-------------------------------------|
+| `DB_HOST`  | `localhost` | Host do Postgres                     |
+| `DB_PORT`  | `5432`      | Porta do Postgres                    |
+| `PORT`     | `3000`      | Porta do servidor HTTP do back-end   |
 
 ### Usuários de teste (criados por `npm run backend:seed`)
 
@@ -53,7 +94,7 @@ Variáveis de ambiente (arquivo `.env` na raiz, lido via `@nestjs/config`):
 Gere QR codes reais com o texto de `qrCode` acima (qualquer gerador de QR) para
 testar a leitura pela câmera.
 
-## Rodando o front-end
+Front-end local (aponta para `http://localhost:3000/api` por padrão):
 
 ```bash
 npm run frontend:serve   # sobe em http://localhost:4200
@@ -113,6 +154,11 @@ contar como uma leitura distinta.
   `qr-scanner.component.ts`) conforme necessário.
 - A tentativa de validação (`AccessAttempt`) vive em memória no processo do
   back-end (TTL de 2 minutos) — suficiente para esta prova de conceito; o
-  registro durável e auditável é o `AccessEvent`, que sempre vai para o banco.
+  registro durável e auditável é o `AccessEvent`, persistido no PostgreSQL
+  (volume `petsystem_db_data` quando rodando via Docker).
+- A imagem Docker do back-end não é otimizada para tamanho: o monorepo Nx
+  compartilha um único `node_modules` entre back-end e front-end, então o
+  container do back-end acaba carregando também as dependências do Angular.
+  Suficiente para esta prova de conceito.
 - Fora de escopo nesta sessão: cadastro de PET/áreas/medições, painel de
   monitoria, tela de cadastro de usuário, recuperação de senha e MFA.

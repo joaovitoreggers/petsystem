@@ -1,0 +1,12 @@
+node_modules
+dist
+tmp
+out-tsc
+**/*.sqlite
+**/*.sqlite3
+.git
+.nx
+.vscode
+.claude
+.idea
+*.log
