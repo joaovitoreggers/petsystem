@@ -8,12 +8,13 @@ import {
   MOCK_PETS,
   Pet,
   RiskAreaId,
+  TeamMember,
   WizardStepId,
   requiresGasMonitoring,
   stepsFor,
 } from './pet-mock-data';
 
-export type PortalRole = 'tecnico' | 'gestor';
+export type PortalRole = 'tecnico' | 'gestor' | 'equipe';
 export type TechnicianScreen = 'login' | 'home' | 'nova' | 'emitida' | 'detalhe';
 export type HomeTab = 'abertas' | 'fechadas';
 export type AuthPhase = 'idle' | 'scan' | 'ok';
@@ -36,6 +37,13 @@ export class PetStateService {
   readonly role = signal<PortalRole>('tecnico');
 
   readonly pets = signal<Pet[]>([...MOCK_PETS]);
+
+  // ── Funcionários: cadastro de trabalhadores autorizados ────────────
+  readonly registeredTeamMembers = signal<TeamMember[]>([]);
+
+  registerTeamMember(member: TeamMember): void {
+    this.registeredTeamMembers.update((list) => [...list, member]);
+  }
 
   // ── Técnico: navegação e autenticação ──────────────────────────────
   readonly screen = signal<TechnicianScreen>('login');

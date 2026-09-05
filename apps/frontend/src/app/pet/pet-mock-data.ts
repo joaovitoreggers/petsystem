@@ -319,6 +319,53 @@ export const THIRTY_DAY_READINGS: DayReading[] = (() => {
   return out;
 })();
 
+export interface DocumentType {
+  code: string;
+  description: string;
+}
+
+export const DOCUMENT_TYPES: DocumentType[] = [
+  { code: 'ASO', description: 'Atestado de saúde ocupacional' },
+  { code: 'NR-33', description: 'Espaço confinado · trabalhador autorizado' },
+  { code: 'NR-18', description: 'Trabalho a quente' },
+  { code: 'NR-35', description: 'Trabalho em altura' },
+  { code: 'NR-10', description: 'Segurança em instalações elétricas' },
+  { code: 'NR-12', description: 'Máquinas e equipamentos · bloqueio' },
+  { code: 'NR-13', description: 'Caldeiras e vasos de pressão' },
+];
+
+export interface TeamMember {
+  name: string;
+  registration: string;
+  role: string;
+  company: string;
+  unit: string;
+  isThirdParty?: boolean;
+  documents: Record<string, string>;
+}
+
+export const TEAM_MEMBERS: TeamMember[] = [
+  { name: 'Jonas R. Kirchner', registration: '04812', role: 'Mecânico industrial', company: 'Lar · Manutenção', unit: 'Matelândia', documents: { ASO: '2027-03-14', 'NR-33': '2027-02-08', 'NR-35': '2026-11-21', 'NR-12': '2027-05-30' } },
+  { name: 'Elaine M. Sobczak', registration: '07330', role: 'Eletricista', company: 'Termoeletro Ltda', unit: 'Medianeira', isThirdParty: true, documents: { ASO: '2027-01-09', 'NR-10': '2026-09-26', 'NR-33': '2026-09-14', 'NR-35': '2027-07-02' } },
+  { name: 'Cleiton A. Ferraz', registration: '09104', role: 'Auxiliar de manutenção', company: 'Termoeletro Ltda', unit: 'Medianeira', isThirdParty: true, documents: { ASO: '2026-07-22', 'NR-33': '2026-05-05', 'NR-12': '2026-12-03' } },
+  { name: 'Marcos D. Wolff', registration: '05221', role: 'Operador de silo · vigia', company: 'Lar · Armazéns', unit: 'Matelândia', documents: { ASO: '2027-04-18', 'NR-33': '2027-01-30', 'NR-35': '2026-12-12' } },
+  { name: 'Alan P. Kuhn', registration: '06712', role: 'Soldador · vigia de fogo', company: 'Lar · Manutenção', unit: 'Matelândia', documents: { ASO: '2026-09-19', 'NR-18': '2027-03-03', 'NR-33': '2026-10-08', 'NR-35': '2027-02-14' } },
+  { name: 'Rafael Hoffmann', registration: '02988', role: 'Téc. Segurança do Trabalho', company: 'Lar · SESMT', unit: 'Medianeira', documents: { ASO: '2027-06-11', 'NR-33': '2027-06-11', 'NR-35': '2027-06-11', 'NR-10': '2027-04-25' } },
+  { name: 'Adriana Beal', registration: '03540', role: 'Téc. Segurança do Trabalho', company: 'Lar · SESMT', unit: 'Céu Azul', documents: { ASO: '2027-02-27', 'NR-33': '2026-09-28', 'NR-35': '2027-01-16' } },
+  { name: 'Diego F. Ostrovski', registration: '08455', role: 'Montador industrial', company: 'Altura Serviços ME', unit: 'Céu Azul', isThirdParty: true, documents: { ASO: '2026-10-30', 'NR-35': '2026-09-11', 'NR-18': '2027-01-22' } },
+  { name: 'Simone K. Bertoldi', registration: '07106', role: 'Operadora de ETE', company: 'Lar · Utilidades', unit: 'Medianeira', documents: { ASO: '2027-05-08', 'NR-33': '2027-03-19' } },
+  { name: 'Vilmar J. Radaelli', registration: '01877', role: 'Mecânico de extrusão', company: 'Lar · Manutenção', unit: 'Itaipulândia', documents: { ASO: '2026-08-14', 'NR-12': '2026-06-27', 'NR-33': '2027-04-02' } },
+  { name: 'Patrícia L. Menegat', registration: '09630', role: 'Caldeireira', company: 'Lar · Utilidades', unit: 'Matelândia', documents: { ASO: '2027-07-21', 'NR-18': '2026-09-29', 'NR-13': '2027-02-05' } },
+  { name: 'Éder S. Vasconcelos', registration: '08201', role: 'Eletricista de manutenção', company: 'Lar · Manutenção', unit: 'Missal', documents: { ASO: '2027-01-25', 'NR-10': '2027-08-09', 'NR-35': '2026-09-23', 'NR-12': '2027-03-11' } },
+];
+
+const TODAY = new Date(2026, 8, 5);
+
+export function daysUntil(iso: string): number {
+  const [y, m, d] = iso.split('-').map(Number);
+  return Math.round((new Date(y, m - 1, d).getTime() - TODAY.getTime()) / 86400000);
+}
+
 export interface MonitorArchive {
   readingCount: number;
   range: Record<GasKey, [number, number, number]>;

@@ -19,12 +19,26 @@
       >
         Gestor · desktop
       </button>
+      <button
+        type="button"
+        class="btn"
+        [class.btn-primary]="state.role() === 'equipe'"
+        (click)="state.setRole('equipe')"
+      >
+        Funcionários
+      </button>
     </div>
   </div>
 
-  @if (state.role() === 'tecnico') {
-    <app-pet-technician />
-  } @else {
-    <app-pet-manager />
+  @switch (state.role()) {
+    @case ('tecnico') {
+      <app-pet-technician />
+    }
+    @case ('gestor') {
+      <app-pet-manager />
+    }
+    @case ('equipe') {
+      <app-pet-team />
+    }
   }
 </div>
