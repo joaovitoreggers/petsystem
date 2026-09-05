@@ -1,0 +1,68 @@
+import { Type } from 'class-transformer';
+import {
+  ArrayMinSize,
+  IsArray,
+  IsBoolean,
+  IsInt,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+  MinLength,
+  ValidateNested,
+} from 'class-validator';
+
+export class WorkPermitGasReadingDto {
+  @IsNumber()
+  o2!: number;
+
+  @IsNumber()
+  co!: number;
+
+  @IsNumber()
+  h2s!: number;
+
+  @IsNumber()
+  lel!: number;
+}
+
+export class CreateWorkPermitDto {
+  @IsArray()
+  @ArrayMinSize(1)
+  @IsString({ each: true })
+  areas!: string[];
+
+  @IsString()
+  @MinLength(1)
+  location!: string;
+
+  @IsString()
+  @MinLength(1)
+  unit!: string;
+
+  @IsInt()
+  @Min(0)
+  teamSize!: number;
+
+  @IsString()
+  date!: string;
+
+  @IsString()
+  start!: string;
+
+  @IsString()
+  technician!: string;
+
+  @IsOptional()
+  @IsString()
+  coordinates?: string;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => WorkPermitGasReadingDto)
+  gas?: WorkPermitGasReadingDto;
+
+  @IsOptional()
+  @IsBoolean()
+  alarm?: boolean;
+}

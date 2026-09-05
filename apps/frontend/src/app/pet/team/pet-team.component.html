@@ -1,0 +1,203 @@
+<div class="team">
+  <div class="team__head">
+    <div class="section-kicker">Cadastro de trabalhadores autorizados · SESMT</div>
+    <h1 class="team__title">Funcionários e validade das NRs</h1>
+    <div class="team__head-row">
+      <div class="team__head-text">
+        A leitura do QR do crachá em campo consulta este cadastro. Documentação vencida bloqueia a entrada;
+        vencimento em até 30 dias libera com aviso de renovação.
+      </div>
+      <button type="button" class="btn btn-primary blueprint team__new-btn" (click)="openModal()">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        + Cadastrar funcionário
+      </button>
+    </div>
+  </div>
+
+  <div class="kpi-grid">
+    @for (k of kpis(); track k.label) {
+      <div>
+        <div class="section-kicker">{{ k.label }}</div>
+        <div class="kpi-value" [style.color]="k.color">{{ k.value }}</div>
+        <div class="kpi-note">{{ k.note }}</div>
+      </div>
+    }
+  </div>
+
+  <div class="team__filters-row">
+    <div class="team__filters">
+      @for (f of filters; track f) {
+        <button
+          type="button"
+          class="tag team__filter"
+          [class.team__filter--active]="filter() === f"
+          (click)="setFilter(f)"
+        >
+          {{ f }}
+        </button>
+      }
+    </div>
+    <div class="team__legend">
+      <span><span class="team__legend-dot" style="background: var(--status-ok)"></span>em dia</span>
+      <span><span class="team__legend-dot" style="background: var(--status-warn)"></span>vence em 30 dias</span>
+      <span><span class="team__legend-dot" style="background: var(--status-bad)"></span>vencido</span>
+    </div>
+  </div>
+
+  <table class="table">
+    <thead>
+      <tr>
+        <th style="width: 26%">Funcionário</th>
+        <th>Vínculo</th>
+        <th>Unidade</th>
+        <th style="width: 34%">Normas e vencimentos</th>
+        <th>Próximo vencimento</th>
+        <th>Situação</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (row of filteredMembers(); track row.member.registration) {
+        <tr [style.background]="row.rowBg">
+          <td>
+            <div class="team__member">
+              <span class="team__avatar">{{ row.initials }}</span>
+              <span>
+                <span class="team__member-name">{{ row.member.name }}</span>
+                <span class="team__member-role">{{ row.member.role }} · mat. {{ row.member.registration }}</span>
+              </span>
+            </div>
+          </td>
+          <td class="team__company">
+            {{ row.member.company }}
+            <span class="team__vinculo">{{ row.vinculo }}</span>
+          </td>
+          <td class="team__unit">{{ row.member.unit }}</td>
+          <td>
+            <div class="team__docs">
+              @for (d of row.documents; track d.code) {
+                <div class="team__doc">
+                  <span class="team__doc-icon" [style.color]="d.color">{{ d.icon }}</span>
+                  <span class="team__doc-code mono">{{ d.code }}</span>
+                  <span class="team__doc-date mono">{{ d.dateLabel }}</span>
+                  <span class="team__doc-deadline" [style.color]="d.color">{{ d.deadlineLabel }}</span>
+                </div>
+              }
+            </div>
+          </td>
+          <td class="team__next">
+            {{ row.nextDocLabel }}
+            <span class="team__next-deadline" [style.color]="row.nextDeadlineColor">{{ row.nextDeadlineLabel }}</span>
+          </td>
+          <td>
+            <span class="status-pill" [style.color]="row.situationFg" [style.background]="row.situationBg">
+              {{ row.situationLabel }}
+            </span>
+          </td>
+        </tr>
+      }
+    </tbody>
+  </table>
+
+  @if (filteredMembers().length === 0) {
+    <div class="team__empty">Nenhum funcionário nesse filtro.</div>
+  }
+</div>
+
+@if (modalOpen()) {
+  <div class="dialog-backdrop" (click)="closeModal()">
+    <div class="dialog blueprint team__dialog" (click)="$event.stopPropagation()">
+      <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+      <div class="dialog-title">Cadastrar funcionário</div>
+      <div class="dialog-body">O cadastro gera o QR do crachá e passa a valer na validação de entrada em campo.</div>
+
+      <div class="team__form-row">
+        <div class="field" style="flex: 2; min-width: 220px">
+          <label>Nome completo</label>
+          <input
+            class="input"
+            placeholder="ex. Marina T. Baldissera"
+            [value]="cadName()"
+            (input)="cadName.set($any($event.target).value)"
+          />
+        </div>
+        <div class="field" style="flex: 1; min-width: 120px">
+          <label>Matrícula</label>
+          <input
+            class="input"
+            placeholder="05xxx"
+            [value]="cadRegistration()"
+            (input)="cadRegistration.set($any($event.target).value)"
+          />
+        </div>
+      </div>
+      <div class="team__form-row">
+        <div class="field" style="flex: 1; min-width: 200px">
+          <label>Função</label>
+          <input
+            class="input"
+            placeholder="ex. Mecânica industrial"
+            [value]="cadRole()"
+            (input)="cadRole.set($any($event.target).value)"
+          />
+        </div>
+        <div class="field" style="flex: 1; min-width: 200px">
+          <label>Empresa</label>
+          <input
+            class="input"
+            placeholder="ex. Lar · Manutenção"
+            [value]="cadCompany()"
+            (input)="cadCompany.set($any($event.target).value)"
+          />
+        </div>
+      </div>
+      <div class="team__form-row">
+        <div class="field" style="flex: 1; min-width: 180px">
+          <label>Unidade</label>
+          <select class="input" [value]="cadUnit()" (change)="cadUnit.set($any($event.target).value)">
+            <option>Matelândia</option>
+            <option>Medianeira</option>
+            <option>Céu Azul</option>
+            <option>Itaipulândia</option>
+            <option>Missal</option>
+          </select>
+        </div>
+        <div class="field" style="flex: 1; min-width: 180px">
+          <label>Vínculo</label>
+          <select class="input" [value]="cadVinculo()" (change)="cadVinculo.set($any($event.target).value)">
+            <option>Próprio</option>
+            <option>Terceiro</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="section-kicker team__docs-kicker">Documentação e validade</div>
+      <div class="team__doc-list">
+        @for (d of cadDocs(); track d.code) {
+          <div class="team__doc-row">
+            <input type="checkbox" [checked]="d.checked" (change)="toggleCadDoc(d.code)" />
+            <span class="team__doc-row-info">
+              <span class="team__doc-row-name mono">{{ d.code }}</span>
+              <span class="team__doc-row-desc">{{ d.description }}</span>
+            </span>
+            <input
+              class="input team__doc-row-date"
+              type="date"
+              [value]="d.iso"
+              [disabled]="!d.checked"
+              (change)="setCadDocDate(d.code, $any($event.target).value)"
+            />
+            <span class="team__doc-row-deadline" [style.color]="d.color">{{ d.deadlineLabel }}</span>
+          </div>
+        }
+      </div>
+
+      <div class="team__summary">{{ cadSummary() }}</div>
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-secondary" (click)="closeModal()">Cancelar</button>
+        <button type="button" class="btn btn-primary" [disabled]="cadDisabled()" (click)="save()">
+          Cadastrar e gerar QR
+        </button>
+      </div>
+    </div>
+  </div>
+}
