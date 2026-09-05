@@ -13,6 +13,7 @@ import {
   TeamMember,
   WizardStepId,
   requiresGasMonitoring,
+  riskAreaNrs,
   stepsFor,
 } from './pet-mock-data';
 import { WorkPermitsApiService } from './services/work-permits-api.service';
@@ -46,6 +47,85 @@ let nextManualFieldSequence = 1;
 @Injectable({ providedIn: 'root' })
 export class PetStateService {
   readonly role = signal<PortalRole>('tecnico');
+
+  // ── Alerta e evacuação ──────────────────────────────────────────────
+  // Vive aqui (não num componente) para ficar disponível em qualquer tela —
+  // trocar de aba (técnico/gestor/funcionários) não deve silenciar a sirene
+  // nem fechar o alerta de uma evacuação em curso.
+  readonly evacuating = signal(false);
+
+  private audioContext: AudioContext | null = null;
+  private sirenOscillator: OscillatorNode | null = null;
+  private sirenIntervalId: ReturnType<typeof setInterval> | null = null;
+
+  readonly alarmedPets = computed(() => this.pets().filter((p) => p.alarm && p.status !== 'fechada'));
+  readonly hasAlert = computed(() => this.alarmedPets().length > 0);
+  readonly alertText = computed(() => {
+    const pet = this.alarmedPets()[0];
+    if (!pet || !pet.gas) return '';
+    return `${pet.id} · ${pet.location} · H₂S em ${pet.gas.h2s.toFixed(1)} ppm, acima do limite de 8 ppm.`;
+  });
+  readonly evacText = computed(() => {
+    const pet = this.alarmedPets()[0];
+    if (!pet) return 'Retirada imediata das frentes de trabalho ativas.';
+    return `${pet.id} · ${pet.location} · ${riskAreaNrs(pet.areas)}. Atmosfera fora do limite: retirada imediata da frente de trabalho.`;
+  });
+
+  triggerEvacuation(): void {
+    this.startSiren();
+    this.evacuating.set(true);
+  }
+
+  silenceSiren(): void {
+    this.stopSiren();
+  }
+
+  finishEvacuation(): void {
+    this.stopSiren();
+    this.evacuating.set(false);
+  }
+
+  private startSiren(): void {
+    try {
+      this.stopSiren();
+      const AudioCtx =
+        window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = (this.audioContext ??= new AudioCtx());
+      if (ctx.state === 'suspended') ctx.resume();
+      const oscillator = ctx.createOscillator();
+      const gain = ctx.createGain();
+      oscillator.type = 'square';
+      oscillator.frequency.setValueAtTime(760, ctx.currentTime);
+      gain.gain.setValueAtTime(0.055, ctx.currentTime);
+      oscillator.connect(gain);
+      gain.connect(ctx.destination);
+      oscillator.start();
+      this.sirenOscillator = oscillator;
+      let high = true;
+      this.sirenIntervalId = setInterval(() => {
+        high = !high;
+        oscillator.frequency.setValueAtTime(high ? 760 : 520, ctx.currentTime);
+      }, 420);
+    } catch {
+      // Web Audio unavailable — o alerta visual continua funcionando sem som.
+    }
+  }
+
+  private stopSiren(): void {
+    if (this.sirenIntervalId !== null) {
+      clearInterval(this.sirenIntervalId);
+      this.sirenIntervalId = null;
+    }
+    if (this.sirenOscillator) {
+      try {
+        this.sirenOscillator.stop();
+      } catch {
+        // já parado
+      }
+      this.sirenOscillator = null;
+    }
+  }
 
   // Estado inicial vem dos dados mockados; loadFromBackend() (chamado no
   // constructor) tenta substituí-lo pelo conteúdo real da API assim que o

@@ -3,6 +3,10 @@
     <img class="pet-shell__logo" src="assets/artech-logo-trim.png" alt="Artech — tecnologia que transforma" />
     <div class="pet-shell__brand">PET DIGITAL</div>
     <div class="pet-shell__unit">Lar Cooperativa Agroindustrial · SESMT</div>
+    <button type="button" class="btn pet-shell__evac-btn" (click)="state.triggerEvacuation()">
+      Acionar evacuação
+    </button>
+
     <div class="pet-shell__switch">
       <button
         type="button"
@@ -41,5 +45,33 @@
     @case ('equipe') {
       <app-pet-team />
     }
+  }
+
+  @if (state.evacuating()) {
+    <div class="evac-overlay">
+      <div class="evac-overlay__beacons">
+        <span class="evac-overlay__beacon"></span>
+        <span class="evac-overlay__beacon evac-overlay__beacon--delay"></span>
+        <span class="evac-overlay__beacon"></span>
+      </div>
+      <div class="evac-overlay__title">EVACUAÇÃO ACIONADA</div>
+      <div class="evac-overlay__text">{{ state.evacText() }}</div>
+      <div class="evac-overlay__note">
+        sirene local ativada · brigada e portaria notificadas<br />
+        equipes das frentes ativas recebendo alerta no app
+      </div>
+      <div class="evac-overlay__actions">
+        <button type="button" class="btn evac-overlay__btn evac-overlay__btn--solid" (click)="state.silenceSiren()">
+          Silenciar sirene
+        </button>
+        <button
+          type="button"
+          class="btn evac-overlay__btn evac-overlay__btn--outline"
+          (click)="state.finishEvacuation()"
+        >
+          Registrar evacuação concluída
+        </button>
+      </div>
+    </div>
   }
 </div>
