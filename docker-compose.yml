@@ -9,7 +9,7 @@ services:
     volumes:
       - db_data:/var/lib/postgresql/data
     ports:
-      - '5433:5432'
+      - '55432:5432'
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U ${DB_USERNAME:-petsystem}']
       interval: 5s
@@ -31,11 +31,24 @@ services:
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-8h}
       ACCESS_MIN_LEVEL: ${ACCESS_MIN_LEVEL:-2}
       PORT: 3000
+      NODE_ENV: production
     depends_on:
       db:
         condition: service_healthy
     ports:
-      - '3000:3000'
+      - '53001:3000'
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "require('http').get('http://localhost:3000/api/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
 
   frontend:
     build:
@@ -43,9 +56,10 @@ services:
       dockerfile: apps/frontend/Dockerfile
     restart: unless-stopped
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     ports:
-      - '8080:80'
+      - '58080:80'
 
 volumes:
   db_data:

@@ -27,23 +27,32 @@ acessam o repositório de `User` diretamente — sempre através de `UsersServic
 
 ## Rodando com Docker (recomendado)
 
-Sobe os três containers — front-end (Nginx), back-end (NestJS) e banco
-(PostgreSQL, com dados persistidos em um volume nomeado) — orquestrados pelo
-`docker-compose.yml`:
-
 ```bash
-docker compose up --build   # ou: npm run docker:up
+./run.sh
 ```
 
-- Front-end: http://localhost:8080 (o Nginx do container serve o build do
-  Angular e faz proxy de `/api/*` para o container do back-end — sem CORS)
-- Back-end (acesso direto, opcional): http://localhost:3000/api
-- Postgres (acesso direto, opcional): `localhost:5433` (mapeado para a porta
-  interna 5432, para não colidir com um Postgres já rodando na sua máquina)
+Faz tudo: cria `.env` a partir de `.env.example` (com um `JWT_SECRET`
+aleatório) se ele ainda não existir, sobe os três containers — front-end
+(Nginx), back-end (NestJS) e banco (PostgreSQL, dados persistidos em um
+volume nomeado) — espera cada um ficar saudável, e popula os usuários de
+teste. Não precisa de Node/npm instalado na máquina, só Docker.
 
-Popule os usuários de teste dentro do container já em execução:
+- Front-end: http://localhost:58080 (o Nginx do container serve o build do
+  Angular e faz proxy de `/api/*` para o container do back-end — sem CORS)
+- Back-end (acesso direto, opcional): http://localhost:53001/api
+- Postgres (acesso direto, opcional): `localhost:55432` (mapeado para a porta
+  interna 5432)
+
+As três portas do lado do host (`55432`, `53001`, `58080`) são deliberadamente
+incomuns para reduzir a chance de colisão com outros serviços já rodando no
+seu servidor — só a porta do front-end (`58080`) realmente precisa ficar
+acessível de fora do Docker, para o Cloudflare Tunnel apontar pra ela.
+
+`./run.sh` é idempotente — rodar de novo não recria o `.env` nem duplica os
+usuários de teste. Se preferir os comandos manuais:
 
 ```bash
+docker compose up --build -d --wait   # ou: npm run docker:up
 docker compose exec backend npm run backend:seed   # ou: npm run docker:seed
 ```
 
@@ -52,7 +61,8 @@ Os dados ficam no volume nomeado `petsystem_db_data`: sobrevivem a
 e começar do zero: `docker compose down -v`.
 
 Variáveis de ambiente opcionais (copie `.env.example` para `.env` na raiz para
-customizar — todas têm um default funcional no `docker-compose.yml`):
+customizar — todas têm um default funcional no `docker-compose.yml`, e
+`run.sh` já cria o arquivo pra você):
 
 | Variável           | Padrão       | Descrição                                              |
 |--------------------|--------------|----------------------------------------------------------|
@@ -66,13 +76,13 @@ customizar — todas têm um default funcional no `docker-compose.yml`):
 ## Rodando sem Docker
 
 Precisa de um PostgreSQL acessível — o mais simples é subir só o banco via
-Docker (`docker compose up -d db`, exposto em `localhost:5433`) e rodar
+Docker (`docker compose up -d db`, exposto em `localhost:55432`) e rodar
 back-end/front-end localmente:
 
 ```bash
 npm install
-DB_PORT=5433 npm run backend:seed    # popula os usuários de teste (idempotente)
-DB_PORT=5433 npm run backend:serve   # sobe em http://localhost:3000/api
+DB_PORT=55432 npm run backend:seed    # popula os usuários de teste (idempotente)
+DB_PORT=55432 npm run backend:serve   # sobe em http://localhost:3000/api
 ```
 
 Variáveis de ambiente (mesmas da tabela acima, mais):
@@ -111,9 +121,95 @@ leitura de QR (uma ou várias, conforme a contagem).
 ## Testes
 
 ```bash
+./test.sh
+```
+
+Builda a imagem do back-end (que carrega o monorepo Nx inteiro — ver a nota
+em `apps/backend/Dockerfile`) e roda testes + build de back-end e front-end
+dentro dela, sem precisar de Node/npm no host e sem subir banco (os testes
+usam mocks). Equivalente manual, se já tiver Node/npm instalados:
+
+```bash
 npx nx run backend:test    # lógica de autorização, duplicidade e o Guard de JWT
 npx nx run frontend:test
 ```
+
+## Deploy num servidor caseiro (EasyPanel + Cloudflare Tunnel)
+
+Nenhuma das duas ferramentas precisa de configuração especial neste repo — o
+`docker-compose.yml` que você já usa com `./run.sh` localmente é o mesmo que
+sobe no EasyPanel. Passo a passo:
+
+### 1. Preparar o servidor
+
+1. Instale o Docker no servidor caseiro, se ainda não tiver
+   (`curl -sSL https://get.docker.com | sh`).
+2. Instale o EasyPanel seguindo o instalador oficial
+   (https://easypanel.io/docs/installation) e acesse o painel web dele.
+
+### 2. Criar o serviço no EasyPanel
+
+1. Crie um **Project** novo (ou use um existente).
+2. Dentro do projeto, crie um serviço do tipo **Compose** (App via Docker
+   Compose) apontando para este repositório Git — branch `main` — e para o
+   `docker-compose.yml` na raiz.
+3. Na aba de variáveis de ambiente do serviço, defina pelo menos:
+   `JWT_SECRET` (gere um valor aleatório — `openssl rand -hex 32` — nunca use
+   o default `dev-secret` aqui), e opcionalmente `DB_USERNAME`, `DB_PASSWORD`,
+   `DB_NAME`, `JWT_EXPIRES_IN`, `ACCESS_MIN_LEVEL` (defaults na tabela acima).
+   Se seu serviço não tiver uma aba de variáveis, um arquivo `.env` na raiz
+   do projeto no servidor (copiado de `.env.example`) resolve do mesmo jeito.
+4. Faça o deploy. O EasyPanel builda as três imagens (`db`, `backend`,
+   `frontend`) e sobe os containers — o volume nomeado `petsystem_db_data`
+   garante que os dados do Postgres sobrevivem a redeploys.
+
+### 3. Popular os usuários de teste
+
+Pelo terminal/console do serviço `backend` no EasyPanel (ou via SSH no
+servidor, se preferir rodar direto):
+
+```bash
+docker compose exec backend npm run backend:seed
+```
+
+### 4. Conferir localmente no servidor antes de expor
+
+Antes de abrir pro mundo, valide direto no servidor (via SSH, ou uma sessão
+de terminal do próprio EasyPanel):
+
+```bash
+curl http://localhost:53001/api/health          # {"status":"ok"}
+curl -X POST http://localhost:53001/api/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"porteiro@petsystem.local","password":"senha123"}'
+```
+
+### 5. Criar o Cloudflare Tunnel
+
+1. No [Cloudflare Zero Trust dashboard](https://one.dash.cloudflare.com/) →
+   **Networks → Tunnels**, crie um tunnel novo (tipo "Cloudflared").
+2. Siga o comando de instalação que o próprio dashboard mostra para instalar
+   e conectar o `cloudflared` no servidor caseiro (ele roda como um serviço
+   em background, autenticado com um token — não precisa editar nenhum
+   arquivo de config manualmente nesse fluxo).
+3. Em **Public Hostnames**, adicione um hostname (o subdomínio que você quer
+   usar) apontando para `http://localhost:58080` — a porta do `frontend` no
+   `docker-compose.yml`. Não é preciso apontar nada para o back-end: o Nginx
+   do container `frontend` já faz o proxy interno de `/api` para o `backend`.
+
+### 6. Testar em produção
+
+Acesse o hostname configurado no navegador, faça login com um dos usuários
+de teste e confirme que a tela `/scanner` carrega. Depois, use a tela
+**Crachás** (`/badges`) para gerar QR codes reais e testar a leitura pela
+câmera num dispositivo de verdade.
+
+### Atualizando depois do primeiro deploy
+
+Dê `git push` na branch que o EasyPanel acompanha e clique em redeploy no
+painel (ou configure o auto-deploy do EasyPanel nesse branch). Os containers
+são recriados, mas o volume `petsystem_db_data` — e portanto os usuários e o
+histórico de `AccessEvent` — persiste normalmente.
 
 ## Fluxo de validação (API)
 
