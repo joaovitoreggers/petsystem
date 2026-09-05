@@ -1,8 +1,15 @@
-# PET Digital — Login, Validação de QR Code e Contagem de Pessoas
+# PET Digital
 
-Fatia vertical do Desafio 8 (PET Digital / Inova Marechal Challenge): autenticação,
-validação de entrada por QR code e contagem de pessoas pela câmera, como prova de
-conceito isolada. Monorepo Nx com back-end NestJS e front-end Angular.
+Fatia vertical do Desafio 8 (PET Digital / Inova Marechal Challenge): emissão e
+gestão de Permissões de Entrada e Trabalho (PETs) em áreas de risco, com o
+design entregue pelo cliente (fluxo do técnico no celular, incluindo
+reconhecimento facial pela câmera frontal do dispositivo, e painel do gestor
+no desktop). Monorepo Nx com back-end NestJS e front-end Angular.
+
+O back-end também carrega, sem uso pelo front-end atual, o `AuthModule` e o
+`QrValidationModule` da fatia original do desafio (login por
+usuário/senha, validação de QR com contagem de pessoas pela câmera) — ver
+"Fluxo de validação (API)" e "Observações e riscos conhecidos" mais abaixo.
 
 O código (nomes de classes, arquivos, rotas, campos de DTO etc.) é todo em inglês;
 apenas este README e os comentários no código ficam em português.
@@ -11,9 +18,25 @@ apenas este README e os comentários no código ficam em português.
 
 ```
 apps/
-  backend/    # NestJS — AuthModule, UsersModule, EmployeesModule, QrValidationModule
-  frontend/   # Angular — Auth (lazy), QrScanner (lazy), Users e Employees
+  backend/    # NestJS — AuthModule, UsersModule, EmployeesModule, QrValidationModule,
+              # WorkPermitsModule, TeamMembersModule
+  frontend/   # Angular — telas do design PET Digital (rota /pet)
 ```
+
+> **Estado atual do front-end:** o Angular renderiza o design do PET Digital
+> (fluxo do técnico no celular e painel do gestor no desktop). As telas
+> antigas (login, CRUD de usuários/funcionários, crachás, scanner de QR) foram
+> removidas porque não faziam parte do design entregue. PETs e Funcionários
+> (`WorkPermitsModule`/`TeamMembersModule`, abaixo) já são funcionais de
+> verdade: a lista inicial carrega da API, e emitir/encerrar uma PET ou
+> cadastrar um funcionário grava no banco. Os dois módulos ficam **sem**
+> `JwtAuthGuard` de propósito — não existe mais uma tela de login real, então
+> não há token para autenticar essas chamadas neste MVP. Se a API não
+> responder (back-end fora do ar), a tela cai de volta nos dados mockados
+> locais em vez de quebrar — é assim que o front-end continua demonstrável
+> sozinho. O restante (áreas de risco, checklist, limites de gás, crachás
+> simulados no scanner de QR, histórico de 30 dias) continua com dados de
+> referência fixos no front-end — não são entidades do banco.
 
 `Usuario` (login — porteiro/operador, autentica via `/auth/login`) e
 `Employee`/funcionário (pessoa de campo validada nas tentativas de entrada,
@@ -213,10 +236,9 @@ curl -X POST http://localhost:53001/api/auth/login \
 
 ### 6. Testar em produção
 
-Acesse o hostname configurado no navegador, faça login com um dos usuários
-de teste e confirme que a tela `/scanner` carrega. Depois, use a tela
-**Crachás** (`/badges`) para gerar QR codes reais e testar a leitura pela
-câmera num dispositivo de verdade.
+Acesse o hostname configurado num celular de verdade, confirme que a tela
+inicial (`/pet`) carrega, autorize o acesso à câmera frontal na tela de
+login e emita uma PET pelo assistente.
 
 ### Atualizando depois do primeiro deploy
 
@@ -282,6 +304,29 @@ API de usuários; a tela `/employees` usa exatamente essa API.
 `canPerformCorrectiveService` é capturada e validada normalmente pelo CRUD,
 mas ainda não é verificada por nenhum fluxo — não existe, nesta fase, um
 "serviço de correção" para gatear (ver Observações e riscos conhecidos).
+
+## PETs e Funcionários do PET Digital (API)
+
+Back-end que sustenta as telas em `/pet` (design do PET Digital). Ao
+contrário de `/api/users` e `/api/employees`, essas duas rotas **não** usam
+`JwtAuthGuard` — o front-end do PET Digital não tem mais uma tela de login
+real (o reconhecimento facial é só uma simulação de UI), então não há token
+disponível neste MVP. `npm run backend:seed` popula as duas tabelas com o
+mesmo conteúdo que já existia como mock no front-end.
+
+| Rota | Descrição |
+|------|-----------|
+| `GET /api/work-permits` | Lista todas as PETs (permissões de entrada e trabalho) |
+| `GET /api/work-permits/:id` | Busca uma PET — `404` se não existir |
+| `POST /api/work-permits` | Emite uma PET — `id` é gerado no formato `PET-<ano>-<sequencial>` |
+| `PATCH /api/work-permits/:id/close` | Encerra uma PET (`end`, `durationMinutes`) — `404` se não existir |
+| `GET /api/team-members` | Lista os funcionários cadastrados no registro do SESMT |
+| `POST /api/team-members` | Cadastra um funcionário — `409` se a matrícula já existir |
+
+Áreas de risco, checklist, limites de gás, os crachás simulados no passo de
+QR do assistente e o histórico de 30 dias do painel do gestor continuam como
+dados de referência fixos em `apps/frontend/src/app/pet/pet-mock-data.ts` —
+não são entidades do banco nesta fase.
 
 ## Padrões de projeto aplicados
 

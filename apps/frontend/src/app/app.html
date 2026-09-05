@@ -1,10 +1,1 @@
-@if (authService.authenticated()) {
-  <nav class="app-nav">
-    <a routerLink="/scanner" routerLinkActive="active">Validação</a>
-    <a routerLink="/badges" routerLinkActive="active">Crachás</a>
-    <a routerLink="/users" routerLinkActive="active">Usuários</a>
-    <a routerLink="/employees" routerLinkActive="active">Funcionários</a>
-    <button (click)="logout()">Sair</button>
-  </nav>
-}
 <router-outlet></router-outlet>

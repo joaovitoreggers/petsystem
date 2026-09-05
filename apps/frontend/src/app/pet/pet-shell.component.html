@@ -1,0 +1,45 @@
+<div class="pet-shell">
+  <div class="pet-shell__topbar">
+    <img class="pet-shell__logo" src="assets/artech-logo-trim.png" alt="Artech — tecnologia que transforma" />
+    <div class="pet-shell__brand">PET DIGITAL</div>
+    <div class="pet-shell__unit">Lar Cooperativa Agroindustrial · SESMT</div>
+    <div class="pet-shell__switch">
+      <button
+        type="button"
+        class="btn"
+        [class.btn-primary]="state.role() === 'tecnico'"
+        (click)="state.setRole('tecnico')"
+      >
+        Técnico · celular
+      </button>
+      <button
+        type="button"
+        class="btn"
+        [class.btn-primary]="state.role() === 'gestor'"
+        (click)="state.setRole('gestor')"
+      >
+        Gestor · desktop
+      </button>
+      <button
+        type="button"
+        class="btn"
+        [class.btn-primary]="state.role() === 'equipe'"
+        (click)="state.setRole('equipe')"
+      >
+        Funcionários
+      </button>
+    </div>
+  </div>
+
+  @switch (state.role()) {
+    @case ('tecnico') {
+      <app-pet-technician />
+    }
+    @case ('gestor') {
+      <app-pet-manager />
+    }
+    @case ('equipe') {
+      <app-pet-team />
+    }
+  }
+</div>

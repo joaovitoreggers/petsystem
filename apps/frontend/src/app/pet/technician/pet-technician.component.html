@@ -1,0 +1,222 @@
+<div class="phone-stage">
+  <div class="phone">
+    @switch (state.screen()) {
+      @case ('login') {
+        <div class="screen screen--login">
+          <div class="login__logo-band">
+            <img class="login__logo" src="assets/artech-logo-trim.png" alt="Artech — tecnologia que transforma" />
+          </div>
+          <div class="login__body">
+          <div class="login__header">
+            <span class="login__brand">PET DIGITAL</span>
+            <span class="login__unit">Lar Cooperativa<br />Agroindustrial</span>
+          </div>
+
+          <div class="login__center">
+            <div class="face-frame">
+              @if (cameraActive()) {
+                <video #faceVideo class="face-frame__video" autoplay playsinline muted></video>
+              } @else {
+                <div class="face-frame__grid"></div>
+              }
+              <div class="face-frame__border"></div>
+              <div class="face-frame__oval" [style.border-color]="faceColor()"></div>
+              @if (faceScanning()) {
+                <div class="face-frame__sweep" [style.background]="faceColor()"></div>
+              }
+              <div class="face-frame__caption">
+                {{ cameraError() ? 'câmera indisponível · toque para tentar de novo' : 'câmera frontal' }}
+              </div>
+            </div>
+            <div class="login__status">
+              <div class="login__title">{{ faceTitle() }}</div>
+              <div class="login__text">{{ faceText() }}</div>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            class="btn login__btn"
+            [disabled]="state.authPhase() !== 'idle'"
+            (click)="startAuth()"
+          >
+            {{ faceButtonLabel() }}
+          </button>
+          <div class="login__disclaimer">
+            biometria facial validada contra o cadastro do SESMT<br />
+            nenhuma imagem é armazenada no dispositivo
+          </div>
+          </div>
+        </div>
+      }
+
+      @case ('home') {
+        <div class="screen screen--home">
+          <div class="home__header">
+            <div class="home__kicker">Unidade Matelândia · Turno A</div>
+            <div class="home__title">Permissões de entrada e trabalho</div>
+            <div class="home__user">
+              <div class="home__avatar">BG</div>
+              <div>
+                <div class="home__user-name">Bárbara M. Garlini</div>
+                <div class="home__user-role">Téc. Segurança do Trabalho · mat. 03177</div>
+              </div>
+              <button type="button" class="btn home__logout" (click)="state.logout()">Sair</button>
+            </div>
+          </div>
+
+          <div class="home__tabs">
+            <button
+              type="button"
+              class="home__tab"
+              [class.home__tab--active]="state.homeTab() === 'abertas'"
+              (click)="state.selectHomeTab('abertas')"
+            >
+              Abertas · {{ state.openPets().length }}
+            </button>
+            <button
+              type="button"
+              class="home__tab"
+              [class.home__tab--active]="state.homeTab() === 'fechadas'"
+              (click)="state.selectHomeTab('fechadas')"
+            >
+              Encerradas · {{ state.closedPets().length }}
+            </button>
+          </div>
+
+          <div class="home__list petscroll">
+            @for (card of visibleCards(); track card.pet.id) {
+              <div class="pet-card blueprint" (click)="state.openPetDetail(card.pet.id)">
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                <div class="pet-card__top">
+                  <div class="pet-card__id">{{ card.pet.id }}</div>
+                  <div class="pet-card__status" [style.color]="card.statusFg" [style.background]="card.statusBg">
+                    {{ card.statusLabel }}
+                  </div>
+                </div>
+                <div class="pet-card__local">{{ card.pet.location }}</div>
+                <div class="pet-card__area">{{ card.areaLabel }} · {{ card.nr }}</div>
+                <div class="pet-card__meta">
+                  <span>{{ card.pet.timeLabel }}</span>
+                  <span>{{ card.pet.teamSize }} na equipe</span>
+                  <span class="pet-card__meta-right">{{ card.gasLabel }}</span>
+                </div>
+              </div>
+            } @empty {
+              <div class="home__empty">Nenhuma PET nesta lista.</div>
+            }
+          </div>
+
+          <div class="home__footer">
+            <button type="button" class="btn btn-primary btn-block blueprint home__new" (click)="state.startNewPet()">
+              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+              + NOVA PET
+            </button>
+          </div>
+        </div>
+      }
+
+      @case ('nova') {
+        <app-pet-wizard />
+      }
+
+      @case ('emitida') {
+        <div class="screen screen--emitida">
+          <div class="emitida__check">✓</div>
+          <div class="emitida__title">PET emitida</div>
+          <div class="emitida__id">{{ emittedPet()?.id }}</div>
+          <div class="emitida__text">
+            A permissão foi registrada com assinaturas digitais, coordenada GPS e equipe autorizada. Acompanhe a leitura
+            dos medidores na aba de detalhe.
+          </div>
+          <div class="emitida__actions">
+            <button type="button" class="btn btn-secondary emitida__ver" (click)="state.goHome()">Ver lista</button>
+            <button
+              type="button"
+              class="btn emitida__abrir"
+              (click)="state.openPetDetail(emittedPet()!.id)"
+            >
+              Abrir PET
+            </button>
+          </div>
+        </div>
+      }
+
+      @case ('detalhe') {
+        @if (detailPet(); as pet) {
+          <div class="screen screen--detalhe">
+            <div class="detalhe__header">
+              <button type="button" class="btn btn-secondary detalhe__back" (click)="state.goHome()">←</button>
+              <div>
+                <div class="detalhe__id">{{ pet.id }}</div>
+                <div class="detalhe__local">{{ pet.location }}</div>
+                <div class="detalhe__area">{{ detailCard()?.areaLabel }} · {{ detailCard()?.nr }}</div>
+              </div>
+              <div
+                class="detalhe__status"
+                [style.color]="detailCard()?.statusFg"
+                [style.background]="detailCard()?.statusBg"
+              >
+                {{ detailCard()?.statusLabel }}
+              </div>
+            </div>
+
+            <div class="detalhe__body petscroll">
+              @if (pet.gas) {
+                <div>
+                  <div class="section-kicker">Atmosfera · leitura contínua</div>
+                  <div class="gauge-grid">
+                    <div class="gauge blueprint">
+                      <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                      <div class="gauge__label">O₂</div>
+                      <div class="gauge__value">{{ pet.gas.o2.toFixed(1) }}<span class="gauge__unit">%</span></div>
+                    </div>
+                    <div class="gauge blueprint">
+                      <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                      <div class="gauge__label">CO</div>
+                      <div class="gauge__value">{{ pet.gas.co.toFixed(0) }}<span class="gauge__unit">ppm</span></div>
+                    </div>
+                    <div class="gauge blueprint">
+                      <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                      <div class="gauge__label">H₂S</div>
+                      <div class="gauge__value">{{ pet.gas.h2s.toFixed(1) }}<span class="gauge__unit">ppm</span></div>
+                    </div>
+                    <div class="gauge blueprint">
+                      <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                      <div class="gauge__label">LEL</div>
+                      <div class="gauge__value">{{ pet.gas.lel.toFixed(0) }}<span class="gauge__unit">%</span></div>
+                    </div>
+                  </div>
+                </div>
+              }
+              <div>
+                <div class="section-kicker">Histórico da permissão</div>
+                <div class="timeline">
+                  <div class="timeline__row">
+                    <div class="timeline__time">{{ pet.start }}</div>
+                    <div class="timeline__text">PET emitida por {{ pet.technician }} · equipe de {{ pet.teamSize }}.</div>
+                  </div>
+                  @if (pet.end) {
+                    <div class="timeline__row">
+                      <div class="timeline__time">{{ pet.end }}</div>
+                      <div class="timeline__text">PET encerrada.</div>
+                    </div>
+                  }
+                </div>
+              </div>
+            </div>
+
+            <div class="detalhe__footer">
+              <button type="button" class="btn btn-secondary detalhe__footer-btn">Nova medição</button>
+              @if (pet.status !== 'fechada') {
+                <button type="button" class="btn btn-primary detalhe__footer-btn" (click)="state.encerrarPet()">
+                  Encerrar PET
+                </button>
+              }
+            </div>
+          </div>
+        }
+      }
+    }
+  </div>
+</div>

@@ -1,0 +1,364 @@
+<div class="screen screen--wizard">
+  <div class="wizard__header">
+    <div class="wizard__header-row">
+      <button type="button" class="btn btn-secondary wizard__back" (click)="state.back()">←</button>
+      <div class="wizard__header-text">
+        <div class="wizard__title">Nova PET</div>
+        <div class="wizard__step-label">Etapa {{ stepNumber() }} de {{ stepTotal() }} · {{ stepLabel() }}</div>
+      </div>
+    </div>
+    <div class="wizard__bars">
+      @for (color of stepBars(); track $index) {
+        <div class="wizard__bar" [style.background]="color"></div>
+      }
+    </div>
+  </div>
+
+  <div class="wizard__body petscroll">
+    @switch (state.currentStep()) {
+      @case ('area') {
+        <div class="step step--area">
+          <div class="section-kicker">Classificação do risco</div>
+          <div class="step-hint">
+            Marque todas as áreas de risco da intervenção. Cada norma acrescenta seus próprios campos e checklist ao
+            formulário.
+          </div>
+          @for (area of areas; track area.id) {
+            <label
+              class="area-option blueprint"
+              [style.background]="state.selectedAreas().includes(area.id) ? 'var(--color-accent-100)' : 'transparent'"
+            >
+              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+              <input
+                type="checkbox"
+                class="area-option__checkbox"
+                [checked]="state.selectedAreas().includes(area.id)"
+                (change)="toggleArea(area.id)"
+              />
+              <span class="area-option__body">
+                <span class="area-option__head">
+                  <span class="area-option__name">{{ area.name }}</span>
+                  <span class="tag tag-accent">{{ area.nr }}</span>
+                </span>
+                <span class="area-option__desc">{{ area.description }}</span>
+              </span>
+            </label>
+          }
+          @if (areaNotes().length > 0) {
+            <div class="area-notes">
+              <div class="section-kicker">Normas aplicáveis · {{ selectedNrs() }}</div>
+              @for (note of areaNotes(); track note.id) {
+                <div class="area-note">{{ note.text }}</div>
+              }
+            </div>
+          }
+        </div>
+      }
+
+      @case ('atividade') {
+        <div class="step step--atividade">
+          <div class="atividade__summary">
+            <div>
+              <div class="atividade__tags">
+                @for (id of state.selectedAreas(); track id) {
+                  <span class="tag tag-accent">{{ id }}</span>
+                }
+              </div>
+              <div class="atividade__area">{{ selectedAreaNames() }}</div>
+            </div>
+            <button type="button" class="btn btn-ghost" (click)="state.editArea()">Editar</button>
+          </div>
+
+          <div class="field">
+            <label>Descrição do serviço</label>
+            <textarea class="input" [value]="fieldValue('descricao')" (change)="onFieldChange('descricao', $event)"></textarea>
+          </div>
+          <div class="field">
+            <label>Tipo de intervenção</label>
+            <select class="input" [value]="fieldValue('tipo')" (change)="onFieldChange('tipo', $event)">
+              <option>Manutenção corretiva</option>
+              <option>Manutenção preventiva</option>
+              <option>Limpeza técnica</option>
+              <option>Inspeção</option>
+              <option>Montagem / obra</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Empresa executante</label>
+            <input class="input" [value]="fieldValue('empresa')" (change)="onFieldChange('empresa', $event)" />
+          </div>
+          <div class="atividade__row">
+            <div class="field">
+              <label>Início previsto</label>
+              <input class="input" [value]="fieldValue('inicio')" (change)="onFieldChange('inicio', $event)" />
+            </div>
+            <div class="field">
+              <label>Término previsto</label>
+              <input class="input" [value]="fieldValue('fim')" (change)="onFieldChange('fim', $event)" />
+            </div>
+          </div>
+          <div class="field">
+            <label>Local específico</label>
+            <input class="input" [value]="fieldValue('local')" (change)="onFieldChange('local', $event)" />
+          </div>
+
+          @for (group of extraGroups(); track group.areaId) {
+            <div class="extra-group">
+              <div class="section-kicker">{{ group.title }}</div>
+              @for (f of group.fields; track f.name) {
+                <div class="field">
+                  <label>{{ f.label }}</label>
+                  <input class="input" [value]="f.value" (change)="onExtraChange(f.name, $event)" />
+                </div>
+              }
+
+              @if (group.manualFields.length > 0) {
+                <div class="manual-fields">
+                  @for (m of group.manualFields; track m.id) {
+                    <div class="manual-field">
+                      <input
+                        class="input manual-field__label"
+                        placeholder="Nome do dado"
+                        [value]="m.label"
+                        (change)="onManualLabelChange(group.areaId, m.id, $event)"
+                      />
+                      <input
+                        class="input manual-field__value"
+                        placeholder="Valor"
+                        [value]="m.value"
+                        (change)="onManualValueChange(group.areaId, m.id, $event)"
+                      />
+                      <button
+                        type="button"
+                        class="btn btn-ghost manual-field__remove"
+                        (click)="removeManualField(group.areaId, m.id)"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  }
+                </div>
+              }
+              <button type="button" class="btn btn-secondary manual-field__add" (click)="addManualField(group.areaId)">
+                + Lançar dado manual · {{ group.nr }}
+              </button>
+            </div>
+          }
+
+          <div class="geo blueprint">
+            <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+            <div class="section-kicker">Georreferenciamento da frente</div>
+            <div class="geo__map">
+              <div class="geo__pin"></div>
+            </div>
+            <div class="geo__coords">-25.2531, -53.9927 · precisão 4 m · fixado 09:28</div>
+          </div>
+        </div>
+      }
+
+      @case ('gases') {
+        <div class="step step--gases">
+          <div class="gases__device">
+            <span class="pulse-dot"></span>
+            Dräger X-am 5000 · série 8241-B · pareado por Bluetooth
+          </div>
+          <div class="gauge-grid">
+            @for (g of gauges(); track g.key) {
+              <div class="gauge blueprint">
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                <div class="gauge__label">{{ g.label }}</div>
+                <div class="gauge__value" [style.color]="g.color">{{ g.value }}<span class="gauge__unit">{{ g.unit }}</span></div>
+                <div class="gauge__bar"><div class="gauge__bar-fill" [style.width.%]="g.percent" [style.background]="g.color"></div></div>
+                <div class="gauge__limit">{{ g.limitText }}</div>
+              </div>
+            }
+          </div>
+          <div class="atmosphere-banner" [class.atmosphere-banner--bad]="!atmosphereOk()">
+            <div class="atmosphere-banner__title">
+              {{ atmosphereOk() ? 'Atmosfera dentro dos limites' : 'Atmosfera fora dos limites de segurança' }}
+            </div>
+            <div class="atmosphere-banner__text">
+              {{ atmosphereOk()
+                ? 'Todos os parâmetros dentro da faixa segura conforme NR-33.'
+                : 'Ligue a ventilação forçada e aguarde a estabilização antes de prosseguir.' }}
+            </div>
+          </div>
+          <button type="button" class="btn btn-secondary btn-block gases__register" (click)="state.registerReading()">
+            Registrar leitura no PET
+          </button>
+          @if (!atmosphereOk()) {
+            <div class="gases__blocked">
+              <span class="gases__blocked-icon">✕</span>
+              <span>Emissão bloqueada enquanto a atmosfera estiver fora do limite. Ligue a ventilação forçada e aguarde a
+                estabilização da leitura.</span>
+            </div>
+          }
+          @if (!state.ventilationOn()) {
+            <button type="button" class="btn btn-primary btn-block blueprint gases__vent" (click)="state.toggleVentilation()">
+              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+              Ligar ventilação forçada
+            </button>
+          } @else {
+            <div class="gases__vent-on">
+              <span class="pulse-dot pulse-dot--accent"></span>
+              Ventilação forçada ligada · exaustor 2.500 m³/h
+            </div>
+          }
+          @for (reading of state.gasReadingsLog(); track reading.time + reading.text) {
+            <div class="gases__log-row">
+              <span>{{ reading.time }}</span><span>{{ reading.text }}</span>
+            </div>
+          }
+        </div>
+      }
+
+      @case ('qr') {
+        <div class="step step--qr">
+          <div class="qr-scan blueprint">
+            <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+            <div class="qr-scan__frame"></div>
+            <div class="qr-scan__sweep"></div>
+            <div class="qr-scan__caption">aponte para o QR do crachá</div>
+          </div>
+          <button type="button" class="btn btn-primary btn-block qr-scan__btn" (click)="state.scanBadge()">
+            Simular leitura do crachá
+          </button>
+
+          @if (state.currentBadge(); as badge) {
+            <div class="badge-card blueprint">
+              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+              <div class="badge-card__head">
+                <div class="badge-card__name">{{ badge.name }}</div>
+                <div class="badge-card__mat">mat. {{ badge.registration }}</div>
+              </div>
+              <div class="badge-card__role">{{ badge.role }} · {{ badge.company }}</div>
+              <div class="badge-card__items">
+                @for (item of badge.items; track item.name) {
+                  <div class="badge-card__item">
+                    <span [style.color]="badgeStatusColor(item.status)">{{ badgeStatusLabel(item.status) }}</span>
+                    <span>{{ item.name }}</span>
+                    <span class="badge-card__item-val" [style.color]="badgeStatusColor(item.status)">{{ item.value }}</span>
+                  </div>
+                }
+              </div>
+              <div
+                class="badge-card__verdict"
+                [class.badge-card__verdict--bad]="!state.badgeIsCleared(badge)"
+              >
+                {{ state.badgeIsCleared(badge) ? 'LIBERADO PARA A ATIVIDADE' : 'BLOQUEADO · DOCUMENTAÇÃO VENCIDA' }}
+              </div>
+              @if (state.badgeIsCleared(badge)) {
+                <button type="button" class="btn btn-secondary btn-block" (click)="state.addBadgeToTeam()">
+                  Adicionar à equipe autorizada
+                </button>
+              }
+            </div>
+          }
+
+          <div>
+            <div class="section-kicker">Equipe autorizada · {{ state.authorizedTeam().length }}</div>
+            @for (member of state.authorizedTeam(); track member.registration) {
+              <div class="team-row">
+                <span class="team-row__initials">{{ member.name.charAt(0) }}{{ member.name.split(' ')[1]?.charAt(0) }}</span>
+                <span>{{ member.name }}</span>
+                <span class="team-row__status">liberado</span>
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      @case ('check') {
+        <div class="step step--check">
+          @for (group of checkGroups(); track group.title + group.areaId) {
+            <div>
+              <div class="section-kicker">{{ group.title }}</div>
+              @for (item of group.items; track item.key) {
+                <label class="check-item">
+                  <input
+                    type="checkbox"
+                    [checked]="state.isChecklistItemChecked(item.key)"
+                    (change)="state.toggleChecklistItem(item.key)"
+                  />
+                  <span>{{ item.label }}</span>
+                </label>
+              }
+            </div>
+          }
+          <div class="photo blueprint">
+            <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+            <div class="section-kicker">Registro fotográfico do local</div>
+            <div class="photo__placeholder">foto do ponto de entrada</div>
+            <button type="button" class="btn btn-secondary btn-block">Anexar foto</button>
+          </div>
+        </div>
+      }
+
+      @case ('sig') {
+        <div class="step step--sig">
+          <div>
+            <div class="section-kicker">Técnico de segurança emitente</div>
+            <div class="sig__name">Bárbara M. Garlini · mat. 03177</div>
+            <div class="sig-pad blueprint">
+              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+              <canvas
+                #tecnicoCanvas
+                width="740"
+                height="240"
+                class="sig-pad__canvas"
+                (pointerdown)="startDraw($event, 'tecnico')"
+                (pointermove)="moveDraw($event, 'tecnico')"
+                (pointerup)="endDraw()"
+                (pointerleave)="endDraw()"
+              ></canvas>
+            </div>
+            <div class="sig__footer">
+              <span [style.color]="state.technicianSigned() ? 'var(--status-ok)' : 'var(--color-neutral-600)'">
+                {{ state.technicianSigned() ? 'assinatura capturada' : 'aguardando assinatura' }}
+              </span>
+              <button type="button" class="btn btn-ghost sig__clear" (click)="clearSignature('tecnico')">Limpar</button>
+            </div>
+          </div>
+          <div>
+            <div class="section-kicker">Executante responsável</div>
+            <div class="sig__name">Jonas R. Kirchner · mat. 04812</div>
+            <div class="sig-pad blueprint">
+              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+              <canvas
+                #execCanvas
+                width="740"
+                height="240"
+                class="sig-pad__canvas"
+                (pointerdown)="startDraw($event, 'exec')"
+                (pointermove)="moveDraw($event, 'exec')"
+                (pointerup)="endDraw()"
+                (pointerleave)="endDraw()"
+              ></canvas>
+            </div>
+            <div class="sig__footer">
+              <span [style.color]="state.executorSigned() ? 'var(--status-ok)' : 'var(--color-neutral-600)'">
+                {{ state.executorSigned() ? 'assinatura capturada' : 'aguardando assinatura' }}
+              </span>
+              <button type="button" class="btn btn-ghost sig__clear" (click)="clearSignature('exec')">Limpar</button>
+            </div>
+          </div>
+          <div class="sig__disclaimer">
+            Assinatura registrada com data, hora, matrícula e coordenada GPS. Hash gravado no histórico da PET.
+          </div>
+        </div>
+      }
+    }
+  </div>
+
+  <div class="wizard__footer">
+    <button type="button" class="btn btn-secondary wizard__footer-btn" (click)="state.back()">Voltar</button>
+    <button
+      type="button"
+      class="btn btn-primary wizard__footer-btn wizard__footer-btn--primary"
+      [disabled]="!state.canAdvance()"
+      (click)="state.advance()"
+    >
+      {{ state.advanceStepLabel() }}
+    </button>
+  </div>
+</div>
