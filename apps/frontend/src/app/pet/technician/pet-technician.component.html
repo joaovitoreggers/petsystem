@@ -3,8 +3,14 @@
     @switch (state.screen()) {
       @case ('login') {
         <div class="screen screen--login">
-          <div class="login__brand">PET DIGITAL</div>
-          <div class="login__unit">Lar Cooperativa Agroindustrial</div>
+          <div class="login__logo-band">
+            <img class="login__logo" src="assets/artech-logo-trim.png" alt="Artech — tecnologia que transforma" />
+          </div>
+          <div class="login__body">
+          <div class="login__header">
+            <span class="login__brand">PET DIGITAL</span>
+            <span class="login__unit">Lar Cooperativa<br />Agroindustrial</span>
+          </div>
 
           <div class="login__center">
             <div class="face-frame">
@@ -33,6 +39,7 @@
           <div class="login__disclaimer">
             biometria facial validada contra o cadastro do SESMT<br />
             nenhuma imagem é armazenada no dispositivo
+          </div>
           </div>
         </div>
       }

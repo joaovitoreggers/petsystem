@@ -17,11 +17,21 @@
   flex-wrap: wrap;
 }
 
+.pet-shell__logo {
+  height: 34px;
+  width: auto;
+  mix-blend-mode: multiply;
+}
+
 .pet-shell__brand {
   font-family: var(--font-heading);
   font-weight: 600;
   font-size: 19px;
   letter-spacing: -0.01em;
+  padding-left: 16px;
+  border-left: 1px solid var(--color-divider);
+  white-space: nowrap;
+  flex: none;
 }
 
 .pet-shell__unit {

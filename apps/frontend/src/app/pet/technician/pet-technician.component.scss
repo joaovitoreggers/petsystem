@@ -44,12 +44,26 @@
 .screen--login {
   background: var(--color-accent-900);
   color: var(--color-bg);
-  padding: 28px 24px 24px;
 }
-.login__brand { font-family: var(--font-heading); font-weight: 600; font-size: 22px; letter-spacing: 0.06em; }
-.login__unit { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.65; margin-top: 2px; }
+.login__logo-band {
+  background: #fff;
+  padding: 26px 24px 24px;
+  display: flex;
+  justify-content: center;
+}
+.login__logo { width: min(268px, 100%); height: auto; mix-blend-mode: multiply; }
+.login__body { display: flex; flex-direction: column; flex: 1; padding: 22px 24px 24px; }
+.login__header {
+  display: flex; align-items: baseline; gap: 10px; padding-bottom: 16px;
+  border-bottom: 1px solid rgba(242, 242, 243, 0.22);
+}
+.login__brand { font-family: var(--font-heading); font-weight: 600; font-size: 20px; letter-spacing: 0.06em; white-space: nowrap; }
+.login__unit {
+  font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.6;
+  margin-left: auto; text-align: right; line-height: 1.4;
+}
 .login__center { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 22px; }
-.face-frame { position: relative; width: 216px; height: 260px; }
+.face-frame { position: relative; width: 200px; height: 236px; }
 .face-frame__grid {
   position: absolute; inset: 0;
   background: repeating-linear-gradient(45deg, rgba(242, 242, 243, 0.1) 0 8px, rgba(242, 242, 243, 0.03) 8px 16px);

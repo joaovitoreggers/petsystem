@@ -5,7 +5,31 @@
         <span class="alert-banner__dot"></span>
         <span class="alert-banner__title">ALERTA ATMOSFÉRICO</span>
         <span class="alert-banner__text">{{ alertText() }}</span>
-        <button type="button" class="btn alert-banner__btn">Acionar evacuação</button>
+        <button type="button" class="btn alert-banner__btn" (click)="triggerEvacuation()">Acionar evacuação</button>
+      </div>
+    }
+
+    @if (evacuating()) {
+      <div class="evac-overlay">
+        <div class="evac-overlay__beacons">
+          <span class="evac-overlay__beacon"></span>
+          <span class="evac-overlay__beacon evac-overlay__beacon--delay"></span>
+          <span class="evac-overlay__beacon"></span>
+        </div>
+        <div class="evac-overlay__title">EVACUAÇÃO ACIONADA</div>
+        <div class="evac-overlay__text">{{ evacText() }}</div>
+        <div class="evac-overlay__note">
+          sirene local ativada · brigada e portaria notificadas<br />
+          equipes das frentes ativas recebendo alerta no app
+        </div>
+        <div class="evac-overlay__actions">
+          <button type="button" class="btn evac-overlay__btn evac-overlay__btn--solid" (click)="silenceSiren()">
+            Silenciar sirene
+          </button>
+          <button type="button" class="btn evac-overlay__btn evac-overlay__btn--outline" (click)="finishEvacuation()">
+            Registrar evacuação concluída
+          </button>
+        </div>
       </div>
     }
 
@@ -231,6 +255,7 @@
 
     <div class="report">
       <div class="report__head">
+        <img class="report__logo" src="assets/artech-logo-trim.png" alt="Artech — tecnologia que transforma" />
         <div class="report__head-main">
           <div class="section-kicker">Lar Cooperativa Agroindustrial · SESMT</div>
           <h2 class="report__title">Relatório de Permissões de Entrada e Trabalho</h2>
