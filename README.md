@@ -328,6 +328,23 @@ QR do assistente e o histórico de 30 dias do painel do gestor continuam como
 dados de referência fixos em `apps/frontend/src/app/pet/pet-mock-data.ts` —
 não são entidades do banco nesta fase.
 
+## Análise de causas por IA (OpenAI)
+
+O botão **Analisar causas com IA** no painel do gestor chama
+`POST /api/pet-analysis` (também sem `JwtAuthGuard`, mesmo motivo acima).
+`PetAnalysisService` busca todas as PETs via `WorkPermitsService`, calcula um
+resumo estatístico (contagem por área/NR, taxa de ocorrência, volume por dia,
+e uma lista de dias/áreas fora do padrão — dias com mais de 1,5x a média
+diária, ou áreas com mais de 25% de taxa de ocorrência) e manda esse resumo
+para a API de chat da OpenAI, pedindo um relatório em português com quatro
+seções fixas: resumo, principais causas por área, anomalias detectadas e
+recomendações.
+
+Requer a variável `OPENAI_API_KEY` (ver `.env.example`; `OPENAI_MODEL` é
+opcional, default `gpt-4o-mini`). Sem ela configurada, o endpoint responde
+`503` com uma mensagem clara e o botão mostra esse erro no lugar do
+relatório — o resto do app funciona normalmente sem essa chave.
+
 ## Padrões de projeto aplicados
 
 - **Strategy** (Passport): `LocalStrategy` (login) e `JwtStrategy` (rota

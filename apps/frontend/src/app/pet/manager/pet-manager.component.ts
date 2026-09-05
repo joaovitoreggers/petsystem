@@ -1,4 +1,5 @@
 import { Component, OnDestroy, computed, signal } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
 import { PetStateService } from '../pet-state.service';
 import {
   GAS_LIMITS,
@@ -14,6 +15,7 @@ import {
   riskAreaNames,
   riskAreaNrs,
 } from '../pet-mock-data';
+import { PetAnalysisApiService } from '../services/pet-analysis-api.service';
 
 type HistoryFilter = 'todas' | 'aberta' | 'fechada' | 'ocorrencia' | 'confinado' | 'quente' | 'altura' | 'eletrico' | 'maquinas';
 
@@ -46,11 +48,46 @@ export class PetManagerComponent implements OnDestroy {
   readonly historyFilter = signal<HistoryFilter>('todas');
   readonly evacuating = signal(false);
 
+  readonly aiModalOpen = signal(false);
+  readonly aiLoading = signal(false);
+  readonly aiReport = signal<string | null>(null);
+  readonly aiError = signal<string | null>(null);
+
   private audioContext: AudioContext | null = null;
   private sirenOscillator: OscillatorNode | null = null;
   private sirenIntervalId: ReturnType<typeof setInterval> | null = null;
 
-  constructor(readonly state: PetStateService) {}
+  constructor(
+    readonly state: PetStateService,
+    private readonly petAnalysisApi: PetAnalysisApiService,
+  ) {}
+
+  openAiModal(): void {
+    this.aiModalOpen.set(true);
+    this.runAiAnalysis();
+  }
+
+  closeAiModal(): void {
+    this.aiModalOpen.set(false);
+  }
+
+  async runAiAnalysis(): Promise<void> {
+    this.aiLoading.set(true);
+    this.aiError.set(null);
+    this.aiReport.set(null);
+    try {
+      const result = await firstValueFrom(this.petAnalysisApi.analyze());
+      this.aiReport.set(result.reportText);
+    } catch (err) {
+      const message =
+        err && typeof err === 'object' && 'error' in err && (err as { error?: { message?: string } }).error?.message
+          ? (err as { error: { message: string } }).error.message
+          : 'Não foi possível gerar a análise agora. Verifique se o back-end está no ar e se a chave da OpenAI está configurada.';
+      this.aiError.set(message);
+    } finally {
+      this.aiLoading.set(false);
+    }
+  }
 
   ngOnDestroy(): void {
     this.stopSiren();
