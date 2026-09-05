@@ -24,8 +24,8 @@ docker compose exec backend npm run backend:seed
 cat <<EOF
 
 Pronto:
-  Front-end: http://localhost:8080
-  Back-end:  http://localhost:3000/api
+  Front-end: http://localhost:58080
+  Back-end:  http://localhost:53001/api
 
 Logs:    docker compose logs -f
 Parar:   docker compose down

@@ -37,11 +37,16 @@ aleatório) se ele ainda não existir, sobe os três containers — front-end
 volume nomeado) — espera cada um ficar saudável, e popula os usuários de
 teste. Não precisa de Node/npm instalado na máquina, só Docker.
 
-- Front-end: http://localhost:8080 (o Nginx do container serve o build do
+- Front-end: http://localhost:58080 (o Nginx do container serve o build do
   Angular e faz proxy de `/api/*` para o container do back-end — sem CORS)
-- Back-end (acesso direto, opcional): http://localhost:3000/api
-- Postgres (acesso direto, opcional): `localhost:5433` (mapeado para a porta
-  interna 5432, para não colidir com um Postgres já rodando na sua máquina)
+- Back-end (acesso direto, opcional): http://localhost:53001/api
+- Postgres (acesso direto, opcional): `localhost:55432` (mapeado para a porta
+  interna 5432)
+
+As três portas do lado do host (`55432`, `53001`, `58080`) são deliberadamente
+incomuns para reduzir a chance de colisão com outros serviços já rodando no
+seu servidor — só a porta do front-end (`58080`) realmente precisa ficar
+acessível de fora do Docker, para o Cloudflare Tunnel apontar pra ela.
 
 `./run.sh` é idempotente — rodar de novo não recria o `.env` nem duplica os
 usuários de teste. Se preferir os comandos manuais:
@@ -71,13 +76,13 @@ customizar — todas têm um default funcional no `docker-compose.yml`, e
 ## Rodando sem Docker
 
 Precisa de um PostgreSQL acessível — o mais simples é subir só o banco via
-Docker (`docker compose up -d db`, exposto em `localhost:5433`) e rodar
+Docker (`docker compose up -d db`, exposto em `localhost:55432`) e rodar
 back-end/front-end localmente:
 
 ```bash
 npm install
-DB_PORT=5433 npm run backend:seed    # popula os usuários de teste (idempotente)
-DB_PORT=5433 npm run backend:serve   # sobe em http://localhost:3000/api
+DB_PORT=55432 npm run backend:seed    # popula os usuários de teste (idempotente)
+DB_PORT=55432 npm run backend:serve   # sobe em http://localhost:3000/api
 ```
 
 Variáveis de ambiente (mesmas da tabela acima, mais):
@@ -173,8 +178,8 @@ Antes de abrir pro mundo, valide direto no servidor (via SSH, ou uma sessão
 de terminal do próprio EasyPanel):
 
 ```bash
-curl http://localhost:3000/api/health          # {"status":"ok"}
-curl -X POST http://localhost:3000/api/auth/login \
+curl http://localhost:53001/api/health          # {"status":"ok"}
+curl -X POST http://localhost:53001/api/auth/login \
   -H 'Content-Type: application/json' \
   -d '{"email":"porteiro@petsystem.local","password":"senha123"}'
 ```
@@ -188,7 +193,7 @@ curl -X POST http://localhost:3000/api/auth/login \
    em background, autenticado com um token — não precisa editar nenhum
    arquivo de config manualmente nesse fluxo).
 3. Em **Public Hostnames**, adicione um hostname (o subdomínio que você quer
-   usar) apontando para `http://localhost:8080` — a porta do `frontend` no
+   usar) apontando para `http://localhost:58080` — a porta do `frontend` no
    `docker-compose.yml`. Não é preciso apontar nada para o back-end: o Nginx
    do container `frontend` já faz o proxy interno de `/api` para o `backend`.
 
