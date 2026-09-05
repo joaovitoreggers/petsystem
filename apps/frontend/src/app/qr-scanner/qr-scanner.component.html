@@ -1,0 +1,65 @@
+<div class="scanner-page">
+  <header>
+    <h1>Entry validation</h1>
+  </header>
+
+  <video #video class="camera" muted playsinline></video>
+
+  <section class="panel">
+    @switch (state().type) {
+      @case ('idle') {
+        <p>Starting...</p>
+      }
+      @case ('preparing_camera') {
+        <p>Activating camera...</p>
+      }
+      @case ('awaiting_detection') {
+        <p>Detecting how many people are in front of the camera...</p>
+      }
+      @case ('awaiting_reads') {
+        @let st = state();
+        @if (st.type === 'awaiting_reads') {
+          <p>
+            Reads collected: {{ st.reads.length }} of
+            {{ st.expectedCount }}
+          </p>
+          <ul class="reads">
+            @for (read of st.reads; track read.qrCode) {
+              <li [class]="read.result.toLowerCase()">
+                {{ read.qrCode }} — {{ read.result }}
+              </li>
+            }
+          </ul>
+          <p class="hint">Bring the next badge close to the camera.</p>
+        }
+      }
+      @case ('complete') {
+        @let st = state();
+        @if (st.type === 'complete') {
+          <p class="final-result" [class]="st.finalResult.toLowerCase()">
+            Result: {{ st.finalResult }}
+          </p>
+          <ul class="reads">
+            @for (read of st.reads; track read.qrCode) {
+              <li [class]="read.result.toLowerCase()">
+                {{ read.qrCode }} — {{ read.result }}
+              </li>
+            }
+          </ul>
+          <button (click)="restart()">New validation</button>
+        }
+      }
+      @case ('expired') {
+        <p>The attempt has expired.</p>
+        <button (click)="restart()">Try again</button>
+      }
+      @case ('error') {
+        @let st = state();
+        @if (st.type === 'error') {
+          <p class="error">{{ st.message }}</p>
+        }
+        <button (click)="restart()">Try again</button>
+      }
+    }
+  </section>
+</div>

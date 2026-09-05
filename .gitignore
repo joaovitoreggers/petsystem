@@ -5,6 +5,10 @@ dist
 tmp
 out-tsc
 
+# database
+*.sqlite
+*.sqlite3
+
 # dependencies
 node_modules
 
@@ -48,3 +52,6 @@ Thumbs.db
 .nx/polygraph
 .nx/self-healing
 .nx/migrate-runs
+test-output
+
+.angular
