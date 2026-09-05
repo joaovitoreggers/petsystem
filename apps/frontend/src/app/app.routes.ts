@@ -14,5 +14,15 @@ export const appRoutes: Route[] = [
     canActivate: [authGuard],
     loadChildren: () => import('./badges/badges.routes').then((m) => m.badgesRoutes),
   },
+  {
+    path: 'users',
+    canActivate: [authGuard],
+    loadChildren: () => import('./users/users.routes').then((m) => m.usersRoutes),
+  },
+  {
+    path: 'employees',
+    canActivate: [authGuard],
+    loadChildren: () => import('./employees/employees.routes').then((m) => m.employeesRoutes),
+  },
   { path: '**', redirectTo: 'login' },
 ];

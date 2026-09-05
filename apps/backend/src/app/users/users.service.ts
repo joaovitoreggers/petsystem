@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { User } from './entities/user.entity';
 import {
@@ -13,7 +13,13 @@ export interface CreateUserInput {
   email: string;
   password: string;
   role: string;
-  accessLevel: number;
+}
+
+export interface UpdateUserInput {
+  name?: string;
+  email?: string;
+  password?: string;
+  role?: string;
 }
 
 /**
@@ -40,14 +46,49 @@ export class UsersService {
   }
 
   async create(data: CreateUserInput): Promise<User> {
+    const existing = await this.userRepository.findByEmail(data.email);
+    if (existing) {
+      throw new ConflictException('Este email já está em uso');
+    }
     const passwordHash = await bcrypt.hash(data.password, SALT_ROUNDS);
     return this.userRepository.create({
       name: data.name,
       email: data.email,
       passwordHash,
       role: data.role,
-      accessLevel: data.accessLevel,
     });
+  }
+
+  async update(id: string, data: UpdateUserInput): Promise<User> {
+    if (data.email !== undefined) {
+      const existing = await this.userRepository.findByEmail(data.email);
+      if (existing && existing.id !== id) {
+        throw new ConflictException('Este email já está em uso');
+      }
+    }
+
+    const passwordHash = data.password
+      ? await bcrypt.hash(data.password, SALT_ROUNDS)
+      : undefined;
+
+    const updated = await this.userRepository.update(id, {
+      name: data.name,
+      email: data.email,
+      passwordHash,
+      role: data.role,
+    });
+
+    if (!updated) {
+      throw new NotFoundException('Usuário não encontrado');
+    }
+    return updated;
+  }
+
+  async delete(id: string): Promise<void> {
+    const deleted = await this.userRepository.delete(id);
+    if (!deleted) {
+      throw new NotFoundException('Usuário não encontrado');
+    }
   }
 
   validatePassword(plainTextPassword: string, passwordHash: string): Promise<boolean> {

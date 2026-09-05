@@ -1,0 +1,133 @@
+.users-page {
+  min-height: 100vh;
+  padding: 1.5rem;
+  background: #0f172a;
+  color: #f1f5f9;
+  box-sizing: border-box;
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.25rem;
+
+    h1 {
+      margin: 0;
+      font-size: 1.25rem;
+    }
+  }
+
+  .error {
+    color: #ef4444;
+  }
+}
+
+.users-table {
+  width: 100%;
+  max-width: 48rem;
+  border-collapse: collapse;
+
+  th,
+  td {
+    text-align: left;
+    padding: 0.6rem 0.75rem;
+    border-bottom: 1px solid #1e293b;
+    font-size: 0.9rem;
+  }
+
+  th {
+    color: #94a3b8;
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+  }
+
+  .actions {
+    display: flex;
+    gap: 0.5rem;
+  }
+}
+
+button {
+  padding: 0.4rem 0.8rem;
+  border: none;
+  border-radius: 6px;
+  background: #2563eb;
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+
+  &.danger {
+    background: #dc2626;
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.form-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.form-card {
+  background: #fff;
+  color: #0f172a;
+  border-radius: 12px;
+  padding: 1.5rem;
+  width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+
+  h2 {
+    margin: 0 0 0.5rem;
+    font-size: 1.1rem;
+  }
+
+  label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #334155;
+
+    .hint {
+      font-weight: 400;
+      color: #64748b;
+    }
+  }
+
+  input {
+    padding: 0.55rem 0.7rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    margin-bottom: 0.4rem;
+  }
+
+  .error {
+    color: #dc2626;
+    font-size: 0.85rem;
+    margin: 0;
+  }
+
+  .form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+
+    button[type='button'] {
+      background: #e2e8f0;
+      color: #0f172a;
+    }
+  }
+}

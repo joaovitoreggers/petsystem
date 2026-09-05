@@ -5,7 +5,13 @@ export interface CreateUserData {
   email: string;
   passwordHash: string;
   role: string;
-  accessLevel: number;
+}
+
+export interface UpdateUserData {
+  name?: string;
+  email?: string;
+  passwordHash?: string;
+  role?: string;
 }
 
 /**
@@ -17,6 +23,8 @@ export interface IUserRepository {
   findById(id: string): Promise<User | null>;
   findByEmail(email: string): Promise<User | null>;
   create(data: CreateUserData): Promise<User>;
+  update(id: string, data: UpdateUserData): Promise<User | null>;
+  delete(id: string): Promise<boolean>;
 }
 
 export const USER_REPOSITORY = Symbol('USER_REPOSITORY');

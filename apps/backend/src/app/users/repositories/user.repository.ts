@@ -3,7 +3,11 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../entities/user.entity';
-import { CreateUserData, IUserRepository } from './user-repository.interface';
+import {
+  CreateUserData,
+  IUserRepository,
+  UpdateUserData,
+} from './user-repository.interface';
 
 @Injectable()
 export class UserRepository implements IUserRepository {
@@ -31,8 +35,24 @@ export class UserRepository implements IUserRepository {
       email: data.email,
       password: data.passwordHash,
       role: data.role,
-      accessLevel: data.accessLevel,
     });
     return this.repository.save(user);
+  }
+
+  async update(id: string, data: UpdateUserData): Promise<User | null> {
+    const user = await this.repository.findOneBy({ id });
+    if (!user) {
+      return null;
+    }
+    if (data.name !== undefined) user.name = data.name;
+    if (data.email !== undefined) user.email = data.email;
+    if (data.passwordHash !== undefined) user.password = data.passwordHash;
+    if (data.role !== undefined) user.role = data.role;
+    return this.repository.save(user);
+  }
+
+  async delete(id: string): Promise<boolean> {
+    const result = await this.repository.delete(id);
+    return (result.affected ?? 0) > 0;
   }
 }

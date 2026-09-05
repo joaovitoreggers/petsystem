@@ -11,13 +11,20 @@ apenas este README e os comentários no código ficam em português.
 
 ```
 apps/
-  backend/    # NestJS — AuthModule, UsersModule, QrValidationModule
-  frontend/   # Angular — Auth (lazy) e QrScanner (lazy)
+  backend/    # NestJS — AuthModule, UsersModule, EmployeesModule, QrValidationModule
+  frontend/   # Angular — Auth (lazy), QrScanner (lazy), Users e Employees
 ```
 
-Fronteira entre módulos do back-end: `QrValidationModule` e `AuthModule` nunca
-acessam o repositório de `User` diretamente — sempre através de `UsersService`
-(exportado por `UsersModule`).
+`Usuario` (login — porteiro/operador, autentica via `/auth/login`) e
+`Employee`/funcionário (pessoa de campo validada nas tentativas de entrada,
+não faz login) são entidades **separadas** — um funcionário não é
+necessariamente também um usuário do sistema, e vice-versa.
+
+Fronteira entre módulos do back-end: `AuthModule` acessa `User` só através de
+`UsersService` (exportado por `UsersModule`); `QrValidationModule` acessa
+`Employee` só através de `EmployeesService` (exportado por
+`EmployeesModule`) — nenhum módulo acessa o repositório interno de outro
+diretamente.
 
 ## Requisitos
 
@@ -71,7 +78,6 @@ customizar — todas têm um default funcional no `docker-compose.yml`, e
 | `DB_NAME`           | `petsystem`  | Nome do banco                                              |
 | `JWT_SECRET`        | `dev-secret` | Segredo usado para assinar o JWT — troque em produção      |
 | `JWT_EXPIRES_IN`    | `8h`         | Validade do token                                          |
-| `ACCESS_MIN_LEVEL`  | `2`          | Nível mínimo de `accessLevel` para autorizar a entrada     |
 
 ## Rodando sem Docker
 
@@ -93,20 +99,28 @@ Variáveis de ambiente (mesmas da tabela acima, mais):
 | `DB_PORT`  | `5432`      | Porta do Postgres                    |
 | `PORT`     | `3000`      | Porta do servidor HTTP do back-end   |
 
-### Usuários de teste (criados por `npm run backend:seed`)
+### Usuários de teste — contas de login (criadas por `npm run backend:seed`)
 
-| Email                             | Senha       | Role         | Nível de acesso |
-|-----------------------------------|-------------|--------------|------------------|
-| porteiro@petsystem.local          | senha123    | porteiro     | 5 (autorizado)   |
-| joao.silva@petsystem.local        | senha123    | funcionario  | 3 (autorizado)   |
-| maria.souza@petsystem.local       | senha123    | estagiario   | 1 (negado)       |
+| Email                        | Senha    | Role     |
+|-------------------------------|----------|----------|
+| porteiro@petsystem.local      | senha123 | porteiro |
+| operador@petsystem.local      | senha123 | operador |
 
-O QR do crachá de cada usuário é o próprio `id` (uuid) — gerado uma vez na
-criação e nunca reaproveitado como um campo separado, então uma edição futura
-no cadastro nunca invalida um crachá já impresso/gerado. Como o valor é
-gerado no banco, não dá para listá-lo aqui: faça login e abra a tela
-**Crachás** (`/badges`) para ver a lista de usuários e gerar o QR de cada um
-sob demanda — ela também aparece no log do `npm run backend:seed`.
+### Funcionários de teste — validados no QR (criados por `npm run backend:seed`)
+
+| Nome            | Role                | Acesso a áreas de risco | Serviço de correção |
+|-----------------|---------------------|:------------------------:|:---------------------:|
+| João Ferreira   | tecnico_seguranca   | ✅                        | ✅                     |
+| Marcos Lima     | operador_de_campo   | ✅                        | ❌                     |
+| Patricia Alves  | estagiaria          | ❌                        | ❌                     |
+
+As duas permissões são independentes uma da outra. O QR do crachá de cada
+funcionário é o próprio `id` (uuid) — gerado uma vez na criação e nunca
+reaproveitado como um campo separado, então uma edição futura no cadastro
+nunca invalida um crachá já impresso/gerado. Como o valor é gerado no banco,
+não dá para listá-lo aqui: faça login e abra a tela **Crachás** (`/badges`)
+para ver a lista de funcionários e gerar o QR de cada um sob demanda — ela
+também aparece no log do `npm run backend:seed`.
 
 Front-end local (aponta para `http://localhost:3000/api` por padrão):
 
@@ -156,7 +170,7 @@ sobe no EasyPanel. Passo a passo:
 3. Na aba de variáveis de ambiente do serviço, defina pelo menos:
    `JWT_SECRET` (gere um valor aleatório — `openssl rand -hex 32` — nunca use
    o default `dev-secret` aqui), e opcionalmente `DB_USERNAME`, `DB_PASSWORD`,
-   `DB_NAME`, `JWT_EXPIRES_IN`, `ACCESS_MIN_LEVEL` (defaults na tabela acima).
+   `DB_NAME`, `JWT_EXPIRES_IN` (defaults na tabela acima).
    Se seu serviço não tiver uma aba de variáveis, um arquivo `.env` na raiz
    do projeto no servidor (copiado de `.env.example`) resolve do mesmo jeito.
 4. Faça o deploy. O EasyPanel builda as três imagens (`db`, `backend`,
@@ -219,22 +233,64 @@ histórico de `AccessEvent` — persiste normalmente.
 3. `POST /api/qr-validation/attempts/:id/detection` `{ personCount }` →
    transiciona para `AWAITING_READS`
 4. `POST /api/qr-validation/attempts/:id/reads` `{ qrCode }` (uma vez por
-   pessoa detectada) → valida o nível de acesso, checa duplicidade, registra um
-   `AccessEvent` e avança a máquina de estados; ao atingir a quantidade
-   esperada de leituras **distintas**, a tentativa vai para `COMPLETE` e expõe
-   `finalResult` (`AUTHORIZED` somente se todas as leituras foram autorizadas)
+   pessoa detectada) → busca o `Employee` pelo `qrCode` (que é o próprio
+   `id`), checa duplicidade, autoriza só se `canAccessRiskAreas` for
+   verdadeiro, registra um `AccessEvent` e avança a máquina de estados; ao
+   atingir a quantidade esperada de leituras **distintas**, a tentativa vai
+   para `COMPLETE` e expõe `finalResult` (`AUTHORIZED` somente se todas as
+   leituras foram autorizadas)
 
 Uma leitura repetida do mesmo `qrCode` na mesma tentativa é rejeitada com
 `409 Conflict` e registra um `AccessEvent` com resultado `DUPLICATE`, sem
 contar como uma leitura distinta.
+
+## CRUD de usuários (API)
+
+Contas de login (porteiro/operador) — `name`, `email`, `password`, `role`.
+Todas as rotas abaixo exigem o JWT (`Authorization: Bearer <token>`); a tela
+`/users` no front-end (mesmo estilo simples do login/crachás, provisório) usa
+exatamente essa API.
+
+| Rota | Descrição |
+|------|-----------|
+| `GET /api/users` | Lista todos os usuários |
+| `GET /api/users/:id` | Busca um usuário — `404` se não existir |
+| `POST /api/users` | Cria um usuário — `409` se o email já estiver em uso |
+| `PATCH /api/users/:id` | Atualiza campos parcialmente (senha só é trocada se enviada; `409` se o novo email já pertencer a outro usuário) |
+| `DELETE /api/users/:id` | Remove um usuário — `409` se for o próprio usuário autenticado, `404` se não existir |
+
+Nenhuma resposta inclui o campo `password` (nem o hash).
+
+## CRUD de funcionários (API)
+
+Pessoas de campo validadas pelo `QrValidationModule` — `name`, `role`, e as
+duas permissões independentes `canAccessRiskAreas` e
+`canPerformCorrectiveService` (ambas booleanas, default `false`). Sem
+`email`/`password`: funcionário não faz login. Mesmas garantias de JWT da
+API de usuários; a tela `/employees` usa exatamente essa API.
+
+| Rota | Descrição |
+|------|-----------|
+| `GET /api/employees` | Lista todos os funcionários |
+| `GET /api/employees/:id` | Busca um funcionário — `404` se não existir |
+| `POST /api/employees` | Cria um funcionário |
+| `PATCH /api/employees/:id` | Atualiza campos parcialmente — `404` se não existir |
+| `DELETE /api/employees/:id` | Remove um funcionário — `404` se não existir |
+
+`canAccessRiskAreas` é a permissão realmente aplicada hoje (é o que o
+`QrValidationModule` verifica para autorizar uma leitura de QR).
+`canPerformCorrectiveService` é capturada e validada normalmente pelo CRUD,
+mas ainda não é verificada por nenhum fluxo — não existe, nesta fase, um
+"serviço de correção" para gatear (ver Observações e riscos conhecidos).
 
 ## Padrões de projeto aplicados
 
 - **Strategy** (Passport): `LocalStrategy` (login) e `JwtStrategy` (rota
   protegida) — `apps/backend/src/app/auth/strategies`
 - **Guard**: `JwtAuthGuard` protegendo as rotas de `QrValidationController`
-- **Repository**: `IUserRepository` e `IAccessEventRepository`, com
-  implementações TypeORM injetadas por token — desacopla o domínio do ORM
+- **Repository**: `IUserRepository`, `IEmployeeRepository` e
+  `IAccessEventRepository`, com implementações TypeORM injetadas por token —
+  desacopla o domínio do ORM
 - **DTO + Pipes**: `class-validator` em todo corpo de requisição, com
   `ValidationPipe` global
 - **Dependency Injection**: nativa do NestJS e do Angular
@@ -246,13 +302,24 @@ contar como uma leitura distinta.
 
 ## Observações e riscos conhecidos
 
-- **O `id` do usuário é um uuid, não mais um número sequencial**, e é
-  exatamente esse valor que vira o QR do crachá (`UsersController` nunca
-  expõe um campo `qrCode` separado — o `id` já cumpre esse papel). Se você
-  tiver um volume `petsystem_db_data` de antes dessa mudança, apague-o e
-  recrie (`docker compose down -v`) — o schema antigo (id numérico + coluna
-  `qr_code`) não é compatível e o `synchronize: true` do TypeORM não migra
-  esse tipo de mudança de coluna automaticamente.
+- **`Employee` é quem carrega o crachá, não `User`.** O `id` (uuid) de cada
+  funcionário É o conteúdo do QR — nenhum campo `qrCode` separado. Um
+  usuário de login não é necessariamente também um funcionário, e
+  vice-versa: são tabelas independentes, sem relação entre si nesta fase. Se
+  precisar amarrar as duas coisas no futuro (uma pessoa que faz login *e*
+  carrega crachá), isso ainda não existe — hoje seriam dois cadastros
+  separados.
+- **`canAccessRiskAreas` é a única permissão realmente aplicada hoje.**
+  `canPerformCorrectiveService` é armazenada e validada pelo CRUD, mas não
+  gateia nada ainda — não existe um fluxo de "serviço de correção" nesta
+  fase para ela proteger.
+- **Mudança de schema incompatível com deploys anteriores**: `User` perdeu a
+  coluna `access_level` (a autorização de entrada agora é decidida pelo
+  `Employee`, não pelo usuário logado), e `AccessEvent.user_id` virou
+  `AccessEvent.employee_id`. Se você tiver um volume `petsystem_db_data` de
+  antes dessa mudança, apague-o e recrie (`docker compose down -v`) — o
+  `synchronize: true` do TypeORM não migra esse tipo de mudança de coluna
+  automaticamente.
 - **Contagem de pessoas via câmera é o maior risco técnico do projeto.** O
   modelo (TensorFlow.js + COCO-SSD) roda inteiramente no navegador; seu
   desempenho varia bastante por hardware. **Teste cedo, no dispositivo e na
@@ -268,7 +335,7 @@ contar como uma leitura distinta.
   container do back-end acaba carregando também as dependências do Angular.
   Suficiente para esta prova de conceito.
 - Fora de escopo nesta sessão: cadastro de PET/áreas/medições, painel de
-  monitoria, tela de cadastro de usuário, recuperação de senha e MFA.
+  monitoria, recuperação de senha e MFA.
 
 ## Proposta de melhoria: pré-modelagem de dados (v2)
 

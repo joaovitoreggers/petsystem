@@ -18,7 +18,7 @@ interface AttemptResponseDto {
   id: string;
   status: string;
   expectedCount: number;
-  reads: { qrCode: string; userId: string | null; result: string }[];
+  reads: { qrCode: string; employeeId: string | null; result: string }[];
   finalResult: string | null;
 }
 

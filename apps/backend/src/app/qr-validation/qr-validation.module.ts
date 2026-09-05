@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { AuthModule } from '../auth/auth.module';
-import { UsersModule } from '../users/users.module';
+import { EmployeesModule } from '../employees/employees.module';
 import { AccessEvent } from './entities/access-event.entity';
 import { ACCESS_EVENT_REPOSITORY } from './repositories/access-event-repository.interface';
 import { AccessEventRepository } from './repositories/access-event.repository';
@@ -10,7 +9,7 @@ import { QrValidationService } from './qr-validation.service';
 import { AccessAttemptStoreService } from './access-attempt-store.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([AccessEvent]), UsersModule, AuthModule],
+  imports: [TypeOrmModule.forFeature([AccessEvent]), EmployeesModule],
   controllers: [QrValidationController],
   providers: [
     { provide: ACCESS_EVENT_REPOSITORY, useClass: AccessEventRepository },

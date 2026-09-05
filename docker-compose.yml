@@ -29,7 +29,6 @@ services:
       DB_NAME: ${DB_NAME:-petsystem}
       JWT_SECRET: ${JWT_SECRET:-dev-secret}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-8h}
-      ACCESS_MIN_LEVEL: ${ACCESS_MIN_LEVEL:-2}
       PORT: 3000
       NODE_ENV: production
     depends_on:
