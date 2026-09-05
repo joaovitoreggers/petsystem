@@ -1,5 +1,9 @@
 import { WorkPermit, WorkPermitCriticalAlert, WorkPermitGasReading, WorkPermitStatus } from '../entities/work-permit.entity';
 
+export interface AddReadingData {
+  gas: WorkPermitGasReading;
+}
+
 export interface CreateWorkPermitData {
   id?: string;
   areas: string[];
@@ -37,6 +41,7 @@ export interface IWorkPermitRepository {
   findById(id: string): Promise<WorkPermit | null>;
   create(data: CreateWorkPermitData): Promise<WorkPermit>;
   close(id: string, data: CloseWorkPermitData): Promise<WorkPermit | null>;
+  addReading(id: string, data: AddReadingData): Promise<WorkPermit | null>;
 }
 
 export const WORK_PERMIT_REPOSITORY = Symbol('WORK_PERMIT_REPOSITORY');

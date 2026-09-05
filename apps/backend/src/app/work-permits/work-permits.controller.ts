@@ -1,4 +1,5 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, NotFoundException, Param, Patch, Post } from '@nestjs/common';
+import { AddReadingDto } from './dto/add-reading.dto';
 import { CloseWorkPermitDto } from './dto/close-work-permit.dto';
 import { CreateWorkPermitDto } from './dto/create-work-permit.dto';
 import { WorkPermit } from './entities/work-permit.entity';
@@ -37,5 +38,10 @@ export class WorkPermitsController {
   @Patch(':id/close')
   close(@Param('id') id: string, @Body() dto: CloseWorkPermitDto): Promise<WorkPermit> {
     return this.workPermitsService.close(id, dto);
+  }
+
+  @Patch(':id/reading')
+  addReading(@Param('id') id: string, @Body() dto: AddReadingDto): Promise<WorkPermit> {
+    return this.workPermitsService.addReading(id, dto);
   }
 }

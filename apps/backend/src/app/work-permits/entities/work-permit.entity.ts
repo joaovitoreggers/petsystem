@@ -20,6 +20,14 @@ export interface WorkPermitCriticalAlert {
   timestamp: string;
 }
 
+// Cada medição atmosférica pós-emissão é digitada manualmente pelo técnico
+// (sem sensor conectado) e fica registrada aqui para auditoria, além de
+// substituir a leitura atual em `gas`.
+export interface WorkPermitReading {
+  time: string;
+  text: string;
+}
+
 /**
  * PET (Permissão de Entrada e Trabalho): permissão emitida pelo técnico de
  * segurança para uma intervenção em área de risco. O id segue o formato
@@ -84,6 +92,9 @@ export class WorkPermit {
 
   @Column({ name: 'closed_by', nullable: true })
   closedBy?: string;
+
+  @Column({ type: 'jsonb', nullable: true })
+  readings?: WorkPermitReading[];
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt!: Date;

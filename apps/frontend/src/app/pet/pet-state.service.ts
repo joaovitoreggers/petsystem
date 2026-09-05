@@ -181,6 +181,16 @@ export class PetStateService {
   readonly detailPetId = signal<string | null>(null);
   readonly emittedPetId = signal<string | null>(null);
 
+  // "Nova medição" na tela de detalhe: leitura manual pós-emissão, mesmo
+  // modelo da etapa 3 do assistente — sem sensor conectado.
+  readonly measurementDialogOpen = signal(false);
+  readonly measurementGasInputs = signal<Record<GasKey, string>>({ o2: '', co: '', h2s: '', lel: '' });
+
+  readonly measurementGasReadingComplete = computed(() => {
+    const inputs = this.measurementGasInputs();
+    return (['o2', 'co', 'h2s', 'lel'] as GasKey[]).every((k) => inputs[k].trim() !== '' && !Number.isNaN(Number(inputs[k])));
+  });
+
   readonly openPets = computed(() => this.pets().filter((p) => p.status !== 'fechada'));
   readonly closedPets = computed(() => this.pets().filter((p) => p.status === 'fechada'));
   readonly visiblePets = computed(() => (this.homeTab() === 'abertas' ? this.openPets() : this.closedPets()));
@@ -283,6 +293,43 @@ export class PetStateService {
       );
     }
     this.goHome();
+  }
+
+  openMeasurementDialog(): void {
+    this.measurementGasInputs.set({ o2: '', co: '', h2s: '', lel: '' });
+    this.measurementDialogOpen.set(true);
+  }
+
+  closeMeasurementDialog(): void {
+    this.measurementDialogOpen.set(false);
+  }
+
+  setMeasurementGasInput(key: GasKey, value: string): void {
+    this.measurementGasInputs.update((inputs) => ({ ...inputs, [key]: value }));
+  }
+
+  async confirmMeasurement(): Promise<void> {
+    if (!this.measurementGasReadingComplete()) return;
+    const id = this.detailPetId();
+    if (!id) return;
+    const inputs = this.measurementGasInputs();
+    const gas: GasReading = {
+      o2: Number(inputs.o2),
+      co: Number(inputs.co),
+      h2s: Number(inputs.h2s),
+      lel: Number(inputs.lel),
+    };
+    try {
+      const updated = await firstValueFrom(this.workPermitsApi.addReading(id, gas));
+      this.pets.update((list) => list.map((p) => (p.id === id ? updated : p)));
+    } catch {
+      const time = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      const text = `O₂ ${gas.o2.toFixed(1)}% · CO ${gas.co.toFixed(0)} ppm · H₂S ${gas.h2s.toFixed(1)} ppm · LEL ${gas.lel.toFixed(0)}%`;
+      this.pets.update((list) =>
+        list.map((p) => (p.id === id ? { ...p, gas, readings: [...(p.readings ?? []), { time, text }] } : p)),
+      );
+    }
+    this.measurementDialogOpen.set(false);
   }
 
   // ── Wizard ────────────────────────────────────────────────────────

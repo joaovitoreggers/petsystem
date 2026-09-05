@@ -43,4 +43,8 @@ export class WorkPermitsApiService {
   close(id: string, payload: CloseWorkPermitPayload): Observable<Pet> {
     return this.http.patch<Pet>(`${this.baseUrl}/${id}/close`, payload);
   }
+
+  addReading(id: string, gas: GasReading): Observable<Pet> {
+    return this.http.patch<Pet>(`${this.baseUrl}/${id}/reading`, { gas });
+  }
 }

@@ -164,7 +164,7 @@
             <div class="detalhe__body petscroll">
               @if (pet.gas) {
                 <div>
-                  <div class="section-kicker">Atmosfera · leitura contínua</div>
+                  <div class="section-kicker">Última medição atmosférica</div>
                   <div class="gauge-grid">
                     <div class="gauge blueprint">
                       <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
@@ -204,6 +204,12 @@
                       </div>
                     </div>
                   }
+                  @for (reading of pet.readings ?? []; track reading.time + reading.text) {
+                    <div class="timeline__row">
+                      <div class="timeline__time">{{ reading.time }}</div>
+                      <div class="timeline__text">Nova medição: {{ reading.text }}</div>
+                    </div>
+                  }
                   @if (pet.end) {
                     <div class="timeline__row">
                       <div class="timeline__time">{{ pet.end }}</div>
@@ -217,8 +223,10 @@
             </div>
 
             <div class="detalhe__footer">
-              <button type="button" class="btn btn-secondary detalhe__footer-btn">Nova medição</button>
               @if (pet.status !== 'fechada') {
+                <button type="button" class="btn btn-secondary detalhe__footer-btn" (click)="openMeasurement()">
+                  Nova medição
+                </button>
                 <button type="button" class="btn btn-primary detalhe__footer-btn" (click)="openCancelDialog()">
                   Encerrar PET
                 </button>
@@ -248,6 +256,49 @@
           <button type="button" class="btn btn-secondary" (click)="closeCancelDialog()">Cancelar</button>
           <button type="button" class="btn btn-primary" [disabled]="!canConfirmCancel()" (click)="confirmCancel()">
             Confirmar encerramento
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (state.measurementDialogOpen()) {
+    <div class="dialog-backdrop" (click)="closeMeasurement()">
+      <div class="dialog blueprint measurement-dialog" (click)="$event.stopPropagation()">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div class="dialog-title">Nova medição atmosférica</div>
+        <div class="dialog-body">Informe a leitura atual do detector portátil.</div>
+        <div class="measurement-grid">
+          @for (f of measurementFields(); track f.key) {
+            <div class="gauge blueprint">
+              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+              <div class="gauge__label">{{ f.label }}</div>
+              <div class="gauge__input-row">
+                <input
+                  type="number"
+                  step="0.1"
+                  inputmode="decimal"
+                  class="input gauge__input"
+                  [style.color]="f.color"
+                  placeholder="0,0"
+                  [value]="f.value"
+                  (input)="onMeasurementGasInputChange(f.key, $event)"
+                />
+                <span class="gauge__unit">{{ f.unit }}</span>
+              </div>
+              <div class="gauge__limit">{{ f.limitText }}</div>
+            </div>
+          }
+        </div>
+        <div class="dialog-actions">
+          <button type="button" class="btn btn-secondary" (click)="closeMeasurement()">Cancelar</button>
+          <button
+            type="button"
+            class="btn btn-primary"
+            [disabled]="!state.measurementGasReadingComplete()"
+            (click)="confirmMeasurement()"
+          >
+            Registrar medição
           </button>
         </div>
       </div>
