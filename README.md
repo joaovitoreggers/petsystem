@@ -1,109 +1,164 @@
-# New Nx Repository
+# PET Digital — Login, Validação de QR Code e Contagem de Pessoas
 
-<a alt="Nx logo" href="https://nx.dev" target="_blank" rel="noreferrer"><img src="https://raw.githubusercontent.com/nrwl/nx/master/images/nx-logo.png" width="45"></a>
+Fatia vertical do Desafio 8 (PET Digital / Inova Marechal Challenge): autenticação,
+validação de entrada por QR code e contagem de pessoas pela câmera, como prova de
+conceito isolada. Monorepo Nx com back-end NestJS e front-end Angular.
 
-✨ Your new, shiny [Nx workspace](https://nx.dev) is ready ✨.
+O código (nomes de classes, arquivos, rotas, campos de DTO etc.) é todo em inglês;
+apenas este README e os comentários no código ficam em português.
 
-[Learn more about this workspace setup and its capabilities](https://nx.dev/docs/technologies/typescript/introduction?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) or run `npx nx graph` to visually explore what was created. Now, let's get you up to speed!
-
-🚀 If you haven't connected to Nx Cloud yet, [complete your setup here](https://cloud.nx.app/get-started). Get faster builds with remote caching, distributed task execution, and self-healing CI. [See how your workspace can benefit](#nx-cloud).
-
-## Generate a library
-
-```sh
-npx nx g @nx/js:lib packages/pkg1 --publishable --importPath=@my-org/pkg1
-```
-
-## Run tasks
-
-To build the library use:
-
-```sh
-npx nx run pkg1:build
-```
-
-To run any task with Nx use:
-
-```sh
-npx nx run <project-name>:<target>
-```
-
-These targets are either [inferred automatically](https://nx.dev/docs/concepts/inferred-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) or defined in the `project.json` or `package.json` files.
-
-[More about running tasks in the docs &raquo;](https://nx.dev/docs/features/run-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-## Versioning and releasing
-
-To version and release the library use
+## Estrutura
 
 ```
-npx nx release
+apps/
+  backend/    # NestJS — AuthModule, UsersModule, QrValidationModule
+  frontend/   # Angular — Auth (lazy) e QrScanner (lazy)
 ```
 
-Pass `--dry-run` to see what would happen without actually releasing the library.
+Fronteira entre módulos do back-end: `QrValidationModule` e `AuthModule` nunca
+acessam o repositório de `User` diretamente — sempre através de `UsersService`
+(exportado por `UsersModule`).
 
-[Learn more about Nx release &raquo;](https://nx.dev/docs/features/manage-releases?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+## Requisitos
 
-## Keep TypeScript project references up to date
+- Docker e Docker Compose (caminho recomendado — sobe tudo com persistência)
+- Ou, para rodar sem Docker: Node.js 20+, npm e um PostgreSQL acessível
+- Um navegador com acesso à câmera para testar o front-end de verdade
 
-Nx automatically updates TypeScript [project references](https://www.typescriptlang.org/docs/handbook/project-references.html) in `tsconfig.json` files to ensure they remain accurate based on your project dependencies (`import` or `require` statements). This sync is automatically done when running tasks such as `build` or `typecheck`, which require updated references to function correctly.
+## Rodando com Docker (recomendado)
 
-To manually trigger the process to sync the project graph dependencies information to the TypeScript project references, run the following command:
+Sobe os três containers — front-end (Nginx), back-end (NestJS) e banco
+(PostgreSQL, com dados persistidos em um volume nomeado) — orquestrados pelo
+`docker-compose.yml`:
 
-```sh
-npx nx sync
+```bash
+docker compose up --build   # ou: npm run docker:up
 ```
 
-You can enforce that the TypeScript project references are always in the correct state when running in CI by adding a step to your CI job configuration that runs the following command:
+- Front-end: http://localhost:8080 (o Nginx do container serve o build do
+  Angular e faz proxy de `/api/*` para o container do back-end — sem CORS)
+- Back-end (acesso direto, opcional): http://localhost:3000/api
+- Postgres (acesso direto, opcional): `localhost:5433` (mapeado para a porta
+  interna 5432, para não colidir com um Postgres já rodando na sua máquina)
 
-```sh
-npx nx sync:check
+Popule os usuários de teste dentro do container já em execução:
+
+```bash
+docker compose exec backend npm run backend:seed   # ou: npm run docker:seed
 ```
 
-[Learn more about nx sync](https://nx.dev/reference/nx-commands#sync)
+Os dados ficam no volume nomeado `petsystem_db_data`: sobrevivem a
+`docker compose down` / `up` e a reinícios dos containers. Para descartar tudo
+e começar do zero: `docker compose down -v`.
 
-## Nx Cloud
+Variáveis de ambiente opcionais (copie `.env.example` para `.env` na raiz para
+customizar — todas têm um default funcional no `docker-compose.yml`):
 
-Nx Cloud ensures a [fast and scalable CI](https://nx.dev/nx-cloud?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) pipeline. It includes features such as:
+| Variável           | Padrão       | Descrição                                              |
+|--------------------|--------------|----------------------------------------------------------|
+| `DB_USERNAME`       | `petsystem`  | Usuário do Postgres                                       |
+| `DB_PASSWORD`       | `petsystem`  | Senha do Postgres                                          |
+| `DB_NAME`           | `petsystem`  | Nome do banco                                              |
+| `JWT_SECRET`        | `dev-secret` | Segredo usado para assinar o JWT — troque em produção      |
+| `JWT_EXPIRES_IN`    | `8h`         | Validade do token                                          |
+| `ACCESS_MIN_LEVEL`  | `2`          | Nível mínimo de `accessLevel` para autorizar a entrada     |
 
-- [Remote caching](https://nx.dev/docs/features/ci-features/remote-cache?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Task distribution across multiple machines](https://nx.dev/docs/features/ci-features/distribute-task-execution?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Automated e2e test splitting](https://nx.dev/docs/features/ci-features/split-e2e-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Task flakiness detection and rerunning](https://nx.dev/docs/features/ci-features/flaky-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+## Rodando sem Docker
 
-### Set up CI (non-Github Actions CI)
+Precisa de um PostgreSQL acessível — o mais simples é subir só o banco via
+Docker (`docker compose up -d db`, exposto em `localhost:5433`) e rodar
+back-end/front-end localmente:
 
-**Note:** This is only required if your CI provider is not GitHub Actions.
-
-Use the following command to configure a CI workflow for your workspace:
-
-```sh
-npx nx g ci-workflow
+```bash
+npm install
+DB_PORT=5433 npm run backend:seed    # popula os usuários de teste (idempotente)
+DB_PORT=5433 npm run backend:serve   # sobe em http://localhost:3000/api
 ```
 
-[Learn more about Nx on CI](https://nx.dev/docs/features/ci-features?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+Variáveis de ambiente (mesmas da tabela acima, mais):
 
-## Install Nx Console
+| Variável   | Padrão      | Descrição                          |
+|------------|-------------|-------------------------------------|
+| `DB_HOST`  | `localhost` | Host do Postgres                     |
+| `DB_PORT`  | `5432`      | Porta do Postgres                    |
+| `PORT`     | `3000`      | Porta do servidor HTTP do back-end   |
 
-Nx Console is an editor extension that enriches your developer experience. It lets you run tasks, generate code, and improves code autocompletion in your IDE. It is available for VSCode and IntelliJ.
+### Usuários de teste (criados por `npm run backend:seed`)
 
-[Install Nx Console &raquo;](https://nx.dev/docs/getting-started/editor-setup?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+| Email                             | Senha       | Role         | Nível de acesso | Código do QR (crachá) |
+|-----------------------------------|-------------|--------------|------------------|-------------------------|
+| porteiro@petsystem.local          | senha123    | porteiro     | 5 (autorizado)   | QR-PORTEIRO-001         |
+| joao.silva@petsystem.local        | senha123    | funcionario  | 3 (autorizado)   | QR-FUNC-AUTORIZADO      |
+| maria.souza@petsystem.local       | senha123    | estagiario   | 1 (negado)       | QR-ESTAGIARIO-NEGADO    |
 
-## 🔗 Learn More
+Gere QR codes reais com o texto de `qrCode` acima (qualquer gerador de QR) para
+testar a leitura pela câmera.
 
-- [Nx Documentation](https://nx.dev/docs)
-- [Crafting Your Workspace Tutorial](https://nx.dev/docs/getting-started/tutorials/crafting-your-workspace)
-- [Module Boundaries](https://nx.dev/docs/features/enforce-module-boundaries)
-- [Releasing Packages](https://nx.dev/docs/features/manage-releases)
-- [Nx Plugins](https://nx.dev/docs/concepts/nx-plugins)
-- [Nx Cloud](https://nx.dev/nx-cloud)
+Front-end local (aponta para `http://localhost:3000/api` por padrão):
 
-## 💬 Community
+```bash
+npm run frontend:serve   # sobe em http://localhost:4200
+```
 
-Join the Nx community:
+Faça login com um dos usuários de teste acima; a tela de validação (`/scanner`)
+pede acesso à câmera, conta quantas pessoas estão em frente a ela e conduz a
+leitura de QR (uma ou várias, conforme a contagem).
 
-- [Discord](https://go.nx.dev/community)
-- [X (Twitter)](https://twitter.com/nxdevtools)
-- [LinkedIn](https://www.linkedin.com/company/nrwl)
-- [YouTube](https://www.youtube.com/@nxdevtools)
-- [Blog](https://nx.dev/blog)
+## Testes
+
+```bash
+npx nx run backend:test    # lógica de autorização, duplicidade e o Guard de JWT
+npx nx run frontend:test
+```
+
+## Fluxo de validação (API)
+
+1. `POST /api/auth/login` `{ email, password }` → `{ accessToken, user }`
+2. `POST /api/qr-validation/attempts` (autenticado) → cria uma tentativa em
+   `AWAITING_DETECTION`
+3. `POST /api/qr-validation/attempts/:id/detection` `{ personCount }` →
+   transiciona para `AWAITING_READS`
+4. `POST /api/qr-validation/attempts/:id/reads` `{ qrCode }` (uma vez por
+   pessoa detectada) → valida o nível de acesso, checa duplicidade, registra um
+   `AccessEvent` e avança a máquina de estados; ao atingir a quantidade
+   esperada de leituras **distintas**, a tentativa vai para `COMPLETE` e expõe
+   `finalResult` (`AUTHORIZED` somente se todas as leituras foram autorizadas)
+
+Uma leitura repetida do mesmo `qrCode` na mesma tentativa é rejeitada com
+`409 Conflict` e registra um `AccessEvent` com resultado `DUPLICATE`, sem
+contar como uma leitura distinta.
+
+## Padrões de projeto aplicados
+
+- **Strategy** (Passport): `LocalStrategy` (login) e `JwtStrategy` (rota
+  protegida) — `apps/backend/src/app/auth/strategies`
+- **Guard**: `JwtAuthGuard` protegendo as rotas de `QrValidationController`
+- **Repository**: `IUserRepository` e `IAccessEventRepository`, com
+  implementações TypeORM injetadas por token — desacopla o domínio do ORM
+- **DTO + Pipes**: `class-validator` em todo corpo de requisição, com
+  `ValidationPipe` global
+- **Dependency Injection**: nativa do NestJS e do Angular
+- **State**: `AccessAttempt` (back-end) e `ScannerState` (front-end, união
+  discriminada) modelam explicitamente
+  `aguardando detecção → aguardando N leituras distintas → completo/expirado`,
+  em vez de flags booleanas soltas — ver
+  `apps/backend/src/app/qr-validation/state/attempt.state.ts`
+
+## Observações e riscos conhecidos
+
+- **Contagem de pessoas via câmera é o maior risco técnico do projeto.** O
+  modelo (TensorFlow.js + COCO-SSD) roda inteiramente no navegador; seu
+  desempenho varia bastante por hardware. **Teste cedo, no dispositivo e na
+  câmera reais da apresentação** — ajuste o limiar de confiança em
+  `PersonDetectorService` (`PERSON_CONFIDENCE_THRESHOLD` em
+  `qr-scanner.component.ts`) conforme necessário.
+- A tentativa de validação (`AccessAttempt`) vive em memória no processo do
+  back-end (TTL de 2 minutos) — suficiente para esta prova de conceito; o
+  registro durável e auditável é o `AccessEvent`, persistido no PostgreSQL
+  (volume `petsystem_db_data` quando rodando via Docker).
+- A imagem Docker do back-end não é otimizada para tamanho: o monorepo Nx
+  compartilha um único `node_modules` entre back-end e front-end, então o
+  container do back-end acaba carregando também as dependências do Angular.
+  Suficiente para esta prova de conceito.
+- Fora de escopo nesta sessão: cadastro de PET/áreas/medições, painel de
+  monitoria, tela de cadastro de usuário, recuperação de senha e MFA.

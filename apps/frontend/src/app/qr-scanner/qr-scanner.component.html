@@ -1,0 +1,65 @@
+<div class="scanner-page">
+  <header>
+    <h1>Validação de entrada</h1>
+  </header>
+
+  <video #video class="camera" muted playsinline></video>
+
+  <section class="panel">
+    @switch (state().type) {
+      @case ('idle') {
+        <p>Iniciando...</p>
+      }
+      @case ('preparing_camera') {
+        <p>Ativando câmera...</p>
+      }
+      @case ('awaiting_detection') {
+        <p>Detectando quantas pessoas estão em frente à câmera...</p>
+      }
+      @case ('awaiting_reads') {
+        @let st = state();
+        @if (st.type === 'awaiting_reads') {
+          <p>
+            Leituras coletadas: {{ st.reads.length }} de
+            {{ st.expectedCount }}
+          </p>
+          <ul class="reads">
+            @for (read of st.reads; track read.qrCode) {
+              <li [class]="read.result.toLowerCase()">
+                {{ read.qrCode }} — {{ resultLabel(read.result) }}
+              </li>
+            }
+          </ul>
+          <p class="hint">Aproxime o próximo crachá da câmera.</p>
+        }
+      }
+      @case ('complete') {
+        @let st = state();
+        @if (st.type === 'complete') {
+          <p class="final-result" [class]="st.finalResult.toLowerCase()">
+            Resultado: {{ resultLabel(st.finalResult) }}
+          </p>
+          <ul class="reads">
+            @for (read of st.reads; track read.qrCode) {
+              <li [class]="read.result.toLowerCase()">
+                {{ read.qrCode }} — {{ resultLabel(read.result) }}
+              </li>
+            }
+          </ul>
+          <button (click)="restart()">Nova validação</button>
+        }
+      }
+      @case ('expired') {
+        <p>A tentativa expirou.</p>
+        <button (click)="restart()">Tentar novamente</button>
+      }
+      @case ('error') {
+        @let st = state();
+        @if (st.type === 'error') {
+          <p class="error">{{ st.message }}</p>
+        }
+        <button (click)="restart()">Tentar novamente</button>
+      }
+    }
+  </section>
+</div>
