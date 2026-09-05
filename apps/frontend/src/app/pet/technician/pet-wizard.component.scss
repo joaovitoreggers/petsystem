@@ -78,17 +78,18 @@
 .gauge-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .gauge { padding: 11px 12px; }
 .gauge__label { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-neutral-700); }
-.gauge__value {
-  display: flex; align-items: baseline; gap: 4px; margin-top: 2px;
-  font-family: var(--font-heading); font-weight: 600; font-size: 30px; line-height: 1;
+.gauge__input-row { display: flex; align-items: baseline; gap: 6px; margin-top: 4px; }
+.gauge__input {
+  width: 100%; border: none; border-bottom: 1px solid var(--color-divider); background: transparent; padding: 2px 0;
+  font-family: var(--font-heading); font-weight: 600; font-size: 26px; line-height: 1;
 }
-.gauge__unit { font-size: 12px; color: var(--color-neutral-700); font-family: var(--font-body); font-weight: 400; }
-.gauge__bar { height: 3px; background: var(--color-neutral-300); margin-top: 9px; }
-.gauge__bar-fill { height: 3px; }
+.gauge__input:focus { outline: none; border-bottom-color: var(--color-accent); }
+.gauge__unit { font-size: 12px; color: var(--color-neutral-700); font-family: var(--font-body); font-weight: 400; flex: none; }
 .gauge__limit { font-size: 10px; color: var(--color-neutral-600); margin-top: 5px; }
 
 .atmosphere-banner { padding: 12px; background: #dff0e6; color: #1d4d33; }
 .atmosphere-banner--bad { background: var(--status-bad); color: #fdf3f3; }
+.atmosphere-banner--pending { background: var(--color-neutral-200); color: var(--color-neutral-800); }
 .atmosphere-banner__title { font-family: var(--font-heading); font-weight: 600; font-size: 17px; }
 .atmosphere-banner__text { font-size: 12px; margin-top: 3px; opacity: 0.9; }
 .gases__register { height: 42px; }

@@ -1,4 +1,4 @@
-import { Component, ElementRef, ViewChild, computed, effect } from '@angular/core';
+import { Component, ElementRef, ViewChild, computed } from '@angular/core';
 import { PetStateService } from '../pet-state.service';
 import {
   AREA_NOTE,
@@ -6,6 +6,7 @@ import {
   ChecklistAnswer,
   EPI_CHECKLIST,
   GAS_LIMITS,
+  GasKey,
   MOCK_BADGES,
   RISK_AREAS,
   RiskAreaId,
@@ -15,12 +16,11 @@ import {
 } from '../pet-mock-data';
 
 interface GaugeView {
-  key: 'o2' | 'co' | 'h2s' | 'lel';
+  key: GasKey;
   label: string;
   unit: string;
   value: string;
   color: string;
-  percent: number;
   limitText: string;
 }
 
@@ -65,13 +65,7 @@ export class PetWizardComponent {
 
   readonly areas = RISK_AREAS;
 
-  constructor(readonly state: PetStateService) {
-    effect(() => {
-      if (this.state.currentStep() === 'gases') {
-        this.state.startGasSimulation();
-      }
-    });
-  }
+  constructor(readonly state: PetStateService) {}
 
   readonly stepLabel = computed(() => {
     const step = this.state.currentStep();
@@ -92,25 +86,34 @@ export class PetWizardComponent {
   readonly selectedNrs = computed(() => riskAreaNrs(this.state.selectedAreas()));
   readonly areaNotes = computed(() => this.state.selectedAreas().map((id) => ({ id, text: AREA_NOTE[id] })));
 
+  // Leitura manual: o técnico digita o valor que leu no detector portátil —
+  // sem simulação nem pareamento automático de aparelho.
   readonly gauges = computed<GaugeView[]>(() => {
-    const gas = this.state.liveGas();
-    const keys: GaugeView['key'][] = ['o2', 'co', 'h2s', 'lel'];
+    const inputs = this.state.gasInputs();
+    const keys: GasKey[] = ['o2', 'co', 'h2s', 'lel'];
     return keys.map((key) => {
       const limit = GAS_LIMITS[key];
-      const value = gas[key];
-      const ok = isGasWithinLimit(key, value);
-      const pct = Math.min(100, Math.round((value / limit.scaleMax) * 100));
+      const raw = inputs[key];
+      const hasValue = raw.trim() !== '' && !Number.isNaN(Number(raw));
+      const color = !hasValue
+        ? 'var(--color-neutral-600)'
+        : isGasWithinLimit(key, Number(raw))
+          ? 'var(--status-ok)'
+          : 'var(--status-bad)';
       return {
         key,
         label: limit.label,
         unit: limit.unit,
-        value: value.toFixed(limit.decimals),
-        color: ok ? 'var(--status-ok)' : 'var(--status-bad)',
-        percent: pct,
+        value: raw,
+        color,
         limitText: limit.limitText,
       };
     });
   });
+
+  onGasInputChange(key: GasKey, event: Event): void {
+    this.state.setGasInput(key, (event.target as HTMLInputElement).value);
+  }
 
   readonly atmosphereOk = computed(() => !this.state.atmosphereOutOfRange());
 
