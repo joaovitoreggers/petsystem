@@ -131,17 +131,80 @@ npx nx run frontend:test
 
 ## Deploy num servidor caseiro (EasyPanel + Cloudflare Tunnel)
 
-Este `docker-compose.yml` já é o suficiente para o EasyPanel: crie um serviço
-do tipo **Compose** apontando pro repositório, ele builda e sobe os três
-containers a partir do mesmo arquivo que você já roda localmente com
-`./run.sh`. Configure as variáveis de ambiente (tabela acima — pelo menos
-`JWT_SECRET`) direto na UI do EasyPanel, ou solte um `.env` no servidor.
+Nenhuma das duas ferramentas precisa de configuração especial neste repo — o
+`docker-compose.yml` que você já usa com `./run.sh` localmente é o mesmo que
+sobe no EasyPanel. Passo a passo:
 
-Pra expor pra internet, aponte um Cloudflare Tunnel pra
-`http://localhost:8080` (o front-end) — o próprio Nginx do container já
-resolve o proxy pra `/api` internamente, então não precisa apontar o túnel
-pro back-end separadamente. Isso é configuração do túnel em si (domínio,
-credenciais da sua conta Cloudflare), fora do escopo deste repositório.
+### 1. Preparar o servidor
+
+1. Instale o Docker no servidor caseiro, se ainda não tiver
+   (`curl -sSL https://get.docker.com | sh`).
+2. Instale o EasyPanel seguindo o instalador oficial
+   (https://easypanel.io/docs/installation) e acesse o painel web dele.
+
+### 2. Criar o serviço no EasyPanel
+
+1. Crie um **Project** novo (ou use um existente).
+2. Dentro do projeto, crie um serviço do tipo **Compose** (App via Docker
+   Compose) apontando para este repositório Git — branch `main` — e para o
+   `docker-compose.yml` na raiz.
+3. Na aba de variáveis de ambiente do serviço, defina pelo menos:
+   `JWT_SECRET` (gere um valor aleatório — `openssl rand -hex 32` — nunca use
+   o default `dev-secret` aqui), e opcionalmente `DB_USERNAME`, `DB_PASSWORD`,
+   `DB_NAME`, `JWT_EXPIRES_IN`, `ACCESS_MIN_LEVEL` (defaults na tabela acima).
+   Se seu serviço não tiver uma aba de variáveis, um arquivo `.env` na raiz
+   do projeto no servidor (copiado de `.env.example`) resolve do mesmo jeito.
+4. Faça o deploy. O EasyPanel builda as três imagens (`db`, `backend`,
+   `frontend`) e sobe os containers — o volume nomeado `petsystem_db_data`
+   garante que os dados do Postgres sobrevivem a redeploys.
+
+### 3. Popular os usuários de teste
+
+Pelo terminal/console do serviço `backend` no EasyPanel (ou via SSH no
+servidor, se preferir rodar direto):
+
+```bash
+docker compose exec backend npm run backend:seed
+```
+
+### 4. Conferir localmente no servidor antes de expor
+
+Antes de abrir pro mundo, valide direto no servidor (via SSH, ou uma sessão
+de terminal do próprio EasyPanel):
+
+```bash
+curl http://localhost:3000/api/health          # {"status":"ok"}
+curl -X POST http://localhost:3000/api/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"porteiro@petsystem.local","password":"senha123"}'
+```
+
+### 5. Criar o Cloudflare Tunnel
+
+1. No [Cloudflare Zero Trust dashboard](https://one.dash.cloudflare.com/) →
+   **Networks → Tunnels**, crie um tunnel novo (tipo "Cloudflared").
+2. Siga o comando de instalação que o próprio dashboard mostra para instalar
+   e conectar o `cloudflared` no servidor caseiro (ele roda como um serviço
+   em background, autenticado com um token — não precisa editar nenhum
+   arquivo de config manualmente nesse fluxo).
+3. Em **Public Hostnames**, adicione um hostname (o subdomínio que você quer
+   usar) apontando para `http://localhost:8080` — a porta do `frontend` no
+   `docker-compose.yml`. Não é preciso apontar nada para o back-end: o Nginx
+   do container `frontend` já faz o proxy interno de `/api` para o `backend`.
+
+### 6. Testar em produção
+
+Acesse o hostname configurado no navegador, faça login com um dos usuários
+de teste e confirme que a tela `/scanner` carrega. Depois, use a tela
+**Crachás** (`/badges`) para gerar QR codes reais e testar a leitura pela
+câmera num dispositivo de verdade.
+
+### Atualizando depois do primeiro deploy
+
+Dê `git push` na branch que o EasyPanel acompanha e clique em redeploy no
+painel (ou configure o auto-deploy do EasyPanel nesse branch). Os containers
+são recriados, mas o volume `petsystem_db_data` — e portanto os usuários e o
+histórico de `AccessEvent` — persiste normalmente.
 
 ## Fluxo de validação (API)
 
