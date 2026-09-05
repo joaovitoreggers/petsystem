@@ -52,6 +52,7 @@ export class PetManagerComponent implements OnDestroy {
   readonly aiLoading = signal(false);
   readonly aiReport = signal<string | null>(null);
   readonly aiError = signal<string | null>(null);
+  readonly aiGeneratedAt = signal<string | null>(null);
 
   private audioContext: AudioContext | null = null;
   private sirenOscillator: OscillatorNode | null = null;
@@ -75,9 +76,13 @@ export class PetManagerComponent implements OnDestroy {
     this.aiLoading.set(true);
     this.aiError.set(null);
     this.aiReport.set(null);
+    this.aiGeneratedAt.set(null);
     try {
       const result = await firstValueFrom(this.petAnalysisApi.analyze());
       this.aiReport.set(result.reportText);
+      this.aiGeneratedAt.set(
+        new Date(result.generatedAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }),
+      );
     } catch (err) {
       const message =
         err && typeof err === 'object' && 'error' in err && (err as { error?: { message?: string } }).error?.message
@@ -87,6 +92,16 @@ export class PetManagerComponent implements OnDestroy {
     } finally {
       this.aiLoading.set(false);
     }
+  }
+
+  printAiReport(): void {
+    const cleanup = () => {
+      document.body.classList.remove('ai-report-printing');
+      window.removeEventListener('afterprint', cleanup);
+    };
+    window.addEventListener('afterprint', cleanup);
+    document.body.classList.add('ai-report-printing');
+    window.print();
   }
 
   ngOnDestroy(): void {

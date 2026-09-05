@@ -264,3 +264,41 @@ textarea.input { min-height: 90px; resize: vertical; }
 .dialog-title { font-family: var(--font-heading); font-weight: var(--font-heading-weight); font-size: 20px; }
 .dialog-body { font-size: 14px; opacity: 0.85; }
 .dialog-actions { display: flex; justify-content: flex-end; gap: var(--space-2); margin-top: var(--space-2); }
+
+/* Impressão/"salvar como PDF" de um único dialog (ex.: a análise de IA) sem
+   sair da tela onde ele foi aberto — o resto da página some (visibility, não
+   display, para preservar o layout) e só o dialog marcado permanece visível.
+   O componente que abre o dialog alterna a classe no <body> antes de chamar
+   window.print() e remove no evento afterprint. */
+@media print {
+  body.ai-report-printing {
+    visibility: hidden;
+  }
+  body.ai-report-printing .ai-dialog,
+  body.ai-report-printing .ai-dialog * {
+    visibility: visible;
+  }
+  body.ai-report-printing .ai-dialog {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    max-width: none;
+    max-height: none;
+    overflow: visible;
+    box-shadow: none;
+    border: none;
+    padding: 20mm;
+  }
+  body.ai-report-printing .dialog-backdrop {
+    position: static;
+    background: none;
+    padding: 0;
+  }
+  body.ai-report-printing .no-print {
+    display: none !important;
+  }
+  body.ai-report-printing .ai-dialog__letterhead-kicker,
+  body.ai-report-printing .ai-dialog__letterhead-date {
+    display: block !important;
+  }
+}
