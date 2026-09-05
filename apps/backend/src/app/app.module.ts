@@ -13,6 +13,7 @@ import { WorkPermit } from './work-permits/entities/work-permit.entity';
 import { WorkPermitsModule } from './work-permits/work-permits.module';
 import { TeamMember } from './team-members/entities/team-member.entity';
 import { TeamMembersModule } from './team-members/team-members.module';
+import { PetAnalysisModule } from './pet-analysis/pet-analysis.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { TeamMembersModule } from './team-members/team-members.module';
     QrValidationModule,
     WorkPermitsModule,
     TeamMembersModule,
+    PetAnalysisModule,
   ],
   controllers: [AppController],
 })

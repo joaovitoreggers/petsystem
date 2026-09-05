@@ -39,10 +39,16 @@
         <h1 class="dashboard__title">Permissões de entrada e trabalho</h1>
         <div class="dashboard__clock">5 unidades industriais · atualizado agora</div>
       </div>
-      <button type="button" class="btn btn-primary blueprint dashboard__report-btn" (click)="openReportModal()">
-        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-        Relatório PDF por período
-      </button>
+      <div class="dashboard__head-actions">
+        <button type="button" class="btn btn-secondary blueprint dashboard__ai-btn" (click)="openAiModal()">
+          <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          Analisar causas com IA
+        </button>
+        <button type="button" class="btn btn-primary blueprint dashboard__report-btn" (click)="openReportModal()">
+          <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          Relatório PDF por período
+        </button>
+      </div>
     </div>
 
     <div class="kpi-grid">
@@ -242,6 +248,31 @@
           <button type="button" class="btn btn-primary" [disabled]="reportPets().length === 0" (click)="generateReport()">
             Gerar relatório
           </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (aiModalOpen()) {
+    <div class="dialog-backdrop" (click)="closeAiModal()">
+      <div class="dialog blueprint ai-dialog" (click)="$event.stopPropagation()">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div class="dialog-title">Análise de IA — causas e anomalias</div>
+        @if (aiLoading()) {
+          <div class="ai-dialog__status">
+            <span class="pulse-dot"></span>
+            Analisando as PETs registradas com IA…
+          </div>
+        } @else if (aiError()) {
+          <div class="ai-dialog__error">{{ aiError() }}</div>
+        } @else if (aiReport()) {
+          <div class="ai-dialog__report">{{ aiReport() }}</div>
+        }
+        <div class="dialog-actions">
+          @if (!aiLoading()) {
+            <button type="button" class="btn btn-secondary" (click)="runAiAnalysis()">Gerar novamente</button>
+          }
+          <button type="button" class="btn btn-primary" (click)="closeAiModal()">Fechar</button>
         </div>
       </div>
     </div>

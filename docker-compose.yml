@@ -29,6 +29,8 @@ services:
       DB_NAME: ${DB_NAME:-petsystem}
       JWT_SECRET: ${JWT_SECRET:-dev-secret}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-8h}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
       PORT: 3000
       NODE_ENV: production
     depends_on:
