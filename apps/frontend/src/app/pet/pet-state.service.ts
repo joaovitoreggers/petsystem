@@ -1,4 +1,5 @@
 import { Injectable, computed, signal } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
 import {
   BASE_ACTIVITY,
   Badge,
@@ -8,11 +9,14 @@ import {
   MOCK_PETS,
   Pet,
   RiskAreaId,
+  TEAM_MEMBERS,
   TeamMember,
   WizardStepId,
   requiresGasMonitoring,
   stepsFor,
 } from './pet-mock-data';
+import { WorkPermitsApiService } from './services/work-permits-api.service';
+import { TeamMembersApiService } from './services/team-members-api.service';
 
 export type PortalRole = 'tecnico' | 'gestor' | 'equipe';
 export type TechnicianScreen = 'login' | 'home' | 'nova' | 'emitida' | 'detalhe';
@@ -36,13 +40,43 @@ let nextPetSequence = 419;
 export class PetStateService {
   readonly role = signal<PortalRole>('tecnico');
 
+  // Estado inicial vem dos dados mockados; loadFromBackend() (chamado no
+  // constructor) tenta substituí-lo pelo conteúdo real da API assim que o
+  // back-end responde. Se a chamada falhar (back-end fora do ar, por
+  // exemplo), a tela continua funcionando normalmente com o mock — é assim
+  // que o MVP evita depender do back-end estar de pé para ser demonstrado.
   readonly pets = signal<Pet[]>([...MOCK_PETS]);
+  readonly teamMembers = signal<TeamMember[]>([...TEAM_MEMBERS]);
 
-  // ── Funcionários: cadastro de trabalhadores autorizados ────────────
-  readonly registeredTeamMembers = signal<TeamMember[]>([]);
+  constructor(
+    private readonly workPermitsApi: WorkPermitsApiService,
+    private readonly teamMembersApi: TeamMembersApiService,
+  ) {
+    this.loadFromBackend();
+  }
 
-  registerTeamMember(member: TeamMember): void {
-    this.registeredTeamMembers.update((list) => [...list, member]);
+  private async loadFromBackend(): Promise<void> {
+    try {
+      const pets = await firstValueFrom(this.workPermitsApi.findAll());
+      if (pets.length > 0) this.pets.set(pets);
+    } catch {
+      // mantém os dados mockados como estão
+    }
+    try {
+      const members = await firstValueFrom(this.teamMembersApi.findAll());
+      if (members.length > 0) this.teamMembers.set(members);
+    } catch {
+      // mantém os dados mockados como estão
+    }
+  }
+
+  async registerTeamMember(member: TeamMember): Promise<void> {
+    try {
+      const created = await firstValueFrom(this.teamMembersApi.create(member));
+      this.teamMembers.update((list) => [...list, created]);
+    } catch {
+      this.teamMembers.update((list) => [...list, member]);
+    }
   }
 
   // ── Técnico: navegação e autenticação ──────────────────────────────
@@ -113,10 +147,20 @@ export class PetStateService {
     this.screen.set('home');
   }
 
-  encerrarPet(): void {
+  async encerrarPet(): Promise<void> {
     const id = this.detailPetId();
     if (!id) return;
-    this.pets.update((list) => list.map((p) => (p.id === id ? { ...p, status: 'fechada' as const, end: '—' } : p)));
+    const pet = this.pets().find((p) => p.id === id);
+    const end = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const durationMinutes = pet ? minutesSince(pet.start) : 0;
+    try {
+      const closed = await firstValueFrom(this.workPermitsApi.close(id, { end, durationMinutes }));
+      this.pets.update((list) => list.map((p) => (p.id === id ? closed : p)));
+    } catch {
+      this.pets.update((list) =>
+        list.map((p) => (p.id === id ? { ...p, status: 'fechada' as const, end, durationMinutes } : p)),
+      );
+    }
     this.goHome();
   }
 
@@ -287,30 +331,55 @@ export class PetStateService {
     if (this.currentStep() === 'gases') this.startGasSimulation();
   }
 
-  private finishPet(): void {
-    const id = `PET-2026-${String(nextPetSequence++).padStart(4, '0')}`;
+  private async finishPet(): Promise<void> {
     const fields = this.fields();
     const now = new Date();
     const time = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-    const pet: Pet = {
-      id,
-      areas: this.selectedAreas(),
+    const areas = this.selectedAreas();
+    const gas = this.needsGasMonitoring() ? this.liveGas() : undefined;
+    const payload = {
+      areas,
       location: fields.local || 'Local não informado',
       unit: 'Matelândia',
       teamSize: this.authorizedTeam().length,
       date: now.toISOString().slice(0, 10),
       start: time,
-      end: '',
-      timeLabel: time,
       technician: 'Bárbara M. Garlini',
-      status: 'aberta',
       coordinates: '-25.2531, -53.9927',
-      gas: this.needsGasMonitoring() ? this.liveGas() : undefined,
+      gas,
     };
+
+    let pet: Pet;
+    try {
+      pet = await firstValueFrom(this.workPermitsApi.create(payload));
+    } catch {
+      pet = {
+        id: `PET-2026-${String(nextPetSequence++).padStart(4, '0')}`,
+        areas,
+        location: payload.location,
+        unit: payload.unit,
+        teamSize: payload.teamSize,
+        date: payload.date,
+        start: time,
+        end: '',
+        timeLabel: time,
+        technician: payload.technician,
+        status: 'aberta',
+        coordinates: payload.coordinates,
+        gas,
+      };
+    }
     this.pets.update((list) => [pet, ...list]);
-    this.emittedPetId.set(id);
+    this.emittedPetId.set(pet.id);
     this.screen.set('emitida');
   }
+}
+
+function minutesSince(startHHmm: string): number {
+  const [hours, minutes] = startHHmm.split(':').map(Number);
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours || 0, minutes || 0);
+  return Math.max(1, Math.round((now.getTime() - start.getTime()) / 60000));
 }
 
 function clamp(value: number, min: number, max: number): number {

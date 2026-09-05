@@ -4,7 +4,6 @@ import {
   BADGE_STATUS,
   BadgeItemStatus,
   DOCUMENT_TYPES,
-  TEAM_MEMBERS,
   TeamMember,
   dateToBr,
   daysUntil,
@@ -127,7 +126,7 @@ export class PetTeamComponent {
   }
 
   readonly allMembers = computed<TeamMemberView[]>(() => {
-    const views = [...TEAM_MEMBERS, ...this.state.registeredTeamMembers()].map((m) => this.toView(m));
+    const views = this.state.teamMembers().map((m) => this.toView(m));
     const rank = (s: BadgeItemStatus) => (s === 'venc' ? 0 : s === 'prox' ? 1 : 2);
     return views.sort((a, b) => rank(a.status) - rank(b.status));
   });

@@ -14,13 +14,19 @@
 
           <div class="login__center">
             <div class="face-frame">
-              <div class="face-frame__grid"></div>
+              @if (cameraActive()) {
+                <video #faceVideo class="face-frame__video" autoplay playsinline muted></video>
+              } @else {
+                <div class="face-frame__grid"></div>
+              }
               <div class="face-frame__border"></div>
               <div class="face-frame__oval" [style.border-color]="faceColor()"></div>
               @if (faceScanning()) {
                 <div class="face-frame__sweep" [style.background]="faceColor()"></div>
               }
-              <div class="face-frame__caption">câmera frontal</div>
+              <div class="face-frame__caption">
+                {{ cameraError() ? 'câmera indisponível · toque para tentar de novo' : 'câmera frontal' }}
+              </div>
             </div>
             <div class="login__status">
               <div class="login__title">{{ faceTitle() }}</div>

@@ -9,6 +9,10 @@ import { User } from './users/entities/user.entity';
 import { UsersModule } from './users/users.module';
 import { AccessEvent } from './qr-validation/entities/access-event.entity';
 import { QrValidationModule } from './qr-validation/qr-validation.module';
+import { WorkPermit } from './work-permits/entities/work-permit.entity';
+import { WorkPermitsModule } from './work-permits/work-permits.module';
+import { TeamMember } from './team-members/entities/team-member.entity';
+import { TeamMembersModule } from './team-members/team-members.module';
 
 @Module({
   imports: [
@@ -23,7 +27,7 @@ import { QrValidationModule } from './qr-validation/qr-validation.module';
         username: configService.get<string>('DB_USERNAME', 'petsystem'),
         password: configService.get<string>('DB_PASSWORD', 'petsystem'),
         database: configService.get<string>('DB_NAME', 'petsystem'),
-        entities: [User, Employee, AccessEvent],
+        entities: [User, Employee, AccessEvent, WorkPermit, TeamMember],
         synchronize: true,
       }),
     }),
@@ -31,6 +35,8 @@ import { QrValidationModule } from './qr-validation/qr-validation.module';
     EmployeesModule,
     AuthModule,
     QrValidationModule,
+    WorkPermitsModule,
+    TeamMembersModule,
   ],
   controllers: [AppController],
 })

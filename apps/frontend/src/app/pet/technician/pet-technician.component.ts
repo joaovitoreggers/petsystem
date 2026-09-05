@@ -1,4 +1,4 @@
-import { Component, computed } from '@angular/core';
+import { Component, ElementRef, OnDestroy, ViewChild, computed, effect, signal } from '@angular/core';
 import { PetStateService } from '../pet-state.service';
 import { PET_STATUS, Pet, riskAreaNames, riskAreaNrs } from '../pet-mock-data';
 import { PetWizardComponent } from './pet-wizard.component';
@@ -20,8 +20,56 @@ interface PetCardView {
   templateUrl: './pet-technician.component.html',
   styleUrl: './pet-technician.component.scss',
 })
-export class PetTechnicianComponent {
-  constructor(readonly state: PetStateService) {}
+export class PetTechnicianComponent implements OnDestroy {
+  @ViewChild('faceVideo') private readonly faceVideoRef?: ElementRef<HTMLVideoElement>;
+
+  readonly cameraActive = signal(false);
+  readonly cameraError = signal(false);
+  private cameraStream: MediaStream | null = null;
+
+  constructor(readonly state: PetStateService) {
+    effect(() => {
+      if (this.state.screen() === 'login') {
+        this.startCamera();
+      } else {
+        this.stopCamera();
+      }
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.stopCamera();
+  }
+
+  private async startCamera(): Promise<void> {
+    if (this.cameraStream) return;
+    if (!navigator.mediaDevices?.getUserMedia) {
+      this.cameraError.set(true);
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user' },
+        audio: false,
+      });
+      this.cameraStream = stream;
+      this.cameraError.set(false);
+      this.cameraActive.set(true);
+      queueMicrotask(() => {
+        const video = this.faceVideoRef?.nativeElement;
+        if (video) video.srcObject = stream;
+      });
+    } catch {
+      this.cameraError.set(true);
+      this.cameraActive.set(false);
+    }
+  }
+
+  private stopCamera(): void {
+    this.cameraStream?.getTracks().forEach((track) => track.stop());
+    this.cameraStream = null;
+    this.cameraActive.set(false);
+  }
 
   readonly visibleCards = computed<PetCardView[]>(() => this.state.visiblePets().map((pet) => this.toCard(pet)));
 
