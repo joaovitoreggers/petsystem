@@ -54,3 +54,58 @@
     border-left: 1px solid var(--color-divider);
   }
 }
+
+.pet-shell__evac-btn {
+  height: 36px;
+  background: var(--status-bad);
+  color: #fdf3f3;
+  border-color: var(--status-bad);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  flex: none;
+}
+.pet-shell__evac-btn:hover {
+  background: #a52a2a;
+}
+
+@keyframes petpulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+@keyframes evacflash {
+  0%, 49% { background: #8e2020; }
+  50%, 100% { background: #d13636; }
+}
+@keyframes evacbeacon {
+  0%, 49% { opacity: 1; transform: scale(1); }
+  50%, 100% { opacity: 0.25; transform: scale(0.82); }
+}
+.evac-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 26px;
+  padding: 40px;
+  text-align: center;
+  color: #fff;
+  animation: evacflash 0.62s steps(1, end) infinite;
+}
+.evac-overlay__beacons { display: flex; gap: 18px; align-items: center; }
+.evac-overlay__beacon {
+  width: 26px; height: 26px; border-radius: 50%; background: #fff;
+  animation: evacbeacon 0.62s steps(1, end) infinite;
+}
+.evac-overlay__beacon--delay { animation-delay: 0.31s; }
+.evac-overlay__title {
+  font-family: var(--font-heading); font-weight: 600; font-size: 74px; line-height: 1; letter-spacing: 0.04em;
+}
+.evac-overlay__text { font-size: 18px; max-width: 720px; line-height: 1.5; }
+.evac-overlay__note { font-family: ui-monospace, monospace; font-size: 13px; opacity: 0.9; line-height: 1.8; }
+.evac-overlay__actions { display: flex; gap: 14px; margin-top: 10px; flex-wrap: wrap; justify-content: center; }
+.evac-overlay__btn { height: 46px; padding: 0 22px; font-size: 15px; }
+.evac-overlay__btn--solid { background: #fff; color: #8e2020; border-color: #fff; }
+.evac-overlay__btn--outline { background: transparent; color: #fff; border-color: #fff; }

@@ -1,4 +1,4 @@
-import { Component, OnDestroy, computed, signal } from '@angular/core';
+import { Component, computed, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { PetStateService } from '../pet-state.service';
 import {
@@ -36,7 +36,7 @@ const HISTORY_FILTERS: { id: HistoryFilter; label: string }[] = [
   templateUrl: './pet-manager.component.html',
   styleUrl: './pet-manager.component.scss',
 })
-export class PetManagerComponent implements OnDestroy {
+export class PetManagerComponent {
   readonly gasKeys: GasKey[] = ['o2', 'co', 'h2s', 'lel'];
   readonly historyFilters = HISTORY_FILTERS;
   readonly thirtyDays = THIRTY_DAY_READINGS;
@@ -46,17 +46,12 @@ export class PetManagerComponent implements OnDestroy {
   readonly reportFrom = signal('2026-08-01');
   readonly reportTo = signal('2026-09-05');
   readonly historyFilter = signal<HistoryFilter>('todas');
-  readonly evacuating = signal(false);
 
   readonly aiModalOpen = signal(false);
   readonly aiLoading = signal(false);
   readonly aiReport = signal<string | null>(null);
   readonly aiError = signal<string | null>(null);
   readonly aiGeneratedAt = signal<string | null>(null);
-
-  private audioContext: AudioContext | null = null;
-  private sirenOscillator: OscillatorNode | null = null;
-  private sirenIntervalId: ReturnType<typeof setInterval> | null = null;
 
   constructor(
     readonly state: PetStateService,
@@ -102,78 +97,6 @@ export class PetManagerComponent implements OnDestroy {
     window.addEventListener('afterprint', cleanup);
     document.body.classList.add('ai-report-printing');
     window.print();
-  }
-
-  ngOnDestroy(): void {
-    this.stopSiren();
-  }
-
-  readonly alarmedPets = computed(() => this.state.pets().filter((p) => p.alarm && p.status !== 'fechada'));
-  readonly hasAlert = computed(() => this.alarmedPets().length > 0);
-  readonly alertText = computed(() => {
-    const pet = this.alarmedPets()[0];
-    if (!pet || !pet.gas) return '';
-    return `${pet.id} · ${pet.location} · H₂S em ${pet.gas.h2s.toFixed(1)} ppm, acima do limite de 8 ppm.`;
-  });
-  readonly evacText = computed(() => {
-    const pet = this.alarmedPets()[0];
-    if (!pet) return 'Retirada imediata das frentes de trabalho ativas.';
-    return `${pet.id} · ${pet.location} · ${riskAreaNrs(pet.areas)}. Atmosfera fora do limite: retirada imediata da frente de trabalho.`;
-  });
-
-  triggerEvacuation(): void {
-    this.startSiren();
-    this.evacuating.set(true);
-  }
-
-  silenceSiren(): void {
-    this.stopSiren();
-  }
-
-  finishEvacuation(): void {
-    this.stopSiren();
-    this.evacuating.set(false);
-  }
-
-  private startSiren(): void {
-    try {
-      this.stopSiren();
-      const AudioCtx = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      if (!AudioCtx) return;
-      const ctx = (this.audioContext ??= new AudioCtx());
-      if (ctx.state === 'suspended') ctx.resume();
-      const oscillator = ctx.createOscillator();
-      const gain = ctx.createGain();
-      oscillator.type = 'square';
-      oscillator.frequency.setValueAtTime(760, ctx.currentTime);
-      gain.gain.setValueAtTime(0.055, ctx.currentTime);
-      oscillator.connect(gain);
-      gain.connect(ctx.destination);
-      oscillator.start();
-      this.sirenOscillator = oscillator;
-      let high = true;
-      this.sirenIntervalId = setInterval(() => {
-        high = !high;
-        oscillator.frequency.setValueAtTime(high ? 760 : 520, ctx.currentTime);
-      }, 420);
-    } catch {
-      // Web Audio unavailable — the visual alert still works without sound.
-    }
-  }
-
-  private stopSiren(): void {
-    if (this.sirenIntervalId !== null) {
-      clearInterval(this.sirenIntervalId);
-      this.sirenIntervalId = null;
-    }
-    if (this.sirenOscillator) {
-      try {
-        this.sirenOscillator.stop();
-      } catch {
-        // already stopped
-      }
-      this.sirenOscillator = null;
-    }
   }
 
   readonly activePets = computed(() => this.state.pets().filter((p) => p.status !== 'fechada'));

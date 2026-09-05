@@ -1,35 +1,11 @@
 @if (!viewingReport()) {
   <div class="dashboard">
-    @if (hasAlert()) {
+    @if (state.hasAlert()) {
       <div class="alert-banner">
         <span class="alert-banner__dot"></span>
         <span class="alert-banner__title">ALERTA ATMOSFÉRICO</span>
-        <span class="alert-banner__text">{{ alertText() }}</span>
-        <button type="button" class="btn alert-banner__btn" (click)="triggerEvacuation()">Acionar evacuação</button>
-      </div>
-    }
-
-    @if (evacuating()) {
-      <div class="evac-overlay">
-        <div class="evac-overlay__beacons">
-          <span class="evac-overlay__beacon"></span>
-          <span class="evac-overlay__beacon evac-overlay__beacon--delay"></span>
-          <span class="evac-overlay__beacon"></span>
-        </div>
-        <div class="evac-overlay__title">EVACUAÇÃO ACIONADA</div>
-        <div class="evac-overlay__text">{{ evacText() }}</div>
-        <div class="evac-overlay__note">
-          sirene local ativada · brigada e portaria notificadas<br />
-          equipes das frentes ativas recebendo alerta no app
-        </div>
-        <div class="evac-overlay__actions">
-          <button type="button" class="btn evac-overlay__btn evac-overlay__btn--solid" (click)="silenceSiren()">
-            Silenciar sirene
-          </button>
-          <button type="button" class="btn evac-overlay__btn evac-overlay__btn--outline" (click)="finishEvacuation()">
-            Registrar evacuação concluída
-          </button>
-        </div>
+        <span class="alert-banner__text">{{ state.alertText() }}</span>
+        <button type="button" class="btn alert-banner__btn" (click)="state.triggerEvacuation()">Acionar evacuação</button>
       </div>
     }
 
