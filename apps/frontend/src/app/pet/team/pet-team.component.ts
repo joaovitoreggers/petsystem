@@ -103,7 +103,7 @@ export class PetTeamComponent {
         ? 'prox'
         : 'ok';
     const next = documents[0];
-    const situationLabel = status === 'venc' ? 'entrada bloqueada' : status === 'prox' ? 'renovação próxima' : 'apto';
+    const situationLabel = status === 'venc' ? 'acesso crítico' : status === 'prox' ? 'renovação próxima' : 'apto';
 
     return {
       member,
@@ -148,7 +148,7 @@ export class PetTeamComponent {
       { label: 'Cadastrados', value: String(s.total), note: `${s.thirdParty} de empresas terceiras`, color: 'var(--color-text)' },
       { label: 'Aptos sem pendência', value: String(s.ok), note: 'toda a documentação em dia', color: 'var(--color-text)' },
       { label: 'Vencimento em 30 dias', value: String(s.prox), note: 'renovação a programar', color: '#8a5a00' },
-      { label: 'Entrada bloqueada', value: String(s.venc), note: 'documentação vencida', color: 'var(--status-bad)' },
+      { label: 'Acesso crítico', value: String(s.venc), note: 'documentação vencida', color: 'var(--status-bad)' },
     ];
   });
 
