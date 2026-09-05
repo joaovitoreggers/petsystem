@@ -24,5 +24,10 @@ export const appRoutes: Route[] = [
     canActivate: [authGuard],
     loadChildren: () => import('./employees/employees.routes').then((m) => m.employeesRoutes),
   },
+  {
+    path: 'pet',
+    canActivate: [authGuard],
+    loadChildren: () => import('./pet/pet.routes').then((m) => m.petRoutes),
+  },
   { path: '**', redirectTo: 'login' },
 ];

@@ -1,0 +1,46 @@
+.pet-shell {
+  min-height: 100vh;
+  font-family: var(--font-body);
+  color: var(--color-text);
+}
+
+.pet-shell__topbar {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 14px 24px;
+  border-bottom: 1px solid var(--color-divider);
+  background: var(--color-bg);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  flex-wrap: wrap;
+}
+
+.pet-shell__brand {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 19px;
+  letter-spacing: -0.01em;
+}
+
+.pet-shell__unit {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-accent-700);
+  margin-right: auto;
+}
+
+.pet-shell__switch {
+  display: flex;
+  border: 1px solid var(--color-divider);
+
+  .btn {
+    border: none;
+    border-radius: 0;
+  }
+  .btn + .btn {
+    border-left: 1px solid var(--color-divider);
+  }
+}

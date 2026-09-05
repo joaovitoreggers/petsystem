@@ -1,0 +1,30 @@
+<div class="pet-shell">
+  <div class="pet-shell__topbar">
+    <div class="pet-shell__brand">PET DIGITAL</div>
+    <div class="pet-shell__unit">Lar Cooperativa Agroindustrial · SESMT</div>
+    <div class="pet-shell__switch">
+      <button
+        type="button"
+        class="btn"
+        [class.btn-primary]="state.role() === 'tecnico'"
+        (click)="state.setRole('tecnico')"
+      >
+        Técnico · celular
+      </button>
+      <button
+        type="button"
+        class="btn"
+        [class.btn-primary]="state.role() === 'gestor'"
+        (click)="state.setRole('gestor')"
+      >
+        Gestor · desktop
+      </button>
+    </div>
+  </div>
+
+  @if (state.role() === 'tecnico') {
+    <app-pet-technician />
+  } @else {
+    <app-pet-manager />
+  }
+</div>
