@@ -1,7 +1,7 @@
 <div class="login-page">
   <form class="login-card" (ngSubmit)="login()" #loginForm="ngForm">
     <h1>PET Digital</h1>
-    <p class="subtitle">Doorkeeper / operator access</p>
+    <p class="subtitle">Acesso do porteiro / operador</p>
 
     <label for="email">Email</label>
     <input
@@ -13,7 +13,7 @@
       autocomplete="username"
     />
 
-    <label for="password">Password</label>
+    <label for="password">Senha</label>
     <input
       id="password"
       name="password"
@@ -28,7 +28,7 @@
     }
 
     <button type="submit" [disabled]="loginForm.invalid || loading()">
-      {{ loading() ? 'Signing in...' : 'Sign in' }}
+      {{ loading() ? 'Entrando...' : 'Entrar' }}
     </button>
   </form>
 </div>

@@ -32,7 +32,7 @@ export class LoginComponent {
       },
       error: () => {
         this.loading.set(false);
-        this.error.set('Invalid email or password.');
+        this.error.set('Email ou senha inválidos.');
       },
     });
   }

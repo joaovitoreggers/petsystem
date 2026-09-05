@@ -11,9 +11,20 @@ import { firstValueFrom } from 'rxjs';
 import { ScannerState } from './scanner-state.types';
 import { PersonDetectorService } from './services/person-detector.service';
 import { QrCodeReaderService } from './services/qr-code-reader.service';
-import { AttemptDto, QrValidationApiService } from './services/qr-validation-api.service';
+import { AttemptDto, QrValidationApiService, ReadResult } from './services/qr-validation-api.service';
 
 const PERSON_CONFIDENCE_THRESHOLD = 0.6;
+
+/**
+ * O código e a API trabalham com os valores em inglês de ReadResult; este
+ * mapa só existe para exibir esses valores em português na tela do operador.
+ */
+const RESULT_LABELS_PT: Record<ReadResult, string> = {
+  AUTHORIZED: 'Autorizado',
+  DENIED: 'Negado',
+  INVALID_QR: 'QR inválido',
+  DUPLICATE: 'Duplicado',
+};
 
 @Component({
   selector: 'app-qr-scanner',
@@ -49,6 +60,10 @@ export class QrScannerComponent implements AfterViewInit, OnDestroy {
     this.startFlow();
   }
 
+  resultLabel(result: ReadResult): string {
+    return RESULT_LABELS_PT[result];
+  }
+
   private async startFlow(): Promise<void> {
     try {
       this.state.set({ type: 'preparing_camera' });
@@ -72,7 +87,7 @@ export class QrScannerComponent implements AfterViewInit, OnDestroy {
     } catch (error) {
       this.state.set({
         type: 'error',
-        message: error instanceof Error ? error.message : 'Failed to start the reading flow',
+        message: error instanceof Error ? error.message : 'Falha ao iniciar o fluxo de leitura',
       });
     }
   }
