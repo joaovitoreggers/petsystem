@@ -1,4 +1,14 @@
-import { Component, ElementRef, OnDestroy, ViewChild, computed, effect, signal } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  Injector,
+  OnDestroy,
+  ViewChild,
+  afterNextRender,
+  computed,
+  effect,
+  signal,
+} from '@angular/core';
 import { PetStateService } from '../pet-state.service';
 import { PET_STATUS, Pet, riskAreaNames, riskAreaNrs } from '../pet-mock-data';
 import { PetWizardComponent } from './pet-wizard.component';
@@ -21,13 +31,22 @@ interface PetCardView {
   styleUrl: './pet-technician.component.scss',
 })
 export class PetTechnicianComponent implements OnDestroy {
+  // O <video> só existe no DOM quando cameraActive() vira true (@if no
+  // template), então o ViewChild só é preenchido depois que o Angular
+  // renderiza esse @if — daí o afterNextRender abaixo em vez de acessar
+  // faceVideoRef logo após o .set(true). Sem isso, srcObject podia nunca
+  // ser atribuído: a câmera ficava ligada (getUserMedia já resolvido) mas
+  // sem imagem, e sem nova tentativa depois.
   @ViewChild('faceVideo') private readonly faceVideoRef?: ElementRef<HTMLVideoElement>;
 
   readonly cameraActive = signal(false);
   readonly cameraError = signal(false);
   private cameraStream: MediaStream | null = null;
 
-  constructor(readonly state: PetStateService) {
+  constructor(
+    readonly state: PetStateService,
+    private readonly injector: Injector,
+  ) {
     effect(() => {
       if (this.state.screen() === 'login') {
         this.startCamera();
@@ -55,10 +74,15 @@ export class PetTechnicianComponent implements OnDestroy {
       this.cameraStream = stream;
       this.cameraError.set(false);
       this.cameraActive.set(true);
-      queueMicrotask(() => {
-        const video = this.faceVideoRef?.nativeElement;
-        if (video) video.srcObject = stream;
-      });
+      afterNextRender(
+        () => {
+          const video = this.faceVideoRef?.nativeElement;
+          if (!video) return;
+          video.srcObject = stream;
+          video.play().catch(() => undefined);
+        },
+        { injector: this.injector },
+      );
     } catch {
       this.cameraError.set(true);
       this.cameraActive.set(false);
