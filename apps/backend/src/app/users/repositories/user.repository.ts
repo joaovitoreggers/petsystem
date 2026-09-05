@@ -11,6 +11,10 @@ export class UserRepository implements IUserRepository {
     private readonly repository: Repository<User>,
   ) {}
 
+  findAll(): Promise<User[]> {
+    return this.repository.find({ order: { name: 'ASC' } });
+  }
+
   findById(id: number): Promise<User | null> {
     return this.repository.findOneBy({ id });
   }

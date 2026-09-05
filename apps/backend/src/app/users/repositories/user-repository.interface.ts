@@ -14,6 +14,7 @@ export interface CreateUserData {
  * Only UsersModule may depend on this token; other modules go through UsersService.
  */
 export interface IUserRepository {
+  findAll(): Promise<User[]>;
   findById(id: number): Promise<User | null>;
   findByEmail(email: string): Promise<User | null>;
   findByQrCode(qrCode: string): Promise<User | null>;

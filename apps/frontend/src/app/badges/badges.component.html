@@ -1,0 +1,56 @@
+<div class="badges-page">
+  <header>
+    <h1>Usuários de teste</h1>
+    <p class="subtitle">
+      Gere um crachá temporário para testar a leitura de QR — provisório
+      enquanto o design final do crachá não é definido.
+    </p>
+  </header>
+
+  @if (loading()) {
+    <p>Carregando...</p>
+  }
+  @if (error()) {
+    <p class="error">{{ error() }}</p>
+  }
+
+  @if (!loading() && !error()) {
+    <table class="users-table">
+      <thead>
+        <tr>
+          <th>Nome</th>
+          <th>Papel</th>
+          <th>Nível de acesso</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (user of users(); track user.id) {
+          <tr>
+            <td>{{ user.name }}</td>
+            <td>{{ user.role }}</td>
+            <td>{{ user.accessLevel }}</td>
+            <td>
+              <button (click)="generateBadge(user)">Gerar crachá</button>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+
+  @if (selectedUser(); as user) {
+    <div class="badge-overlay" (click)="closeBadge()">
+      <div class="badge-card" (click)="$event.stopPropagation()">
+        <p class="badge-tag">Crachá temporário — design provisório</p>
+        <h2>{{ user.name }}</h2>
+        <p class="badge-role">{{ user.role }}</p>
+        @if (qrDataUrl(); as qr) {
+          <img [src]="qr" alt="QR code de {{ user.name }}" />
+        }
+        <p class="badge-code">{{ user.qrCode }}</p>
+        <button (click)="closeBadge()">Fechar</button>
+      </div>
+    </div>
+  }
+</div>
