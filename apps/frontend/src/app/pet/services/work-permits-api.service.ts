@@ -16,11 +16,14 @@ export interface CreateWorkPermitPayload {
   gas?: GasReading;
   alarm?: boolean;
   criticalAlerts?: CriticalAlert[];
+  companyPhone?: string;
 }
 
 export interface CloseWorkPermitPayload {
   end: string;
   durationMinutes: number;
+  reason?: string;
+  closedBy?: string;
 }
 
 @Injectable({ providedIn: 'root' })

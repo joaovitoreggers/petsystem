@@ -8,6 +8,7 @@ import {
   PET_STATUS,
   Pet,
   RISK_AREAS,
+  RiskAreaId,
   THIRTY_DAY_READINGS,
   buildMonitorArchive,
   dateToBr,
@@ -17,16 +18,14 @@ import {
 } from '../pet-mock-data';
 import { PetAnalysisApiService } from '../services/pet-analysis-api.service';
 
-type HistoryFilter = 'todas' | 'aberta' | 'fechada' | 'ocorrencia' | 'confinado' | 'quente' | 'altura' | 'eletrico' | 'maquinas';
+type HistoryFilter = 'todas' | 'aberta' | 'fechada' | 'ocorrencia' | RiskAreaId;
 
 const HISTORY_FILTERS: { id: HistoryFilter; label: string }[] = [
   { id: 'todas', label: 'Todas' },
   { id: 'aberta', label: 'Abertas' },
   { id: 'fechada', label: 'Encerradas' },
   { id: 'ocorrencia', label: 'Ocorrências' },
-  { id: 'confinado', label: 'Espaço confinado' },
-  { id: 'quente', label: 'Trabalho a quente' },
-  { id: 'altura', label: 'Trabalho em altura' },
+  ...RISK_AREAS.map((area) => ({ id: area.id, label: area.name })),
 ];
 
 @Component({

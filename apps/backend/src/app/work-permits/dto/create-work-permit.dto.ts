@@ -92,4 +92,8 @@ export class CreateWorkPermitDto {
   @ValidateNested({ each: true })
   @Type(() => WorkPermitCriticalAlertDto)
   criticalAlerts?: WorkPermitCriticalAlertDto[];
+
+  @IsOptional()
+  @IsString()
+  companyPhone?: string;
 }

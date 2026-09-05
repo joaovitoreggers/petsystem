@@ -42,6 +42,7 @@ export class WorkPermitRepository implements IWorkPermitRepository {
       alarm: data.alarm ?? false,
       durationMinutes: data.durationMinutes,
       criticalAlerts: data.criticalAlerts,
+      companyPhone: data.companyPhone,
     });
     return this.repository.save(permit);
   }
@@ -54,6 +55,8 @@ export class WorkPermitRepository implements IWorkPermitRepository {
     permit.status = 'fechada';
     permit.end = data.end;
     permit.durationMinutes = data.durationMinutes;
+    permit.closeReason = data.reason;
+    permit.closedBy = data.closedBy;
     return this.repository.save(permit);
   }
 

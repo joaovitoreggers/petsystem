@@ -142,6 +142,8 @@
   background: #f6e6c4; color: #6b4600; font-size: 12px; line-height: 1.45;
 }
 .badge-card__warning-icon { flex: none; font-size: 14px; }
+.badge-card__actions { display: flex; gap: 8px; margin-top: 10px; }
+.badge-card__actions .btn { flex: 1; font-size: 12px; padding: 0 6px; }
 
 .team-row {
   display: flex; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--color-divider); font-size: 13px;
@@ -152,6 +154,7 @@
 }
 .team-row__status { margin-left: auto; font-size: 11px; color: var(--status-ok); }
 .team-row__status--critical { color: var(--status-bad); font-weight: 600; }
+.team-row__empty { padding: 8px 0; font-size: 12px; color: var(--color-neutral-600); }
 
 .critical-alerts {
   display: flex; flex-direction: column; gap: 8px; padding-top: 10px; border-top: 1px solid var(--color-divider);
@@ -167,10 +170,25 @@
 /* — checklist — */
 .step--check { gap: 18px; }
 .check-item {
-  display: flex; gap: 11px; align-items: center; padding: 11px 0; border-bottom: 1px solid var(--color-divider);
-  cursor: pointer; font-size: 14px;
+  display: flex; gap: 11px; align-items: center; justify-content: space-between; padding: 10px 0;
+  border-bottom: 1px solid var(--color-divider); font-size: 13px; line-height: 1.35;
 }
-.check-item input { width: 20px; height: 20px; accent-color: var(--color-accent); flex: none; }
+.check-item__label { flex: 1; min-width: 0; }
+.check-item__options { display: flex; gap: 4px; flex: none; }
+.check-item__option {
+  border: 1px solid var(--color-divider); background: transparent; color: var(--color-text);
+  font-family: var(--font-heading); font-weight: 600; font-size: 11px; letter-spacing: 0.03em;
+  padding: 5px 9px; cursor: pointer;
+}
+.check-item__option--active { background: var(--color-accent); border-color: var(--color-accent); color: var(--color-bg); }
+.check-item__option--nao.check-item__option--active { background: var(--status-bad); border-color: var(--status-bad); }
+
+.fire-watch {
+  display: flex; flex-direction: column; gap: 8px; padding-top: 8px; border-top: 1px solid var(--color-divider);
+}
+.fire-watch__row { display: flex; gap: 8px; }
+.fire-watch__time { flex: 0 0 90px; }
+.fire-watch__name { flex: 1; }
 .photo { padding: 12px; }
 .photo__placeholder {
   height: 110px; margin-top: 10px; display: grid; place-items: center;

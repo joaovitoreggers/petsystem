@@ -83,9 +83,15 @@
               <option>Montagem / obra</option>
             </select>
           </div>
-          <div class="field">
-            <label>Empresa executante</label>
-            <input class="input" [value]="fieldValue('empresa')" (change)="onFieldChange('empresa', $event)" />
+          <div class="atividade__row">
+            <div class="field">
+              <label>Empresa executante</label>
+              <input class="input" [value]="fieldValue('empresa')" (change)="onFieldChange('empresa', $event)" />
+            </div>
+            <div class="field">
+              <label>Telefone da empresa</label>
+              <input class="input" [value]="fieldValue('telefone')" (change)="onFieldChange('telefone', $event)" />
+            </div>
           </div>
           <div class="atividade__row">
             <div class="field">
@@ -97,9 +103,19 @@
               <input class="input" [value]="fieldValue('fim')" (change)="onFieldChange('fim', $event)" />
             </div>
           </div>
-          <div class="field">
-            <label>Local específico</label>
-            <input class="input" [value]="fieldValue('local')" (change)="onFieldChange('local', $event)" />
+          <div class="atividade__row">
+            <div class="field">
+              <label>Unidade</label>
+              <select class="input" [value]="fieldValue('unidade')" (change)="onFieldChange('unidade', $event)">
+                @for (u of unitOptions; track u) {
+                  <option>{{ u }}</option>
+                }
+              </select>
+            </div>
+            <div class="field">
+              <label>Local específico</label>
+              <input class="input" [value]="fieldValue('local')" (change)="onFieldChange('local', $event)" />
+            </div>
           </div>
 
           @for (group of extraGroups(); track group.areaId) {
@@ -257,9 +273,11 @@
                   </span>
                 </div>
               }
-              <button type="button" class="btn btn-secondary btn-block" (click)="state.addBadgeToTeam()">
-                Adicionar à equipe autorizada
-              </button>
+              <div class="badge-card__actions">
+                <button type="button" class="btn btn-secondary" (click)="addToTeam()">+ Equipe</button>
+                <button type="button" class="btn btn-secondary" (click)="addToVigia()">+ Vigia</button>
+                <button type="button" class="btn btn-secondary" (click)="addToResgate()">+ Resgatista</button>
+              </div>
             </div>
           }
 
@@ -275,6 +293,40 @@
                   <span class="team-row__status">liberado</span>
                 }
               </div>
+            }
+          </div>
+
+          <div>
+            <div class="section-kicker">Identificação vigia · {{ state.vigiaTeam().length }}</div>
+            @for (member of state.vigiaTeam(); track member.registration) {
+              <div class="team-row">
+                <span class="team-row__initials">{{ member.name.charAt(0) }}{{ member.name.split(' ')[1]?.charAt(0) }}</span>
+                <span>{{ member.name }}</span>
+                @if (state.badgeExpiredDocs(member).length > 0) {
+                  <span class="team-row__status team-row__status--critical">liberado com ressalva</span>
+                } @else {
+                  <span class="team-row__status">liberado</span>
+                }
+              </div>
+            } @empty {
+              <div class="team-row__empty">Nenhum vigia identificado ainda.</div>
+            }
+          </div>
+
+          <div>
+            <div class="section-kicker">Identificação resgatistas · {{ state.resgateTeam().length }}</div>
+            @for (member of state.resgateTeam(); track member.registration) {
+              <div class="team-row">
+                <span class="team-row__initials">{{ member.name.charAt(0) }}{{ member.name.split(' ')[1]?.charAt(0) }}</span>
+                <span>{{ member.name }}</span>
+                @if (state.badgeExpiredDocs(member).length > 0) {
+                  <span class="team-row__status team-row__status--critical">liberado com ressalva</span>
+                } @else {
+                  <span class="team-row__status">liberado</span>
+                }
+              </div>
+            } @empty {
+              <div class="team-row__empty">Nenhum resgatista identificado ainda.</div>
             }
           </div>
 
@@ -299,17 +351,48 @@
             <div>
               <div class="section-kicker">{{ group.title }}</div>
               @for (item of group.items; track item.key) {
-                <label class="check-item">
-                  <input
-                    type="checkbox"
-                    [checked]="state.isChecklistItemChecked(item.key)"
-                    (change)="state.toggleChecklistItem(item.key)"
-                  />
-                  <span>{{ item.label }}</span>
-                </label>
+                <div class="check-item">
+                  <span class="check-item__label">{{ item.label }}</span>
+                  <div class="check-item__options">
+                    @for (opt of checklistOptions; track opt.value) {
+                      <button
+                        type="button"
+                        class="check-item__option"
+                        [class.check-item__option--active]="checklistAnswer(item.key) === opt.value"
+                        [class.check-item__option--nao]="opt.value === 'nao' && checklistAnswer(item.key) === opt.value"
+                        (click)="setChecklistAnswer(item.key, opt.value)"
+                      >
+                        {{ opt.label }}
+                      </button>
+                    }
+                  </div>
+                </div>
               }
             </div>
           }
+
+          @if (needsFireWatch()) {
+            <div class="fire-watch">
+              <div class="section-kicker">Vigia após término (a cada 30 min · 04 rondas)</div>
+              @for (round of state.fireWatchRounds(); track $index) {
+                <div class="fire-watch__row">
+                  <input
+                    class="input fire-watch__time"
+                    placeholder="HH:mm"
+                    [value]="round.hora"
+                    (change)="onFireWatchTimeChange($index, $event)"
+                  />
+                  <input
+                    class="input fire-watch__name"
+                    placeholder="Nome do vigia"
+                    [value]="round.nome"
+                    (change)="onFireWatchNameChange($index, $event)"
+                  />
+                </div>
+              }
+            </div>
+          }
+
           <div class="photo blueprint">
             <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
             <div class="section-kicker">Registro fotográfico do local</div>

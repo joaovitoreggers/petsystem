@@ -1,10 +1,12 @@
-import { Injectable, computed, signal } from '@angular/core';
+import { Injectable, WritableSignal, computed, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import {
   Badge,
   BadgeItem,
+  ChecklistAnswer,
   CriticalAlert,
   EXTRA_FIELDS,
+  FireWatchRound,
   GasReading,
   MOCK_BADGES,
   MOCK_PETS,
@@ -13,6 +15,7 @@ import {
   TEAM_MEMBERS,
   TeamMember,
   WizardStepId,
+  emptyFireWatchRounds,
   requiresGasMonitoring,
   riskAreaNrs,
   stepsFor,
@@ -29,12 +32,23 @@ interface WizardFields {
   descricao: string;
   tipo: string;
   empresa: string;
+  telefone: string;
   inicio: string;
   fim: string;
   local: string;
+  unidade: string;
 }
 
-const EMPTY_FIELDS: WizardFields = { descricao: '', tipo: 'Manutenção corretiva', empresa: '', inicio: '', fim: '', local: '' };
+const EMPTY_FIELDS: WizardFields = {
+  descricao: '',
+  tipo: 'Manutenção corretiva',
+  empresa: '',
+  telefone: '',
+  inicio: '',
+  fim: '',
+  local: '',
+  unidade: 'Matelândia',
+};
 
 export interface ManualExtraField {
   id: string;
@@ -184,13 +198,19 @@ export class PetStateService {
   readonly fields = signal<WizardFields>({ ...EMPTY_FIELDS });
   readonly extraValues = signal<Record<string, string>>({});
   readonly manualExtraFields = signal<Record<string, ManualExtraField[]>>({});
-  readonly checklistState = signal<Record<string, boolean>>({});
+  readonly checklistState = signal<Record<string, ChecklistAnswer>>({});
   readonly liveGas = signal<GasReading>({ o2: 20.9, co: 2, h2s: 0.3, lel: 1 });
   readonly ventilationOn = signal(false);
   readonly gasReadingsLog = signal<{ time: string; text: string }[]>([]);
   readonly currentBadge = signal<Badge | null>(null);
   readonly badgeCycleIndex = signal(0);
   readonly authorizedTeam = signal<Badge[]>([]);
+  // Vigia e resgatistas: papéis próprios na PET física (blocos de
+  // identificação separados da equipe que executa o serviço), preenchidos
+  // pela mesma leitura de crachá usada para a equipe.
+  readonly vigiaTeam = signal<Badge[]>([]);
+  readonly resgateTeam = signal<Badge[]>([]);
+  readonly fireWatchRounds = signal<FireWatchRound[]>(emptyFireWatchRounds());
   readonly technicianSigned = signal(false);
   readonly executorSigned = signal(false);
 
@@ -241,18 +261,24 @@ export class PetStateService {
     this.screen.set('home');
   }
 
-  async encerrarPet(): Promise<void> {
+  async encerrarPet(reason: string, closedBy: string): Promise<void> {
     const id = this.detailPetId();
     if (!id) return;
     const pet = this.pets().find((p) => p.id === id);
     const end = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     const durationMinutes = pet ? minutesSince(pet.start) : 0;
     try {
-      const closed = await firstValueFrom(this.workPermitsApi.close(id, { end, durationMinutes }));
+      const closed = await firstValueFrom(
+        this.workPermitsApi.close(id, { end, durationMinutes, reason, closedBy }),
+      );
       this.pets.update((list) => list.map((p) => (p.id === id ? closed : p)));
     } catch {
       this.pets.update((list) =>
-        list.map((p) => (p.id === id ? { ...p, status: 'fechada' as const, end, durationMinutes } : p)),
+        list.map((p) =>
+          p.id === id
+            ? { ...p, status: 'fechada' as const, end, durationMinutes, closeReason: reason, closedBy }
+            : p,
+        ),
       );
     }
     this.goHome();
@@ -271,6 +297,9 @@ export class PetStateService {
     this.currentBadge.set(null);
     this.badgeCycleIndex.set(0);
     this.authorizedTeam.set([]);
+    this.vigiaTeam.set([]);
+    this.resgateTeam.set([]);
+    this.fireWatchRounds.set(emptyFireWatchRounds());
     this.technicianSigned.set(false);
     this.executorSigned.set(false);
     this.criticalAlerts.set([]);
@@ -333,12 +362,16 @@ export class PetStateService {
     }));
   }
 
-  toggleChecklistItem(key: string): void {
-    this.checklistState.update((state) => ({ ...state, [key]: !state[key] }));
+  setChecklistAnswer(key: string, answer: ChecklistAnswer): void {
+    this.checklistState.update((state) => ({ ...state, [key]: answer }));
   }
 
-  isChecklistItemChecked(key: string): boolean {
-    return !!this.checklistState()[key];
+  checklistAnswer(key: string): ChecklistAnswer | undefined {
+    return this.checklistState()[key];
+  }
+
+  updateFireWatchRound(index: number, patch: Partial<FireWatchRound>): void {
+    this.fireWatchRounds.update((rounds) => rounds.map((r, i) => (i === index ? { ...r, ...patch } : r)));
   }
 
   // ── Gases ao vivo ────────────────────────────────────────────────
@@ -389,10 +422,22 @@ export class PetStateService {
   }
 
   addBadgeToTeam(): void {
+    this.addBadgeTo(this.authorizedTeam, 'na equipe autorizada');
+  }
+
+  addBadgeToVigia(): void {
+    this.addBadgeTo(this.vigiaTeam, 'como vigia');
+  }
+
+  addBadgeToResgate(): void {
+    this.addBadgeTo(this.resgateTeam, 'como resgatista');
+  }
+
+  private addBadgeTo(target: WritableSignal<Badge[]>, roleLabel: string): void {
     const badge = this.currentBadge();
     if (!badge) return;
-    if (!this.authorizedTeam().some((b) => b.registration === badge.registration)) {
-      this.authorizedTeam.update((team) => [...team, badge]);
+    if (!target().some((b) => b.registration === badge.registration)) {
+      target.update((list) => [...list, badge]);
       const expiredDocs = badge.items.filter((i) => i.status === 'venc');
       if (expiredDocs.length > 0) {
         const timestamp = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
@@ -400,7 +445,7 @@ export class PetStateService {
           employeeName: badge.name,
           registration: badge.registration,
           documentName: doc.name,
-          message: `${badge.name} (mat. ${badge.registration}) liberado com ${doc.name} vencido — decisão do técnico responsável.`,
+          message: `${badge.name} (mat. ${badge.registration}) liberado ${roleLabel} com ${doc.name} vencido — decisão do técnico responsável.`,
           timestamp,
         }));
         this.criticalAlerts.update((list) => [...alerts, ...list]);
@@ -474,17 +519,19 @@ export class PetStateService {
     const areas = this.selectedAreas();
     const gas = this.needsGasMonitoring() ? this.liveGas() : undefined;
     const criticalAlerts = this.criticalAlerts();
+    const teamSize = this.authorizedTeam().length + this.vigiaTeam().length + this.resgateTeam().length;
     const payload = {
       areas,
       location: fields.local || 'Local não informado',
-      unit: 'Matelândia',
-      teamSize: this.authorizedTeam().length,
+      unit: fields.unidade || 'Matelândia',
+      teamSize,
       date: now.toISOString().slice(0, 10),
       start: time,
       technician: 'Bárbara M. Garlini',
       coordinates: '-25.2531, -53.9927',
       gas,
       criticalAlerts,
+      companyPhone: fields.telefone || undefined,
     };
 
     let pet: Pet;
@@ -506,6 +553,7 @@ export class PetStateService {
         coordinates: payload.coordinates,
         gas,
         criticalAlerts,
+        companyPhone: payload.companyPhone,
       };
     }
     this.pets.update((list) => [pet, ...list]);

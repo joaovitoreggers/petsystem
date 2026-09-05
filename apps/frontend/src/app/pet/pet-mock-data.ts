@@ -1,8 +1,12 @@
 // Mock data and pure helpers for the PET Digital screens. Everything here is
 // static/deterministic (no backend calls) — ported from the product design
 // mockup so the prototype can be reviewed before the real integration.
+//
+// O checklist, os campos de EPI e as áreas de risco abaixo foram conferidos
+// contra a PET física em papel da Lar (FO 060 330-37, v5 09/2025) — ver
+// CHECKLISTS, EPI_CHECKLIST e as áreas 'icamento'/'descarga'.
 
-export type RiskAreaId = 'confinado' | 'quente' | 'altura' | 'eletrico' | 'maquinas';
+export type RiskAreaId = 'confinado' | 'quente' | 'altura' | 'eletrico' | 'maquinas' | 'icamento' | 'descarga';
 
 export interface RiskArea {
   id: RiskAreaId;
@@ -17,6 +21,8 @@ export const RISK_AREAS: RiskArea[] = [
   { id: 'altura', name: 'Trabalho em altura', nr: 'NR-35', description: 'Acima de 2 m do nível inferior' },
   { id: 'eletrico', name: 'Serviço elétrico', nr: 'NR-10', description: 'Painéis, CCM, alta tensão' },
   { id: 'maquinas', name: 'Máquinas e bloqueio', nr: 'NR-12', description: 'Intervenção em equipamento motorizado' },
+  { id: 'icamento', name: 'Içamento de carga', nr: 'NR-11', description: 'Guindaste, munck, talha — movimentação de cargas' },
+  { id: 'descarga', name: 'Descarga de gases/líquidos', nr: 'NR-20', description: 'Caminhão-tanque, produtos inflamáveis' },
 ];
 
 export function riskAreaName(id: RiskAreaId): string {
@@ -67,23 +73,139 @@ export function isGasWithinLimit(key: GasKey, value: number): boolean {
   return value <= limit.max;
 }
 
+// SIM / NÃO / NA — mesmo modelo de resposta da PET em papel (substituiu a
+// caixa de marcar simples: "não aplicável" é uma resposta válida e distinta
+// de "não").
+export type ChecklistAnswer = 'sim' | 'nao' | 'na';
+
 export interface ChecklistGroup {
   title: string;
   items: string[];
 }
 
+// Checklists de confinado, altura, quente, içamento e descarga transcritos
+// da PET física da Lar (FO 060 330-37). Elétrico e máquinas não aparecem
+// nessa folha — a empresa provavelmente usa uma PET própria para elétrica —
+// então mantêm o checklist genérico que já existia.
 export const CHECKLISTS: Record<RiskAreaId, ChecklistGroup[]> = {
   confinado: [
-    { title: 'EPI conferido em campo', items: ['Cinto paraquedista com trava-queda', 'Respirador com filtro adequado ao contaminante', 'Capacete com jugular', 'Luvas e botina de segurança'] },
-    { title: 'Bloqueio e isolamento · NR-33', items: ['Bloqueio físico de energia aplicado — cadeado e etiqueta', 'Sistema despressurizado e drenado', 'Válvulas de entrada travadas', 'Ventilação forçada instalada', 'Vigia posicionado externamente', 'Plano de resgate acionável'] },
-  ],
-  quente: [
-    { title: 'EPI conferido em campo', items: ['Máscara de solda com filtro adequado', 'Avental e mangote de raspa', 'Luvas de solda', 'Protetor auricular'] },
-    { title: 'Prevenção de incêndio · NR-18', items: ['Área isolada e sinalizada no raio definido', 'Combustíveis removidos ou cobertos com manta', 'Extintores posicionados e inspecionados', 'Detector de gás inflamável zerado (LEL 0%)', 'Vigia de fogo escalado para 60 min após o término'] },
+    {
+      title: 'Atmosfera e ventilação',
+      items: [
+        'Limite de explosividade (LIE ou LEL) está nulo?',
+        'Possibilidade de formação de gases foi anulada?',
+        'Poeira e pó em suspensão estão controlados?',
+        'Existe ventilação?',
+      ],
+    },
+    {
+      title: 'Isolamento e riscos físicos',
+      items: [
+        'Realizado bloqueio e sinalização? (elétrico/mecânico)',
+        'Eliminado risco de afogamento, engolfamento e soterramento?',
+        'Ambiente iluminado?',
+        'Escavação escorada? (se +1,5 m de profundidade)',
+      ],
+    },
+    {
+      title: 'Equipe e comunicação',
+      items: [
+        'Trabalhadores com treinamentos válidos em NR-33?',
+        'Trabalhadores com treinamentos válidos em NR-18?',
+        'Trabalhadores em condições físicas/clínicas?',
+        'Comunicação clara entre vigia/trabalhadores?',
+        'Comunicação entre equipe de vigia/resgate?',
+        'Equipamentos de monitoramento testados ou calibrados?',
+      ],
+    },
   ],
   altura: [
-    { title: 'EPI conferido em campo', items: ['Cinto paraquedista com duplo talabarte', 'Trava-queda retrátil', 'Capacete com jugular', 'Calçado antiderrapante'] },
-    { title: 'Sistema de ancoragem · NR-35', items: ['Ponto de ancoragem certificado e inspecionado', 'Linha de vida instalada e testada', 'Projeção no piso isolada e sinalizada', 'Ferramentas amarradas ao cinto', 'Condição climática avaliada (vento e chuva)'] },
+    {
+      title: 'Condições gerais · NR-35',
+      items: [
+        'Trabalhador com treinamento válido em NR-35?',
+        'Trabalhadores em condições físicas/clínicas?',
+        'Ausência de condições impeditivas? (clima, etc.)',
+        'Área está sinalizada e isolada?',
+        'Meio seguro para deslocamento de material?',
+        'Local suficientemente afastado de redes energizadas?',
+        'Há comunicação clara entre os trabalhadores?',
+        'Foi instalada linha de vida?',
+        'Pontos seguros de ancoragem?',
+      ],
+    },
+    {
+      title: 'Escada e andaime',
+      items: [
+        'A escada está amarrada/estaiada?',
+        'A escada está com piso com aderência e nivelada?',
+        'O andaime está nivelado, com freio/trava nos rodízios?',
+        'O andaime possui forração completa?',
+        'O andaime possui escada, rodapé e guarda-corpo?',
+        'O andaime está estaiado? (altura +4 vezes a base menor)',
+      ],
+    },
+  ],
+  quente: [
+    {
+      title: 'Prevenção de incêndio · NR-18',
+      items: [
+        'Equipamentos e ferramentas em boas condições?',
+        'Área está sinalizada e isolada?',
+        'Realizado bloqueio? (elétrico/mecânico)',
+        'Retirado todo inflamável do ambiente?',
+        'Retirado material combustível?',
+        'Lonas resistentes a fogo para recolher fagulhas?',
+        'Aberturas nas paredes e piso foram cobertas?',
+        'Equipamento de combate a incêndio próximo?',
+        'Vigias capacitados em combate a incêndio?',
+      ],
+    },
+  ],
+  icamento: [
+    {
+      title: 'Operação e equipe',
+      items: [
+        'Operador capacitado?',
+        'Trabalhadores em condições físicas/clínicas?',
+        'Ausência de condições impeditivas? (clima, vento, etc.)',
+        'Boa iluminação e visibilidade?',
+        'Avisados envolvidos diretos/indiretos sobre risco de queda?',
+      ],
+    },
+    {
+      title: 'Equipamento e carga',
+      items: [
+        'Manobra distante das redes de energia? (+5 m alta tensão)',
+        'Plano de rigging e ART estão conformes?',
+        'Máquina nivelada e patolada?',
+        'Peso da carga conforme com a capacidade da máquina?',
+        'Máquina, cintas e cordas em boas condições?',
+        'Carga está amarrada/presa?',
+        'Cabo guia para estabilização da carga?',
+      ],
+    },
+  ],
+  descarga: [
+    {
+      title: 'Motorista e condições',
+      items: [
+        'Motorista capacitado NR-20 / MOPP?',
+        'Trabalhadores em condições físicas/clínicas?',
+        'Ausência de condições impeditivas? (clima, raios, etc.)',
+        'Ausência de equipamentos elétricos/eletrônicos?',
+      ],
+    },
+    {
+      title: 'Veículo e área',
+      items: [
+        'Área está sinalizada e isolada?',
+        'Equipamento de combate a incêndio próximo?',
+        'Caminhão direcionado para saída?',
+        'Caminhão está aterrado?',
+        'Caminhão, mangueiras e bombas em boas condições?',
+      ],
+    },
   ],
   eletrico: [
     { title: 'EPI conferido em campo', items: ['Vestimenta antiarco com ATPV compatível', 'Luva isolante de classe adequada', 'Capacete com viseira de policarbonato', 'Calçado isolante'] },
@@ -94,6 +216,43 @@ export const CHECKLISTS: Record<RiskAreaId, ChecklistGroup[]> = {
     { title: 'Bloqueio LOTO · NR-12', items: ['Parada do equipamento pelo comando local', 'Cadeado e etiqueta individual por executante', 'Energias residuais dissipadas', 'Teste de tentativa de partida realizado', 'Proteções fixas e móveis mapeadas para remontagem'] },
   ],
 };
+
+// Bloco único de EPI da PET em papel — vale para a permissão inteira, não é
+// repetido por área de risco.
+export const EPI_CHECKLIST: ChecklistGroup = {
+  title: 'Equipamento de Proteção Individual (EPI)',
+  items: [
+    'Capacete com jugular?',
+    'Protetor auricular?',
+    'Óculos de segurança?',
+    'Luvas de proteção? (mecânica/química)',
+    'Botina de segurança? (mecânica/química)',
+    'Cinto de segurança com talabarte ou trava-quedas?',
+    'Proteção para solda, luva, avental e máscara?',
+    'Vestimenta impermeável? (amônia)',
+    'Respirador semifacial? (PFF1/2)',
+    'Respirador facial completo? (cartucho HN3/multi gases)',
+    'Proteção respiratória — EPR ou ar mandado (usando ou próximo)?',
+    'Outros EPIs necessários foram fornecidos?',
+    'Todos os EPIs foram inspecionados?',
+  ],
+};
+
+// Trabalho a quente exige vigia no local a cada 30 min por 2h após o
+// término (04 rondas), conforme a PET em papel.
+export interface FireWatchRound {
+  hora: string;
+  nome: string;
+}
+
+export function emptyFireWatchRounds(): FireWatchRound[] {
+  return [
+    { hora: '', nome: '' },
+    { hora: '', nome: '' },
+    { hora: '', nome: '' },
+    { hora: '', nome: '' },
+  ];
+}
 
 export interface ExtraField {
   name: string;
@@ -108,6 +267,9 @@ export const EXTRA_FIELDS: Record<RiskAreaId, ExtraField[]> = {
     { name: 'x3', label: 'Vigia externo designado', value: 'Marcos D. Wolff · mat. 05221' },
     { name: 'x4', label: 'Equipe de resgate acionável', value: 'Brigada Matelândia · ramal 4144' },
     { name: 'x5', label: 'Ventilação forçada', value: 'Exaustor 2.500 m³/h — 20 min antes' },
+    { name: 'x6', label: 'Número do espaço confinado', value: '' },
+    { name: 'x7', label: 'Número de série do aparelho multigás', value: '' },
+    { name: 'x8', label: 'Responsável pela escavação (Engenheiro)', value: '' },
   ],
   quente: [
     { name: 'x1', label: 'Processo de trabalho a quente', value: 'Solda MIG e esmerilhamento' },
@@ -137,14 +299,8 @@ export const EXTRA_FIELDS: Record<RiskAreaId, ExtraField[]> = {
     { name: 'x4', label: 'Cadeados aplicados', value: '4 · vermelho de manutenção' },
     { name: 'x5', label: 'Energia residual dissipada', value: 'Ar comprimido purgado · inércia parada' },
   ],
-};
-
-export const BASE_ACTIVITY: Record<RiskAreaId, { description: string; type: string; location: string }> = {
-  confinado: { description: 'Limpeza técnica interna e inspeção de parede do silo após descarga de milho.', type: 'Limpeza técnica', location: 'Silo de milho 04 — boca superior' },
-  quente: { description: 'Solda de reforço estrutural na tubulação de vapor da casa de caldeiras.', type: 'Manutenção corretiva', location: 'Casa de caldeiras 02 — linha de vapor 4"' },
-  altura: { description: 'Substituição de aletas e inspeção estrutural do topo da torre de resfriamento.', type: 'Manutenção preventiva', location: 'Torre de resfriamento 01 — plataforma superior' },
-  eletrico: { description: 'Troca de contator e reaperto de barramento no centro de controle de motores.', type: 'Manutenção corretiva', location: 'CCM-03 — sala elétrica do frigorífico' },
-  maquinas: { description: 'Substituição da rosca de alimentação com bloqueio total do equipamento.', type: 'Manutenção corretiva', location: 'Linha de extrusão — extrusora EX-02' },
+  icamento: [],
+  descarga: [],
 };
 
 export const AREA_NOTE: Record<RiskAreaId, string> = {
@@ -153,6 +309,8 @@ export const AREA_NOTE: Record<RiskAreaId, string> = {
   altura: 'Trabalho em altura (NR-35): o fluxo exige ancoragem certificada, linha de vida testada e plano de resgate — sem etapa de medição atmosférica.',
   eletrico: 'Serviço elétrico (NR-10): o fluxo exige desenergização, teste de ausência de tensão e aterramento temporário registrados.',
   maquinas: 'Máquinas e bloqueio (NR-12): o fluxo exige cadeado individual por executante e teste de tentativa de partida.',
+  icamento: 'Içamento de carga (NR-11): o fluxo exige plano de rigging aprovado, ART do responsável técnico e conferência da capacidade de carga antes da manobra.',
+  descarga: 'Descarga de gases/líquidos (NR-20): o fluxo exige motorista capacitado (NR-20/MOPP), aterramento do caminhão e ausência de fontes de ignição na área.',
 };
 
 export type WizardStepId = 'area' | 'atividade' | 'gases' | 'qr' | 'check' | 'sig';
@@ -271,6 +429,9 @@ export interface Pet {
   alarm?: boolean;
   durationMinutes?: number;
   criticalAlerts?: CriticalAlert[];
+  companyPhone?: string;
+  closeReason?: string;
+  closedBy?: string;
 }
 
 export const MOCK_PETS: Pet[] = [
