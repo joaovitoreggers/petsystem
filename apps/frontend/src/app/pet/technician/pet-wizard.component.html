@@ -142,38 +142,62 @@
       @case ('gases') {
         <div class="step step--gases">
           <div class="gases__device">
-            <span class="pulse-dot"></span>
-            Dräger X-am 5000 · série 8241-B · pareado por Bluetooth
+            Leitura manual · detector portátil Dräger X-am 5000
           </div>
           <div class="gauge-grid">
             @for (g of gauges(); track g.key) {
               <div class="gauge blueprint">
                 <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
                 <div class="gauge__label">{{ g.label }}</div>
-                <div class="gauge__value" [style.color]="g.color">{{ g.value }}<span class="gauge__unit">{{ g.unit }}</span></div>
-                <div class="gauge__bar"><div class="gauge__bar-fill" [style.width.%]="g.percent" [style.background]="g.color"></div></div>
+                <div class="gauge__input-row">
+                  <input
+                    type="number"
+                    step="0.1"
+                    inputmode="decimal"
+                    class="input gauge__input"
+                    [style.color]="g.color"
+                    placeholder="0,0"
+                    [value]="g.value"
+                    (input)="onGasInputChange(g.key, $event)"
+                  />
+                  <span class="gauge__unit">{{ g.unit }}</span>
+                </div>
                 <div class="gauge__limit">{{ g.limitText }}</div>
               </div>
             }
           </div>
-          <div class="atmosphere-banner" [class.atmosphere-banner--bad]="!atmosphereOk()">
-            <div class="atmosphere-banner__title">
-              {{ atmosphereOk() ? 'Atmosfera dentro dos limites' : 'Atmosfera fora dos limites de segurança' }}
+          @if (state.gasReadingComplete()) {
+            <div class="atmosphere-banner" [class.atmosphere-banner--bad]="!atmosphereOk()">
+              <div class="atmosphere-banner__title">
+                {{ atmosphereOk() ? 'Atmosfera dentro dos limites' : 'Atmosfera fora dos limites de segurança' }}
+              </div>
+              <div class="atmosphere-banner__text">
+                {{ atmosphereOk()
+                  ? 'Todos os parâmetros dentro da faixa segura conforme NR-33.'
+                  : 'Ligue a ventilação forçada, aguarde a estabilização e informe uma nova leitura.' }}
+              </div>
             </div>
-            <div class="atmosphere-banner__text">
-              {{ atmosphereOk()
-                ? 'Todos os parâmetros dentro da faixa segura conforme NR-33.'
-                : 'Ligue a ventilação forçada e aguarde a estabilização antes de prosseguir.' }}
+          } @else {
+            <div class="atmosphere-banner atmosphere-banner--pending">
+              <div class="atmosphere-banner__title">Aguardando leitura manual</div>
+              <div class="atmosphere-banner__text">
+                Informe os quatro parâmetros medidos com o detector portátil para liberar o avanço.
+              </div>
             </div>
-          </div>
-          <button type="button" class="btn btn-secondary btn-block gases__register" (click)="state.registerReading()">
+          }
+          <button
+            type="button"
+            class="btn btn-secondary btn-block gases__register"
+            [disabled]="!state.gasReadingComplete()"
+            (click)="state.registerReading()"
+          >
             Registrar leitura no PET
           </button>
-          @if (!atmosphereOk()) {
+          @if (state.gasReadingComplete() && !atmosphereOk()) {
             <div class="gases__blocked">
               <span class="gases__blocked-icon">✕</span>
-              <span>Emissão bloqueada enquanto a atmosfera estiver fora do limite. Ligue a ventilação forçada e aguarde a
-                estabilização da leitura.</span>
+              <span>Emissão bloqueada enquanto a atmosfera estiver fora do limite. Ligue a ventilação forçada e informe uma
+                nova leitura.</span>
             </div>
           }
           @if (!state.ventilationOn()) {

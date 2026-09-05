@@ -6,6 +6,7 @@ import {
   ChecklistAnswer,
   CriticalAlert,
   FireWatchRound,
+  GasKey,
   GasReading,
   MOCK_BADGES,
   MOCK_PETS,
@@ -189,7 +190,9 @@ export class PetStateService {
   readonly stepIndex = signal(0);
   readonly fields = signal<WizardFields>({ ...EMPTY_FIELDS });
   readonly checklistState = signal<Record<string, ChecklistAnswer>>({});
-  readonly liveGas = signal<GasReading>({ o2: 20.9, co: 2, h2s: 0.3, lel: 1 });
+  // Leitura do detector portátil digitada manualmente pelo técnico — não há
+  // simulação automática nem pareamento de aparelho, conforme a PET física.
+  readonly gasInputs = signal<Record<GasKey, string>>({ o2: '', co: '', h2s: '', lel: '' });
   readonly ventilationOn = signal(false);
   readonly gasReadingsLog = signal<{ time: string; text: string }[]>([]);
   readonly currentBadge = signal<Badge | null>(null);
@@ -213,7 +216,16 @@ export class PetStateService {
   readonly currentStep = computed<WizardStepId | undefined>(() => this.steps()[this.stepIndex()]);
   readonly needsGasMonitoring = computed(() => requiresGasMonitoring(this.selectedAreas()));
 
-  private gasIntervalId: ReturnType<typeof setInterval> | null = null;
+  readonly liveGas = computed<GasReading>(() => {
+    const inputs = this.gasInputs();
+    const num = (v: string) => (v.trim() === '' || Number.isNaN(Number(v)) ? 0 : Number(v));
+    return { o2: num(inputs.o2), co: num(inputs.co), h2s: num(inputs.h2s), lel: num(inputs.lel) };
+  });
+
+  readonly gasReadingComplete = computed(() => {
+    const inputs = this.gasInputs();
+    return (['o2', 'co', 'h2s', 'lel'] as GasKey[]).every((k) => inputs[k].trim() !== '' && !Number.isNaN(Number(inputs[k])));
+  });
 
   setRole(role: PortalRole): void {
     this.role.set(role);
@@ -247,7 +259,6 @@ export class PetStateService {
   }
 
   goHome(): void {
-    this.stopGasSimulation();
     this.screen.set('home');
   }
 
@@ -280,6 +291,7 @@ export class PetStateService {
     this.stepIndex.set(0);
     this.fields.set({ ...EMPTY_FIELDS });
     this.checklistState.set({});
+    this.gasInputs.set({ o2: '', co: '', h2s: '', lel: '' });
     this.ventilationOn.set(false);
     this.gasReadingsLog.set([]);
     this.currentBadge.set(null);
@@ -318,32 +330,19 @@ export class PetStateService {
     this.fireWatchRounds.update((rounds) => rounds.map((r, i) => (i === index ? { ...r, ...patch } : r)));
   }
 
-  // ── Gases ao vivo ────────────────────────────────────────────────
-  startGasSimulation(): void {
-    this.stopGasSimulation();
-    this.gasIntervalId = setInterval(() => {
-      this.liveGas.update((gas) => {
-        const drift = this.ventilationOn() ? -0.6 : 0.9;
-        const jitter = () => (Math.random() - 0.5) * 0.6;
-        return {
-          o2: clamp(gas.o2 + (this.ventilationOn() ? 0.05 : -0.03) + jitter() * 0.1, 18, 21.5),
-          co: clamp(gas.co + jitter(), 0, 40),
-          h2s: clamp(gas.h2s + drift * 0.4 + jitter() * 0.3, 0, 18),
-          lel: clamp(gas.lel + jitter() * 0.5, 0, 25),
-        };
-      });
-    }, 900);
-  }
-
-  stopGasSimulation(): void {
-    if (this.gasIntervalId !== null) {
-      clearInterval(this.gasIntervalId);
-      this.gasIntervalId = null;
-    }
+  // ── Gases (leitura manual) ──────────────────────────────────────────
+  setGasInput(key: GasKey, value: string): void {
+    this.gasInputs.update((inputs) => ({ ...inputs, [key]: value }));
   }
 
   toggleVentilation(): void {
-    this.ventilationOn.update((v) => !v);
+    const turningOn = !this.ventilationOn();
+    this.ventilationOn.set(turningOn);
+    const time = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    this.gasReadingsLog.update((log) => [
+      { time, text: turningOn ? 'Ventilação forçada ligada' : 'Ventilação forçada desligada' },
+      ...log,
+    ]);
   }
 
   registerReading(): void {
@@ -418,7 +417,7 @@ export class PetStateService {
   canAdvance(): boolean {
     const step = this.currentStep();
     if (step === 'area') return this.selectedAreas().length > 0;
-    if (step === 'gases') return !this.atmosphereOutOfRange();
+    if (step === 'gases') return this.gasReadingComplete() && !this.atmosphereOutOfRange();
     if (step === 'qr') return this.authorizedTeam().length > 0;
     if (step === 'sig') return this.technicianSigned() && this.executorSigned();
     return true;
@@ -439,7 +438,6 @@ export class PetStateService {
       this.goHome();
       return;
     }
-    if (this.currentStep() === 'gases') this.stopGasSimulation();
     this.stepIndex.update((i) => i - 1);
   }
 
@@ -451,9 +449,7 @@ export class PetStateService {
       this.finishPet();
       return;
     }
-    if (this.currentStep() === 'gases') this.stopGasSimulation();
     this.stepIndex.update((i) => i + 1);
-    if (this.currentStep() === 'gases') this.startGasSimulation();
   }
 
   private async finishPet(): Promise<void> {
@@ -511,8 +507,4 @@ function minutesSince(startHHmm: string): number {
   const now = new Date();
   const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours || 0, minutes || 0);
   return Math.max(1, Math.round((now.getTime() - start.getTime()) / 60000));
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value));
 }
