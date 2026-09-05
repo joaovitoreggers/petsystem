@@ -257,7 +257,13 @@
     <div class="dialog-backdrop" (click)="closeAiModal()">
       <div class="dialog blueprint ai-dialog" (click)="$event.stopPropagation()">
         <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-        <div class="dialog-title">Análise de IA — causas e anomalias</div>
+        <div class="ai-dialog__letterhead">
+          <div class="ai-dialog__letterhead-kicker">Lar Cooperativa Agroindustrial · SESMT</div>
+          <div class="dialog-title">Análise de IA — causas e anomalias</div>
+          @if (aiGeneratedAt()) {
+            <div class="ai-dialog__letterhead-date">gerado em {{ aiGeneratedAt() }}</div>
+          }
+        </div>
         @if (aiLoading()) {
           <div class="ai-dialog__status">
             <span class="pulse-dot"></span>
@@ -268,9 +274,12 @@
         } @else if (aiReport()) {
           <div class="ai-dialog__report">{{ aiReport() }}</div>
         }
-        <div class="dialog-actions">
+        <div class="dialog-actions no-print">
           @if (!aiLoading()) {
             <button type="button" class="btn btn-secondary" (click)="runAiAnalysis()">Gerar novamente</button>
+          }
+          @if (aiReport()) {
+            <button type="button" class="btn btn-secondary" (click)="printAiReport()">Baixar como PDF</button>
           }
           <button type="button" class="btn btn-primary" (click)="closeAiModal()">Fechar</button>
         </div>

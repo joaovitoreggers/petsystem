@@ -153,6 +153,11 @@
 .dialog-note { font-size: 13px; color: var(--color-neutral-700); border-top: 1px solid var(--color-divider); padding-top: 12px; }
 
 .ai-dialog { width: min(640px, 100%); max-height: 82vh; overflow-y: auto; }
+.ai-dialog__letterhead-kicker {
+  display: none; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--color-accent-700);
+  margin-bottom: 4px;
+}
+.ai-dialog__letterhead-date { display: none; font-size: 11px; color: var(--color-neutral-700); margin-top: 4px; }
 .ai-dialog__status { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--color-neutral-700); }
 .ai-dialog__status .pulse-dot {
   width: 7px; height: 7px; border-radius: 50%; background: var(--color-accent); animation: petpulse 1.4s infinite; flex: none;
