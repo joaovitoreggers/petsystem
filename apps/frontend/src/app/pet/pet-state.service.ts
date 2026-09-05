@@ -5,7 +5,6 @@ import {
   BadgeItem,
   ChecklistAnswer,
   CriticalAlert,
-  EXTRA_FIELDS,
   FireWatchRound,
   GasReading,
   MOCK_BADGES,
@@ -50,14 +49,7 @@ const EMPTY_FIELDS: WizardFields = {
   unidade: 'Matelândia',
 };
 
-export interface ManualExtraField {
-  id: string;
-  label: string;
-  value: string;
-}
-
 let nextPetSequence = 419;
-let nextManualFieldSequence = 1;
 
 @Injectable({ providedIn: 'root' })
 export class PetStateService {
@@ -196,8 +188,6 @@ export class PetStateService {
   readonly selectedAreas = signal<RiskAreaId[]>([]);
   readonly stepIndex = signal(0);
   readonly fields = signal<WizardFields>({ ...EMPTY_FIELDS });
-  readonly extraValues = signal<Record<string, string>>({});
-  readonly manualExtraFields = signal<Record<string, ManualExtraField[]>>({});
   readonly checklistState = signal<Record<string, ChecklistAnswer>>({});
   readonly liveGas = signal<GasReading>({ o2: 20.9, co: 2, h2s: 0.3, lel: 1 });
   readonly ventilationOn = signal(false);
@@ -289,8 +279,6 @@ export class PetStateService {
     this.selectedAreas.set([]);
     this.stepIndex.set(0);
     this.fields.set({ ...EMPTY_FIELDS });
-    this.extraValues.set({});
-    this.manualExtraFields.set({});
     this.checklistState.set({});
     this.ventilationOn.set(false);
     this.gasReadingsLog.set([]);
@@ -316,50 +304,6 @@ export class PetStateService {
 
   setField<K extends keyof WizardFields>(name: K, value: string): void {
     this.fields.update((f) => ({ ...f, [name]: value }));
-  }
-
-  setExtra(name: string, value: string): void {
-    this.extraValues.update((v) => ({ ...v, [name]: value }));
-  }
-
-  extraFieldsForSelection(): { areaId: RiskAreaId; areaLabel: string; fields: { name: string; label: string; value: string }[] }[] {
-    return this.selectedAreas().map((id) => ({
-      areaId: id,
-      areaLabel: id,
-      // Preenchimento manual: os campos começam vazios — EXTRA_FIELDS só
-      // fornece o rótulo, não é mais usado como valor pré-preenchido.
-      fields: EXTRA_FIELDS[id].map((f) => ({ name: `${id}:${f.name}`, label: f.label, value: this.extraValues()[`${id}:${f.name}`] ?? '' })),
-    }));
-  }
-
-  // Além dos campos pré-definidos por NR acima, o técnico também pode
-  // lançar dados manuais — um rótulo + valor livres — para a mesma NR.
-  // Cada área selecionada tem sua própria lista, e todas se combinam na
-  // mesma PET quando várias áreas são marcadas.
-  manualFieldsForArea(areaId: RiskAreaId): ManualExtraField[] {
-    return this.manualExtraFields()[areaId] ?? [];
-  }
-
-  addManualExtraField(areaId: RiskAreaId): void {
-    const field: ManualExtraField = { id: `manual-${nextManualFieldSequence++}`, label: '', value: '' };
-    this.manualExtraFields.update((state) => ({
-      ...state,
-      [areaId]: [...(state[areaId] ?? []), field],
-    }));
-  }
-
-  updateManualExtraField(areaId: RiskAreaId, id: string, patch: Partial<Pick<ManualExtraField, 'label' | 'value'>>): void {
-    this.manualExtraFields.update((state) => ({
-      ...state,
-      [areaId]: (state[areaId] ?? []).map((f) => (f.id === id ? { ...f, ...patch } : f)),
-    }));
-  }
-
-  removeManualExtraField(areaId: RiskAreaId, id: string): void {
-    this.manualExtraFields.update((state) => ({
-      ...state,
-      [areaId]: (state[areaId] ?? []).filter((f) => f.id !== id),
-    }));
   }
 
   setChecklistAnswer(key: string, answer: ChecklistAnswer): void {

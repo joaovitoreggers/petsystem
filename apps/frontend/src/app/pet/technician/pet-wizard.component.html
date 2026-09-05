@@ -86,7 +86,12 @@
           <div class="atividade__row">
             <div class="field">
               <label>Empresa executante</label>
-              <input class="input" [value]="fieldValue('empresa')" (change)="onFieldChange('empresa', $event)" />
+              <select class="input" [value]="fieldValue('empresa')" (change)="onFieldChange('empresa', $event)">
+                <option value="" disabled selected hidden>Selecione</option>
+                @for (c of companyOptions; track c) {
+                  <option>{{ c }}</option>
+                }
+              </select>
             </div>
             <div class="field">
               <label>Telefone da empresa</label>
@@ -114,52 +119,14 @@
             </div>
             <div class="field">
               <label>Local específico</label>
-              <input class="input" [value]="fieldValue('local')" (change)="onFieldChange('local', $event)" />
+              <select class="input" [value]="fieldValue('local')" (change)="onFieldChange('local', $event)">
+                <option value="" disabled selected hidden>Selecione</option>
+                @for (l of locationOptions; track l) {
+                  <option>{{ l }}</option>
+                }
+              </select>
             </div>
           </div>
-
-          @for (group of extraGroups(); track group.areaId) {
-            <div class="extra-group">
-              <div class="section-kicker">{{ group.title }}</div>
-              @for (f of group.fields; track f.name) {
-                <div class="field">
-                  <label>{{ f.label }}</label>
-                  <input class="input" [value]="f.value" (change)="onExtraChange(f.name, $event)" />
-                </div>
-              }
-
-              @if (group.manualFields.length > 0) {
-                <div class="manual-fields">
-                  @for (m of group.manualFields; track m.id) {
-                    <div class="manual-field">
-                      <input
-                        class="input manual-field__label"
-                        placeholder="Nome do dado"
-                        [value]="m.label"
-                        (change)="onManualLabelChange(group.areaId, m.id, $event)"
-                      />
-                      <input
-                        class="input manual-field__value"
-                        placeholder="Valor"
-                        [value]="m.value"
-                        (change)="onManualValueChange(group.areaId, m.id, $event)"
-                      />
-                      <button
-                        type="button"
-                        class="btn btn-ghost manual-field__remove"
-                        (click)="removeManualField(group.areaId, m.id)"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  }
-                </div>
-              }
-              <button type="button" class="btn btn-secondary manual-field__add" (click)="addManualField(group.areaId)">
-                + Lançar dado manual · {{ group.nr }}
-              </button>
-            </div>
-          }
 
           <div class="geo blueprint">
             <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>

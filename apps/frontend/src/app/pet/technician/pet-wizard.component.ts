@@ -28,6 +28,30 @@ type WizardFieldName = 'descricao' | 'tipo' | 'empresa' | 'telefone' | 'inicio' 
 
 export const PET_UNITS = ['Matelândia', 'Medianeira', 'Céu Azul', 'Itaipulândia', 'Missal'];
 
+export const EXECUTING_COMPANIES = [
+  'Lar · Manutenção',
+  'Lar · Armazéns',
+  'Lar · SESMT',
+  'Lar · Utilidades',
+  'Termoeletro Ltda',
+  'Altura Serviços ME',
+];
+
+export const SITE_LOCATIONS = [
+  'Silo de milho 04',
+  'Silo de soja 09',
+  'Elevatória da ETE',
+  'Casa de caldeiras 02',
+  'Moega de recebimento 01',
+  'Tanque de efluente 02',
+  'Túnel de congelamento',
+  'Torre de resfriamento',
+  'Linha de extrusão',
+  'Oficina de manutenção',
+  'Subestação — pórtico 1',
+  'Linha de abate — nória',
+];
+
 @Component({
   selector: 'app-pet-wizard',
   standalone: true,
@@ -67,18 +91,6 @@ export class PetWizardComponent {
   );
   readonly selectedNrs = computed(() => riskAreaNrs(this.state.selectedAreas()));
   readonly areaNotes = computed(() => this.state.selectedAreas().map((id) => ({ id, text: AREA_NOTE[id] })));
-
-  readonly extraGroups = computed(() =>
-    this.state.extraFieldsForSelection().map((group) => {
-      const nr = RISK_AREAS.find((a) => a.id === group.areaId)?.nr ?? '';
-      return {
-        ...group,
-        nr,
-        title: `Dados específicos · ${nr}`,
-        manualFields: this.state.manualExtraFields()[group.areaId] ?? [],
-      };
-    }),
-  );
 
   readonly gauges = computed<GaugeView[]>(() => {
     const gas = this.state.liveGas();
@@ -148,6 +160,8 @@ export class PetWizardComponent {
   }
 
   readonly unitOptions = PET_UNITS;
+  readonly companyOptions = EXECUTING_COMPANIES;
+  readonly locationOptions = SITE_LOCATIONS;
 
   readonly badgeStatusLabel = (status: 'ok' | 'prox' | 'venc') =>
     status === 'ok' ? '✓' : status === 'prox' ? '!' : '✕';
@@ -177,29 +191,6 @@ export class PetWizardComponent {
   onFieldChange(name: WizardFieldName, event: Event): void {
     const value = (event.target as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement).value;
     this.state.setField(name, value);
-  }
-
-  onExtraChange(name: string, event: Event): void {
-    const value = (event.target as HTMLInputElement).value;
-    this.state.setExtra(name, value);
-  }
-
-  addManualField(areaId: RiskAreaId): void {
-    this.state.addManualExtraField(areaId);
-  }
-
-  onManualLabelChange(areaId: RiskAreaId, id: string, event: Event): void {
-    const value = (event.target as HTMLInputElement).value;
-    this.state.updateManualExtraField(areaId, id, { label: value });
-  }
-
-  onManualValueChange(areaId: RiskAreaId, id: string, event: Event): void {
-    const value = (event.target as HTMLInputElement).value;
-    this.state.updateManualExtraField(areaId, id, { value });
-  }
-
-  removeManualField(areaId: RiskAreaId, id: string): void {
-    this.state.removeManualExtraField(areaId, id);
   }
 
   clearSignature(which: 'tecnico' | 'exec'): void {

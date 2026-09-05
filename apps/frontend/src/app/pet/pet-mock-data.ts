@@ -254,55 +254,6 @@ export function emptyFireWatchRounds(): FireWatchRound[] {
   ];
 }
 
-export interface ExtraField {
-  name: string;
-  label: string;
-  value: string;
-}
-
-export const EXTRA_FIELDS: Record<RiskAreaId, ExtraField[]> = {
-  confinado: [
-    { name: 'x1', label: 'Tipo de espaço confinado', value: 'Silo vertical de grãos' },
-    { name: 'x2', label: 'Aberturas de acesso', value: '1 boca superior · 0,60 m' },
-    { name: 'x3', label: 'Vigia externo designado', value: 'Marcos D. Wolff · mat. 05221' },
-    { name: 'x4', label: 'Equipe de resgate acionável', value: 'Brigada Matelândia · ramal 4144' },
-    { name: 'x5', label: 'Ventilação forçada', value: 'Exaustor 2.500 m³/h — 20 min antes' },
-    { name: 'x6', label: 'Número do espaço confinado', value: '' },
-    { name: 'x7', label: 'Número de série do aparelho multigás', value: '' },
-    { name: 'x8', label: 'Responsável pela escavação (Engenheiro)', value: '' },
-  ],
-  quente: [
-    { name: 'x1', label: 'Processo de trabalho a quente', value: 'Solda MIG e esmerilhamento' },
-    { name: 'x2', label: 'Raio de isolamento da área', value: '11 m · fita zebrada e placas' },
-    { name: 'x3', label: 'Materiais combustíveis', value: 'Pó de grão e paletes retirados' },
-    { name: 'x4', label: 'Recurso de combate a incêndio', value: '2 extintores PQS 12 kg + mangotinho' },
-    { name: 'x5', label: 'Vigia de fogo (60 min após)', value: 'Alan P. Kuhn · mat. 06712' },
-  ],
-  altura: [
-    { name: 'x1', label: 'Altura do trabalho', value: '14,5 m — topo da torre' },
-    { name: 'x2', label: 'Meio de acesso', value: 'Escada fixa com linha de vida vertical' },
-    { name: 'x3', label: 'Ponto de ancoragem certificado', value: 'AN-07 · 22 kN · inspecionado 08/2026' },
-    { name: 'x4', label: 'Isolamento da projeção no piso', value: 'Perímetro de 6 m sinalizado' },
-    { name: 'x5', label: 'Plano de resgate em altura', value: 'Tripé e talha de resgate no local' },
-  ],
-  eletrico: [
-    { name: 'x1', label: 'Tensão de trabalho', value: '440 V · baixa tensão' },
-    { name: 'x2', label: 'Painel / circuito', value: 'CCM-03 · disjuntor Q12' },
-    { name: 'x3', label: 'Estado do circuito', value: 'Desenergizado conforme NR-10' },
-    { name: 'x4', label: 'Aterramento temporário', value: 'Aplicado nas três fases' },
-    { name: 'x5', label: 'Teste de ausência de tensão', value: 'Fluke 1587 · 09:24 · 0 V' },
-  ],
-  maquinas: [
-    { name: 'x1', label: 'Equipamento', value: 'Extrusora EX-02' },
-    { name: 'x2', label: 'TAG do ativo', value: 'ITA-EXT-002' },
-    { name: 'x3', label: 'Pontos de bloqueio de energia', value: '3 elétricos · 1 pneumático' },
-    { name: 'x4', label: 'Cadeados aplicados', value: '4 · vermelho de manutenção' },
-    { name: 'x5', label: 'Energia residual dissipada', value: 'Ar comprimido purgado · inércia parada' },
-  ],
-  icamento: [],
-  descarga: [],
-};
-
 export const AREA_NOTE: Record<RiskAreaId, string> = {
   confinado: 'Espaço confinado (NR-33): o fluxo inclui medição atmosférica contínua, vigia externo e plano de resgate antes da liberação.',
   quente: 'Trabalho a quente (NR-18): o fluxo inclui medição de gás inflamável, isolamento da área e vigia de fogo por 60 min após o término.',
