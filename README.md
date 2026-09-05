@@ -27,13 +27,15 @@ acessam o repositório de `User` diretamente — sempre através de `UsersServic
 
 ## Rodando com Docker (recomendado)
 
-Sobe os três containers — front-end (Nginx), back-end (NestJS) e banco
-(PostgreSQL, com dados persistidos em um volume nomeado) — orquestrados pelo
-`docker-compose.yml`:
-
 ```bash
-docker compose up --build   # ou: npm run docker:up
+./run.sh
 ```
+
+Faz tudo: cria `.env` a partir de `.env.example` (com um `JWT_SECRET`
+aleatório) se ele ainda não existir, sobe os três containers — front-end
+(Nginx), back-end (NestJS) e banco (PostgreSQL, dados persistidos em um
+volume nomeado) — espera cada um ficar saudável, e popula os usuários de
+teste. Não precisa de Node/npm instalado na máquina, só Docker.
 
 - Front-end: http://localhost:8080 (o Nginx do container serve o build do
   Angular e faz proxy de `/api/*` para o container do back-end — sem CORS)
@@ -41,9 +43,11 @@ docker compose up --build   # ou: npm run docker:up
 - Postgres (acesso direto, opcional): `localhost:5433` (mapeado para a porta
   interna 5432, para não colidir com um Postgres já rodando na sua máquina)
 
-Popule os usuários de teste dentro do container já em execução:
+`./run.sh` é idempotente — rodar de novo não recria o `.env` nem duplica os
+usuários de teste. Se preferir os comandos manuais:
 
 ```bash
+docker compose up --build -d --wait   # ou: npm run docker:up
 docker compose exec backend npm run backend:seed   # ou: npm run docker:seed
 ```
 
@@ -52,7 +56,8 @@ Os dados ficam no volume nomeado `petsystem_db_data`: sobrevivem a
 e começar do zero: `docker compose down -v`.
 
 Variáveis de ambiente opcionais (copie `.env.example` para `.env` na raiz para
-customizar — todas têm um default funcional no `docker-compose.yml`):
+customizar — todas têm um default funcional no `docker-compose.yml`, e
+`run.sh` já cria o arquivo pra você):
 
 | Variável           | Padrão       | Descrição                                              |
 |--------------------|--------------|----------------------------------------------------------|
@@ -111,9 +116,32 @@ leitura de QR (uma ou várias, conforme a contagem).
 ## Testes
 
 ```bash
+./test.sh
+```
+
+Builda a imagem do back-end (que carrega o monorepo Nx inteiro — ver a nota
+em `apps/backend/Dockerfile`) e roda testes + build de back-end e front-end
+dentro dela, sem precisar de Node/npm no host e sem subir banco (os testes
+usam mocks). Equivalente manual, se já tiver Node/npm instalados:
+
+```bash
 npx nx run backend:test    # lógica de autorização, duplicidade e o Guard de JWT
 npx nx run frontend:test
 ```
+
+## Deploy num servidor caseiro (EasyPanel + Cloudflare Tunnel)
+
+Este `docker-compose.yml` já é o suficiente para o EasyPanel: crie um serviço
+do tipo **Compose** apontando pro repositório, ele builda e sobe os três
+containers a partir do mesmo arquivo que você já roda localmente com
+`./run.sh`. Configure as variáveis de ambiente (tabela acima — pelo menos
+`JWT_SECRET`) direto na UI do EasyPanel, ou solte um `.env` no servidor.
+
+Pra expor pra internet, aponte um Cloudflare Tunnel pra
+`http://localhost:8080` (o front-end) — o próprio Nginx do container já
+resolve o proxy pra `/api` internamente, então não precisa apontar o túnel
+pro back-end separadamente. Isso é configuração do túnel em si (domínio,
+credenciais da sua conta Cloudflare), fora do escopo deste repositório.
 
 ## Fluxo de validação (API)
 
