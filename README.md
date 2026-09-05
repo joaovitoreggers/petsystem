@@ -228,6 +228,22 @@ Uma leitura repetida do mesmo `qrCode` na mesma tentativa é rejeitada com
 `409 Conflict` e registra um `AccessEvent` com resultado `DUPLICATE`, sem
 contar como uma leitura distinta.
 
+## CRUD de usuários (API)
+
+Todas as rotas abaixo exigem o JWT (`Authorization: Bearer <token>`); a tela
+`/users` no front-end (mesmo estilo simples do login/crachás, provisório) usa
+exatamente essa API.
+
+| Rota | Descrição |
+|------|-----------|
+| `GET /api/users` | Lista todos os usuários |
+| `GET /api/users/:id` | Busca um usuário — `404` se não existir |
+| `POST /api/users` | Cria um usuário — `409` se o email já estiver em uso |
+| `PATCH /api/users/:id` | Atualiza campos parcialmente (senha só é trocada se enviada; `409` se o novo email já pertencer a outro usuário) |
+| `DELETE /api/users/:id` | Remove um usuário — `409` se for o próprio usuário autenticado, `404` se não existir |
+
+Nenhuma resposta inclui o campo `password` (nem o hash).
+
 ## Padrões de projeto aplicados
 
 - **Strategy** (Passport): `LocalStrategy` (login) e `JwtStrategy` (rota
@@ -268,7 +284,7 @@ contar como uma leitura distinta.
   container do back-end acaba carregando também as dependências do Angular.
   Suficiente para esta prova de conceito.
 - Fora de escopo nesta sessão: cadastro de PET/áreas/medições, painel de
-  monitoria, tela de cadastro de usuário, recuperação de senha e MFA.
+  monitoria, recuperação de senha e MFA.
 
 ## Proposta de melhoria: pré-modelagem de dados (v2)
 

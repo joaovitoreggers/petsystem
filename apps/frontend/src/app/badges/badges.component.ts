@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, signal } from '@angular/core';
 import * as QRCode from 'qrcode';
-import { UserSummary, UsersApiService } from './services/users-api.service';
+import { UserSummary, UsersApiService } from '../core/services/users-api.service';
 
 /**
  * Tela utilitária: lista os usuários de teste e gera um crachá temporário
