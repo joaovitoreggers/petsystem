@@ -170,6 +170,13 @@
 .gauge__label { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-neutral-700); }
 .gauge__value { font-family: var(--font-heading); font-weight: 600; font-size: 27px; line-height: 1.1; }
 .gauge__unit { font-size: 12px; color: var(--color-neutral-700); margin-left: 4px; }
+.gauge__input-row { display: flex; align-items: baseline; gap: 6px; margin-top: 4px; }
+.gauge__input {
+  width: 100%; border: none; border-bottom: 1px solid var(--color-divider); background: transparent; padding: 2px 0;
+  font-family: var(--font-heading); font-weight: 600; font-size: 22px; line-height: 1;
+}
+.gauge__input:focus { outline: none; border-bottom-color: var(--color-accent); }
+.gauge__limit { font-size: 10px; color: var(--color-neutral-600); margin-top: 5px; }
 .timeline__row { display: flex; gap: 12px; padding-bottom: 12px; }
 .timeline__time { font-family: ui-monospace, monospace; font-size: 11px; color: var(--color-neutral-600); width: 42px; flex: none; padding-top: 2px; }
 .timeline__text { font-size: 13px; line-height: 1.4; }
@@ -178,3 +185,5 @@
 .detalhe__footer { padding: 12px 16px 16px; border-top: 1px solid var(--color-divider); display: flex; gap: 10px; }
 .detalhe__footer-btn { flex: 1; height: 44px; }
 .cancel-dialog { width: min(420px, 100%); }
+.measurement-dialog { width: min(420px, 100%); }
+.measurement-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 14px 0; }

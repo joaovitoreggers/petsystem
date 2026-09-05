@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { WorkPermit } from '../entities/work-permit.entity';
 import {
+  AddReadingData,
   CloseWorkPermitData,
   CreateWorkPermitData,
   IWorkPermitRepository,
@@ -57,6 +58,19 @@ export class WorkPermitRepository implements IWorkPermitRepository {
     permit.durationMinutes = data.durationMinutes;
     permit.closeReason = data.reason;
     permit.closedBy = data.closedBy;
+    return this.repository.save(permit);
+  }
+
+  async addReading(id: string, data: AddReadingData): Promise<WorkPermit | null> {
+    const permit = await this.repository.findOneBy({ id });
+    if (!permit) {
+      return null;
+    }
+    const { o2, co, h2s, lel } = data.gas;
+    const time = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const text = `O₂ ${o2.toFixed(1)}% · CO ${co.toFixed(0)} ppm · H₂S ${h2s.toFixed(1)} ppm · LEL ${lel.toFixed(0)}%`;
+    permit.gas = data.gas;
+    permit.readings = [...(permit.readings ?? []), { time, text }];
     return this.repository.save(permit);
   }
 

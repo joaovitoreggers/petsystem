@@ -10,7 +10,7 @@ import {
   signal,
 } from '@angular/core';
 import { PetStateService } from '../pet-state.service';
-import { PET_STATUS, Pet, riskAreaNames, riskAreaNrs } from '../pet-mock-data';
+import { GAS_LIMITS, GasKey, PET_STATUS, Pet, isGasWithinLimit, riskAreaNames, riskAreaNrs } from '../pet-mock-data';
 import { PetWizardComponent } from './pet-wizard.component';
 
 interface PetCardView {
@@ -21,6 +21,15 @@ interface PetCardView {
   areaLabel: string;
   nr: string;
   gasLabel: string;
+}
+
+interface MeasurementFieldView {
+  key: GasKey;
+  label: string;
+  unit: string;
+  value: string;
+  color: string;
+  limitText: string;
 }
 
 @Component({
@@ -161,6 +170,40 @@ export class PetTechnicianComponent implements OnDestroy {
     if (!this.canConfirmCancel()) return;
     this.state.encerrarPet(this.cancelReason().trim(), this.cancelClosedBy().trim());
     this.cancelDialogOpen.set(false);
+  }
+
+  // Leitura manual pós-emissão: mesmo padrão da etapa 3 do assistente,
+  // sem sensor conectado.
+  readonly measurementFields = computed<MeasurementFieldView[]>(() => {
+    const inputs = this.state.measurementGasInputs();
+    const keys: GasKey[] = ['o2', 'co', 'h2s', 'lel'];
+    return keys.map((key) => {
+      const limit = GAS_LIMITS[key];
+      const raw = inputs[key];
+      const hasValue = raw.trim() !== '' && !Number.isNaN(Number(raw));
+      const color = !hasValue
+        ? 'var(--color-neutral-600)'
+        : isGasWithinLimit(key, Number(raw))
+          ? 'var(--status-ok)'
+          : 'var(--status-bad)';
+      return { key, label: limit.label, unit: limit.unit, value: raw, color, limitText: limit.limitText };
+    });
+  });
+
+  openMeasurement(): void {
+    this.state.openMeasurementDialog();
+  }
+
+  closeMeasurement(): void {
+    this.state.closeMeasurementDialog();
+  }
+
+  onMeasurementGasInputChange(key: GasKey, event: Event): void {
+    this.state.setMeasurementGasInput(key, (event.target as HTMLInputElement).value);
+  }
+
+  confirmMeasurement(): void {
+    this.state.confirmMeasurement();
   }
 
   private toCard(pet: Pet): PetCardView {

@@ -13,6 +13,10 @@ export interface CloseWorkPermitInput {
   durationMinutes: number;
 }
 
+export interface AddReadingInput {
+  gas: WorkPermitGasReading;
+}
+
 /**
  * Público boundary de WorkPermitsModule — controllers e outros módulos só
  * dependem deste service.
@@ -42,6 +46,14 @@ export class WorkPermitsService {
       throw new NotFoundException('PET não encontrada');
     }
     return closed;
+  }
+
+  async addReading(id: string, data: AddReadingInput): Promise<WorkPermit> {
+    const updated = await this.workPermitRepository.addReading(id, data);
+    if (!updated) {
+      throw new NotFoundException('PET não encontrada');
+    }
+    return updated;
   }
 }
 

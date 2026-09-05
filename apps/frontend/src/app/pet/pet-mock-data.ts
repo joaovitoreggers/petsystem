@@ -363,6 +363,14 @@ export interface CriticalAlert {
   timestamp: string;
 }
 
+// Cada medição atmosférica pós-emissão é digitada manualmente pelo técnico
+// (sem sensor conectado) e fica registrada aqui para auditoria, além de
+// substituir a leitura atual em `gas`.
+export interface GasReadingEntry {
+  time: string;
+  text: string;
+}
+
 export interface Pet {
   id: string;
   areas: RiskAreaId[];
@@ -380,6 +388,7 @@ export interface Pet {
   alarm?: boolean;
   durationMinutes?: number;
   criticalAlerts?: CriticalAlert[];
+  readings?: GasReadingEntry[];
   companyPhone?: string;
   closeReason?: string;
   closedBy?: string;
