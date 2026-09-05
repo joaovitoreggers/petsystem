@@ -1,7 +1,7 @@
 import { AccessEvent, AccessResult } from '../entities/access-event.entity';
 
 export interface RecordEventData {
-  userId: number | null;
+  userId: string | null;
   result: AccessResult;
   qrCodeRead: string | null;
 }

@@ -3,13 +3,17 @@ import {
   CreateDateColumn,
   Entity,
   Index,
-  PrimaryGeneratedColumn,
+  PrimaryColumn,
 } from 'typeorm';
 
 @Entity('users')
 export class User {
-  @PrimaryGeneratedColumn()
-  id!: number;
+  // UUID gerado em código (ver UserRepository.create), não pelo banco: evita
+  // depender da extensão uuid-ossp do Postgres. É esse mesmo valor que vira o
+  // conteúdo do QR code do crachá — nunca muda, então qualquer edição no
+  // cadastro do usuário não invalida crachás já gerados.
+  @PrimaryColumn('uuid')
+  id!: string;
 
   @Column()
   name!: string;
@@ -26,10 +30,6 @@ export class User {
 
   @Column({ name: 'access_level', type: 'int' })
   accessLevel!: number;
-
-  @Index({ unique: true })
-  @Column({ name: 'qr_code' })
-  qrCode!: string;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt!: Date;

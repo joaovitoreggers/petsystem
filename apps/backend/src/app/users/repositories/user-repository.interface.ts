@@ -6,7 +6,6 @@ export interface CreateUserData {
   passwordHash: string;
   role: string;
   accessLevel: number;
-  qrCode: string;
 }
 
 /**
@@ -15,9 +14,8 @@ export interface CreateUserData {
  */
 export interface IUserRepository {
   findAll(): Promise<User[]>;
-  findById(id: number): Promise<User | null>;
+  findById(id: string): Promise<User | null>;
   findByEmail(email: string): Promise<User | null>;
-  findByQrCode(qrCode: string): Promise<User | null>;
   create(data: CreateUserData): Promise<User>;
 }
 

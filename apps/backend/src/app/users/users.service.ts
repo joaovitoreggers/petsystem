@@ -14,7 +14,6 @@ export interface CreateUserInput {
   password: string;
   role: string;
   accessLevel: number;
-  qrCode: string;
 }
 
 /**
@@ -32,16 +31,12 @@ export class UsersService {
     return this.userRepository.findAll();
   }
 
-  findById(id: number): Promise<User | null> {
+  findById(id: string): Promise<User | null> {
     return this.userRepository.findById(id);
   }
 
   findByEmail(email: string): Promise<User | null> {
     return this.userRepository.findByEmail(email);
-  }
-
-  findByQrCode(qrCode: string): Promise<User | null> {
-    return this.userRepository.findByQrCode(qrCode);
   }
 
   async create(data: CreateUserInput): Promise<User> {
@@ -52,7 +47,6 @@ export class UsersService {
       passwordHash,
       role: data.role,
       accessLevel: data.accessLevel,
-      qrCode: data.qrCode,
     });
   }
 
