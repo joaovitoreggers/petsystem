@@ -9,5 +9,10 @@ export const appRoutes: Route[] = [
     canActivate: [authGuard],
     loadChildren: () => import('./qr-scanner/qr-scanner.routes').then((m) => m.qrScannerRoutes),
   },
+  {
+    path: 'badges',
+    canActivate: [authGuard],
+    loadChildren: () => import('./badges/badges.routes').then((m) => m.badgesRoutes),
+  },
   { path: '**', redirectTo: 'login' },
 ];

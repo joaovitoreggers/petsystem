@@ -28,6 +28,10 @@ export class UsersService {
     private readonly userRepository: IUserRepository,
   ) {}
 
+  findAll(): Promise<User[]> {
+    return this.userRepository.findAll();
+  }
+
   findById(id: number): Promise<User | null> {
     return this.userRepository.findById(id);
   }
