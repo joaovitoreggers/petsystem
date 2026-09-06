@@ -15,7 +15,7 @@
 }
 
 .team__head { margin-bottom: 40px; }
-.team__title { margin: 6px 0 0; font-size: 42px; }
+.team__title { margin: 6px 0 0; font-size: 46px; }
 .team__head-row { display: flex; align-items: flex-end; gap: 24px; flex-wrap: wrap; }
 .team__head-text {
   font-size: 14px; color: var(--color-neutral-700); margin-top: 8px; max-width: 620px; line-height: 1.5;
@@ -25,7 +25,7 @@
 .kpi-grid {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 26px; margin-bottom: 44px;
 }
-.kpi-value { font-family: var(--font-heading); font-weight: 600; font-size: 52px; line-height: 1; margin-top: 10px; }
+.kpi-value { font-family: var(--font-heading); font-weight: 600; font-size: 57px; line-height: 1; margin-top: 10px; }
 .kpi-note { font-size: 13px; color: var(--color-neutral-700); margin-top: 8px; }
 
 .team__filters-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }

@@ -57,7 +57,7 @@
   display: flex; align-items: baseline; gap: 10px; padding-bottom: 16px;
   border-bottom: 1px solid rgba(242, 242, 243, 0.22);
 }
-.login__brand { font-family: var(--font-heading); font-weight: 600; font-size: 21px; letter-spacing: 0.06em; white-space: nowrap; }
+.login__brand { font-family: var(--font-heading); font-weight: 600; font-size: 22px; letter-spacing: 0.06em; white-space: nowrap; }
 .login__unit {
   font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.6;
   margin-left: auto; text-align: right; line-height: 1.4;
@@ -83,7 +83,7 @@
   font-family: ui-monospace, monospace; font-size: 11px; opacity: 0.6;
 }
 .login__status { text-align: center; }
-.login__title { font-family: var(--font-heading); font-weight: 600; font-size: 21px; line-height: 1.15; }
+.login__title { font-family: var(--font-heading); font-weight: 600; font-size: 23px; line-height: 1.15; }
 .login__text { font-size: 14px; opacity: 0.7; margin-top: 6px; max-width: 250px; line-height: 1.45; }
 .login__btn {
   height: 50px; width: 100%; background: var(--color-bg); color: var(--color-accent-900);
@@ -97,7 +97,7 @@
 /* — home — */
 .home__header { background: var(--color-accent-900); color: var(--color-bg); padding: 18px 16px 16px; }
 .home__kicker { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; opacity: 0.7; }
-.home__title { font-family: var(--font-heading); font-weight: 600; font-size: 26px; line-height: 1.1; margin-top: 4px; }
+.home__title { font-family: var(--font-heading); font-weight: 600; font-size: 29px; line-height: 1.1; margin-top: 4px; }
 .home__user { display: flex; align-items: center; gap: 8px; margin-top: 14px; font-size: 14px; }
 .home__avatar {
   width: 30px; height: 30px; border: 1px solid rgba(242, 242, 243, 0.45); display: grid; place-items: center;
@@ -123,7 +123,7 @@
   &:hover { background: var(--color-neutral-200); }
 }
 .pet-card__top { display: flex; align-items: baseline; gap: 8px; }
-.pet-card__id { font-family: var(--font-heading); font-weight: 600; font-size: 18px; }
+.pet-card__id { font-family: var(--font-heading); font-weight: 600; font-size: 19px; }
 .pet-card__status {
   margin-left: auto; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; padding: 3px 8px;
 }
@@ -143,8 +143,8 @@
   justify-content: center; align-items: center; padding: 24px; text-align: center;
   background: var(--color-accent-900); color: var(--color-bg);
 }
-.emitida__check { width: 56px; height: 56px; border: 1px solid rgba(242, 242, 243, 0.5); display: grid; place-items: center; font-size: 24px; }
-.emitida__title { font-family: var(--font-heading); font-weight: 600; font-size: 30px; line-height: 1.1; margin-top: 18px; }
+.emitida__check { width: 56px; height: 56px; border: 1px solid rgba(242, 242, 243, 0.5); display: grid; place-items: center; font-size: 26px; }
+.emitida__title { font-family: var(--font-heading); font-weight: 600; font-size: 33px; line-height: 1.1; margin-top: 18px; }
 .emitida__id { font-family: ui-monospace, monospace; font-size: 16px; margin-top: 6px; opacity: 0.8; }
 .emitida__text { font-size: 14px; margin-top: 16px; opacity: 0.75; max-width: 260px; line-height: 1.5; }
 .emitida__actions { display: flex; gap: 10px; margin-top: 28px; width: 100%; }
@@ -155,8 +155,8 @@
 .detalhe__header {
   padding: 14px 16px; border-bottom: 1px solid var(--color-divider); display: flex; align-items: center; gap: 10px;
 }
-.detalhe__back { width: 34px; height: 34px; padding: 0; font-size: 18px; }
-.detalhe__id { font-family: var(--font-heading); font-weight: 600; font-size: 19px; line-height: 1.1; }
+.detalhe__back { width: 34px; height: 34px; padding: 0; font-size: 19px; }
+.detalhe__id { font-family: var(--font-heading); font-weight: 600; font-size: 20px; line-height: 1.1; }
 .detalhe__local { font-size: 12px; color: var(--color-neutral-700); }
 .detalhe__area { font-size: 12px; color: var(--color-accent-700); }
 .detalhe__status {
@@ -168,12 +168,12 @@
 .gauge-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .gauge { padding: 10px 11px; }
 .gauge__label { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-neutral-700); }
-.gauge__value { font-family: var(--font-heading); font-weight: 600; font-size: 27px; line-height: 1.1; }
+.gauge__value { font-family: var(--font-heading); font-weight: 600; font-size: 30px; line-height: 1.1; }
 .gauge__unit { font-size: 13px; color: var(--color-neutral-700); margin-left: 4px; }
 .gauge__input-row { display: flex; align-items: baseline; gap: 6px; margin-top: 4px; }
 .gauge__input {
   width: 100%; border: none; border-bottom: 1px solid var(--color-divider); background: transparent; padding: 2px 0;
-  font-family: var(--font-heading); font-weight: 600; font-size: 22px; line-height: 1;
+  font-family: var(--font-heading); font-weight: 600; font-size: 24px; line-height: 1;
 }
 .gauge__input:focus { outline: none; border-bottom-color: var(--color-accent); }
 .gauge__limit { font-size: 11px; color: var(--color-neutral-600); margin-top: 5px; }

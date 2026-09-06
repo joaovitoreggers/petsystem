@@ -19,9 +19,9 @@
   border-bottom: 1px solid var(--color-divider);
 }
 .wizard__header-row { display: flex; align-items: center; gap: 10px; }
-.wizard__back { width: 34px; height: 34px; padding: 0; font-size: 18px; }
+.wizard__back { width: 34px; height: 34px; padding: 0; font-size: 19px; }
 .wizard__header-text { flex: 1; min-width: 0; }
-.wizard__title { font-family: var(--font-heading); font-weight: 600; font-size: 19px; line-height: 1.1; }
+.wizard__title { font-family: var(--font-heading); font-weight: 600; font-size: 20px; line-height: 1.1; }
 .wizard__step-label { font-size: 12px; color: var(--color-neutral-700); white-space: nowrap; }
 .wizard__bars { display: flex; gap: 3px; margin-top: 12px; }
 .wizard__bar { flex: 1; height: 3px; }
@@ -45,7 +45,7 @@
 .area-option__checkbox { width: 20px; height: 20px; accent-color: var(--color-accent); flex: none; margin-top: 2px; }
 .area-option__body { flex: 1; }
 .area-option__head { display: flex; align-items: baseline; gap: 8px; }
-.area-option__name { font-family: var(--font-heading); font-weight: 600; font-size: 17px; }
+.area-option__name { font-family: var(--font-heading); font-weight: 600; font-size: 18px; }
 .area-option__desc { display: block; font-size: 13px; color: var(--color-neutral-700); margin-top: 2px; }
 .area-notes { margin-top: 6px; display: flex; flex-direction: column; gap: 8px; }
 .area-note { background: var(--color-accent-100); padding: 11px 13px; font-size: 13px; color: var(--color-accent-800); line-height: 1.45; }
@@ -55,7 +55,7 @@
   display: flex; align-items: flex-start; gap: 10px; padding-bottom: 12px; border-bottom: 1px solid var(--color-divider);
 }
 .atividade__tags { display: flex; gap: 5px; flex-wrap: wrap; }
-.atividade__area { font-family: var(--font-heading); font-weight: 600; font-size: 17px; margin-top: 5px; line-height: 1.2; }
+.atividade__area { font-family: var(--font-heading); font-weight: 600; font-size: 18px; margin-top: 5px; line-height: 1.2; }
 .atividade__row { display: flex; gap: 10px; }
 .atividade__row .field { flex: 1; }
 .geo { padding: 12px; margin-top: 4px; }
@@ -81,7 +81,7 @@
 .gauge__input-row { display: flex; align-items: baseline; gap: 6px; margin-top: 4px; }
 .gauge__input {
   width: 100%; border: none; border-bottom: 1px solid var(--color-divider); background: transparent; padding: 2px 0;
-  font-family: var(--font-heading); font-weight: 600; font-size: 26px; line-height: 1;
+  font-family: var(--font-heading); font-weight: 600; font-size: 29px; line-height: 1;
 }
 .gauge__input:focus { outline: none; border-bottom-color: var(--color-accent); }
 .gauge__unit { font-size: 13px; color: var(--color-neutral-700); font-family: var(--font-body); font-weight: 400; flex: none; }
@@ -90,7 +90,7 @@
 .atmosphere-banner { padding: 12px; background: #dff0e6; color: #1d4d33; }
 .atmosphere-banner--bad { background: var(--status-bad); color: #fdf3f3; }
 .atmosphere-banner--pending { background: var(--color-neutral-200); color: var(--color-neutral-800); }
-.atmosphere-banner__title { font-family: var(--font-heading); font-weight: 600; font-size: 18px; }
+.atmosphere-banner__title { font-family: var(--font-heading); font-weight: 600; font-size: 19px; }
 .atmosphere-banner__text { font-size: 13px; margin-top: 3px; opacity: 0.9; }
 .gases__register { height: 42px; }
 .gases__blocked { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; color: var(--status-bad); line-height: 1.45; }
@@ -120,7 +120,7 @@
 
 .badge-card { padding: 12px; }
 .badge-card__head { display: flex; align-items: baseline; gap: 8px; }
-.badge-card__name { font-family: var(--font-heading); font-weight: 600; font-size: 19px; }
+.badge-card__name { font-family: var(--font-heading); font-weight: 600; font-size: 20px; }
 .badge-card__mat { margin-left: auto; font-family: ui-monospace, monospace; font-size: 12px; color: var(--color-neutral-700); }
 .badge-card__role { font-size: 13px; color: var(--color-neutral-700); }
 .badge-card__items { margin-top: 10px; display: flex; flex-direction: column; gap: 5px; }
@@ -195,7 +195,7 @@
 }
 .photo__preview img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .photo__remove {
-  position: absolute; top: 6px; right: 6px; width: 26px; height: 26px; padding: 0; font-size: 13px;
+  position: absolute; top: 6px; right: 6px; width: 26px; height: 26px; padding: 0; font-size: 14px;
   background: color-mix(in srgb, var(--color-bg) 85%, transparent); border-color: var(--color-divider);
 }
 
