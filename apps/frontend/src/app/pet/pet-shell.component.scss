@@ -26,7 +26,7 @@
 .pet-shell__brand {
   font-family: var(--font-heading);
   font-weight: 600;
-  font-size: 19px;
+  font-size: 20px;
   letter-spacing: -0.01em;
   padding-left: 16px;
   border-left: 1px solid var(--color-divider);
@@ -35,7 +35,7 @@
 }
 
 .pet-shell__unit {
-  font-size: 11px;
+  font-size: 12px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--color-accent-700);
@@ -60,7 +60,7 @@
   background: var(--status-bad);
   color: #fdf3f3;
   border-color: var(--status-bad);
-  font-size: 12px;
+  font-size: 13px;
   letter-spacing: 0.02em;
   flex: none;
 }
@@ -103,9 +103,9 @@
 .evac-overlay__title {
   font-family: var(--font-heading); font-weight: 600; font-size: 74px; line-height: 1; letter-spacing: 0.04em;
 }
-.evac-overlay__text { font-size: 18px; max-width: 720px; line-height: 1.5; }
-.evac-overlay__note { font-family: ui-monospace, monospace; font-size: 13px; opacity: 0.9; line-height: 1.8; }
+.evac-overlay__text { font-size: 19px; max-width: 720px; line-height: 1.5; }
+.evac-overlay__note { font-family: ui-monospace, monospace; font-size: 14px; opacity: 0.9; line-height: 1.8; }
 .evac-overlay__actions { display: flex; gap: 14px; margin-top: 10px; flex-wrap: wrap; justify-content: center; }
-.evac-overlay__btn { height: 46px; padding: 0 22px; font-size: 15px; }
+.evac-overlay__btn { height: 46px; padding: 0 22px; font-size: 16px; }
 .evac-overlay__btn--solid { background: #fff; color: #8e2020; border-color: #fff; }
 .evac-overlay__btn--outline { background: transparent; color: #fff; border-color: #fff; }
