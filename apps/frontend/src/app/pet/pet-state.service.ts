@@ -1,21 +1,26 @@
 import { Injectable, WritableSignal, computed, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import {
+  AtmosphereAlert,
   Badge,
   BadgeItem,
   ChecklistAnswer,
   CriticalAlert,
   FireWatchRound,
+  GAS_LIMITS,
   GasKey,
   GasReading,
   MOCK_BADGES,
   MOCK_PETS,
   Pet,
+  PetTeamMember,
+  PetTeamRole,
   RiskAreaId,
   TEAM_MEMBERS,
   TeamMember,
   WizardStepId,
   emptyFireWatchRounds,
+  gasViolationMessage,
   requiresGasMonitoring,
   riskAreaNrs,
   stepsFor,
@@ -70,7 +75,11 @@ export class PetStateService {
   readonly hasAlert = computed(() => this.alarmedPets().length > 0);
   readonly alertText = computed(() => {
     const pet = this.alarmedPets()[0];
-    if (!pet || !pet.gas) return '';
+    if (!pet) return '';
+    const alert = pet.atmosphereAlerts?.[0];
+    if (alert) return `${pet.id} · ${pet.location} · ${alert.message}`;
+    if (!pet.gas) return '';
+    // Fallback para PETs de exemplo sem atmosphereAlerts (dado mockado).
     return `${pet.id} · ${pet.location} · H₂S em ${pet.gas.h2s.toFixed(1)} ppm, acima do limite de 8 ppm.`;
   });
   readonly evacText = computed(() => {
@@ -325,11 +334,31 @@ export class PetStateService {
     } catch {
       const time = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
       const text = `O₂ ${gas.o2.toFixed(1)}% · CO ${gas.co.toFixed(0)} ppm · H₂S ${gas.h2s.toFixed(1)} ppm · LEL ${gas.lel.toFixed(0)}%`;
+      const violations = this.findGasViolations(gas, time);
       this.pets.update((list) =>
-        list.map((p) => (p.id === id ? { ...p, gas, readings: [...(p.readings ?? []), { time, text }] } : p)),
+        list.map((p) =>
+          p.id === id
+            ? {
+                ...p,
+                gas,
+                readings: [...(p.readings ?? []), { time, text }],
+                atmosphereAlerts: [...violations, ...(p.atmosphereAlerts ?? [])],
+                alarm: violations.length > 0,
+              }
+            : p,
+        ),
       );
     }
     this.measurementDialogOpen.set(false);
+  }
+
+  private findGasViolations(gas: GasReading, timestamp: string): AtmosphereAlert[] {
+    const keys: GasKey[] = ['o2', 'co', 'h2s', 'lel'];
+    return keys.flatMap((key) => {
+      const message = gasViolationMessage(key, gas[key]);
+      if (!message) return [];
+      return [{ gas: key, value: gas[key], limitText: GAS_LIMITS[key].limitText, message, timestamp }];
+    });
   }
 
   // ── Wizard ────────────────────────────────────────────────────────
@@ -499,6 +528,10 @@ export class PetStateService {
     this.stepIndex.update((i) => i + 1);
   }
 
+  private badgesToTeam(badges: Badge[], petRole: PetTeamRole): PetTeamMember[] {
+    return badges.map((b) => ({ name: b.name, registration: b.registration, role: b.role, petRole }));
+  }
+
   private async finishPet(): Promise<void> {
     const fields = this.fields();
     const now = new Date();
@@ -506,7 +539,12 @@ export class PetStateService {
     const areas = this.selectedAreas();
     const gas = this.needsGasMonitoring() ? this.liveGas() : undefined;
     const criticalAlerts = this.criticalAlerts();
-    const teamSize = this.authorizedTeam().length + this.vigiaTeam().length + this.resgateTeam().length;
+    const team: PetTeamMember[] = [
+      ...this.badgesToTeam(this.authorizedTeam(), 'equipe'),
+      ...this.badgesToTeam(this.vigiaTeam(), 'vigia'),
+      ...this.badgesToTeam(this.resgateTeam(), 'resgate'),
+    ];
+    const teamSize = team.length;
     const payload = {
       areas,
       location: fields.local || 'Local não informado',
@@ -518,6 +556,7 @@ export class PetStateService {
       coordinates: '-25.2531, -53.9927',
       gas,
       criticalAlerts,
+      team,
       companyPhone: fields.telefone || undefined,
     };
 
@@ -540,6 +579,7 @@ export class PetStateService {
         coordinates: payload.coordinates,
         gas,
         criticalAlerts,
+        team,
         companyPhone: payload.companyPhone,
       };
     }

@@ -6,6 +6,7 @@ import {
   GasKey,
   INCIDENT_CAUSE,
   PET_STATUS,
+  PET_TEAM_ROLE_LABEL,
   Pet,
   RISK_AREAS,
   RiskAreaId,
@@ -269,6 +270,13 @@ export class PetManagerComponent {
       { label: 'Unidades', value: String(new Set(pets.map((p) => p.pet.unit)).size), note: 'unidades industriais' },
     ];
   });
+
+  readonly reportTeams = computed(() =>
+    this.reportPets().map(({ pet }) => ({
+      pet,
+      members: (pet.team ?? []).map((m) => ({ ...m, roleLabel: PET_TEAM_ROLE_LABEL[m.petRole] })),
+    })),
+  );
 
   readonly reportMonitors = computed(() =>
     this.reportPets()

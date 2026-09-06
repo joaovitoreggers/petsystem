@@ -1,4 +1,10 @@
-import { WorkPermit, WorkPermitCriticalAlert, WorkPermitGasReading, WorkPermitStatus } from '../entities/work-permit.entity';
+import {
+  WorkPermit,
+  WorkPermitCriticalAlert,
+  WorkPermitGasReading,
+  WorkPermitStatus,
+  WorkPermitTeamMember,
+} from '../entities/work-permit.entity';
 
 export interface AddReadingData {
   gas: WorkPermitGasReading;
@@ -21,6 +27,7 @@ export interface CreateWorkPermitData {
   alarm?: boolean;
   durationMinutes?: number;
   criticalAlerts?: WorkPermitCriticalAlert[];
+  team?: WorkPermitTeamMember[];
   companyPhone?: string;
 }
 

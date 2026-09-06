@@ -3,6 +3,7 @@ import {
   ArrayMinSize,
   IsArray,
   IsBoolean,
+  IsIn,
   IsInt,
   IsNumber,
   IsOptional,
@@ -11,6 +12,7 @@ import {
   MinLength,
   ValidateNested,
 } from 'class-validator';
+import { WorkPermitTeamRole } from '../entities/work-permit.entity';
 
 export class WorkPermitGasReadingDto {
   @IsNumber()
@@ -45,6 +47,23 @@ export class WorkPermitCriticalAlertDto {
 
   @IsString()
   timestamp!: string;
+}
+
+export class WorkPermitTeamMemberDto {
+  @IsString()
+  @MinLength(1)
+  name!: string;
+
+  @IsString()
+  @MinLength(1)
+  registration!: string;
+
+  @IsString()
+  @MinLength(1)
+  role!: string;
+
+  @IsIn(['equipe', 'vigia', 'resgate'])
+  petRole!: WorkPermitTeamRole;
 }
 
 export class CreateWorkPermitDto {
@@ -92,6 +111,12 @@ export class CreateWorkPermitDto {
   @ValidateNested({ each: true })
   @Type(() => WorkPermitCriticalAlertDto)
   criticalAlerts?: WorkPermitCriticalAlertDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => WorkPermitTeamMemberDto)
+  team?: WorkPermitTeamMemberDto[];
 
   @IsOptional()
   @IsString()

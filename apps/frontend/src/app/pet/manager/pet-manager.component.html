@@ -318,7 +318,38 @@
         </tbody>
       </table>
 
-      <h4>2. Monitoramento dos medidores por PET</h4>
+      <h4>2. Relação de funcionários por PET</h4>
+      <div class="report__team-list">
+        @for (t of reportTeams(); track t.pet.id) {
+          <div class="report__team">
+            <div class="report__team-head">
+              <span class="mono">{{ t.pet.id }}</span>
+              <span>{{ t.pet.location }}</span>
+            </div>
+            @if (t.members.length > 0) {
+              <table class="table report-table">
+                <thead>
+                  <tr><th>Nome</th><th>Matrícula</th><th>Função</th><th>Papel na PET</th></tr>
+                </thead>
+                <tbody>
+                  @for (m of t.members; track m.registration + m.petRole) {
+                    <tr>
+                      <td>{{ m.name }}</td>
+                      <td class="mono">{{ m.registration }}</td>
+                      <td>{{ m.role }}</td>
+                      <td>{{ m.roleLabel }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            } @else {
+              <div class="report__team-empty">Relação de funcionários não disponível para esta PET.</div>
+            }
+          </div>
+        }
+      </div>
+
+      <h4>3. Monitoramento dos medidores por PET</h4>
       <div class="report__monitor-note">
         Valores mínimo, médio e máximo registrados pelo medidor pareado durante a vigência de cada permissão. Limites
         NR-33: O₂ 19,5–23,0 % · CO 25 ppm · H₂S 8 ppm · LEL 10 %.
@@ -352,7 +383,7 @@
         }
       </div>
 
-      <h4>3. Condição das medições por dia</h4>
+      <h4>4. Condição das medições por dia</h4>
       <div class="report__chart">
         @for (d of reportDays(); track d.iso) {
           <div class="report__chart-col" [title]="d.dayLabel">
