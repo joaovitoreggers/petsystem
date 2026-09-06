@@ -217,6 +217,14 @@ export class PetStateService {
   readonly technicianSigned = signal(false);
   readonly executorSigned = signal(false);
 
+  // Foto do ponto de entrada anexada na etapa de checklist — só existe
+  // durante o preenchimento do assistente, como as assinaturas.
+  readonly sitePhoto = signal<string | null>(null);
+
+  setSitePhoto(dataUrl: string | null): void {
+    this.sitePhoto.set(dataUrl);
+  }
+
   // Liberações com ressalva: funcionário com documentação vencida foi
   // admitido mesmo assim, por decisão do técnico. Fica visível durante o
   // assistente e vai junto no registro da PET (ver finishPet()).
@@ -350,6 +358,7 @@ export class PetStateService {
     this.technicianSigned.set(false);
     this.executorSigned.set(false);
     this.criticalAlerts.set([]);
+    this.sitePhoto.set(null);
     this.screen.set('nova');
   }
 

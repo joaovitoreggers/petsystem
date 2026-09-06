@@ -185,9 +185,18 @@
 .fire-watch__name { flex: 1; }
 .photo { padding: 12px; }
 .photo__placeholder {
-  height: 110px; margin-top: 10px; display: grid; place-items: center;
+  height: 110px; margin-top: 10px; display: grid; place-items: center; cursor: pointer;
   background: repeating-linear-gradient(90deg, var(--color-neutral-200) 0 7px, var(--color-neutral-100) 7px 14px);
   font-family: ui-monospace, monospace; font-size: 11px; color: var(--color-neutral-700);
+}
+.photo__preview {
+  position: relative; height: 160px; margin: 10px 0; cursor: pointer; overflow: hidden;
+  background: var(--color-neutral-200);
+}
+.photo__preview img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.photo__remove {
+  position: absolute; top: 6px; right: 6px; width: 26px; height: 26px; padding: 0; font-size: 13px;
+  background: color-mix(in srgb, var(--color-bg) 85%, transparent); border-color: var(--color-divider);
 }
 
 /* — assinaturas — */
