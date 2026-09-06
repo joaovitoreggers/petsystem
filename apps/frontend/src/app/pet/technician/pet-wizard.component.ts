@@ -62,10 +62,29 @@ export const SITE_LOCATIONS = [
 export class PetWizardComponent {
   @ViewChild('tecnicoCanvas') tecnicoCanvasRef?: ElementRef<HTMLCanvasElement>;
   @ViewChild('execCanvas') execCanvasRef?: ElementRef<HTMLCanvasElement>;
+  @ViewChild('photoInput') photoInputRef?: ElementRef<HTMLInputElement>;
 
   readonly areas = RISK_AREAS;
 
   constructor(readonly state: PetStateService) {}
+
+  triggerPhotoPicker(): void {
+    this.photoInputRef?.nativeElement.click();
+  }
+
+  onPhotoSelected(event: Event): void {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => this.state.setSitePhoto(reader.result as string);
+    reader.readAsDataURL(file);
+  }
+
+  removePhoto(event: Event): void {
+    event.stopPropagation();
+    this.state.setSitePhoto(null);
+    if (this.photoInputRef) this.photoInputRef.nativeElement.value = '';
+  }
 
   readonly stepLabel = computed(() => {
     const step = this.state.currentStep();

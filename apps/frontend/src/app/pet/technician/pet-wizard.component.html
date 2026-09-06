@@ -387,8 +387,23 @@
           <div class="photo blueprint">
             <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
             <div class="section-kicker">Registro fotográfico do local</div>
-            <div class="photo__placeholder">foto do ponto de entrada</div>
-            <button type="button" class="btn btn-secondary btn-block">Anexar foto</button>
+            <input
+              #photoInput
+              type="file"
+              accept="image/*"
+              hidden
+              (change)="onPhotoSelected($event)"
+            />
+            @if (state.sitePhoto(); as photo) {
+              <div class="photo__preview" (click)="triggerPhotoPicker()">
+                <img [src]="photo" alt="Foto do ponto de entrada" />
+                <button type="button" class="btn btn-ghost photo__remove" (click)="removePhoto($event)">✕</button>
+              </div>
+              <button type="button" class="btn btn-secondary btn-block" (click)="triggerPhotoPicker()">Trocar foto</button>
+            } @else {
+              <div class="photo__placeholder" (click)="triggerPhotoPicker()">foto do ponto de entrada</div>
+              <button type="button" class="btn btn-secondary btn-block" (click)="triggerPhotoPicker()">Anexar foto</button>
+            }
           </div>
         </div>
       }
