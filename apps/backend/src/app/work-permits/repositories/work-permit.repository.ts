@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { WorkPermit } from '../entities/work-permit.entity';
+import { findGasViolations } from '../gas-limits';
 import {
   AddReadingData,
   CloseWorkPermitData,
@@ -43,6 +44,7 @@ export class WorkPermitRepository implements IWorkPermitRepository {
       alarm: data.alarm ?? false,
       durationMinutes: data.durationMinutes,
       criticalAlerts: data.criticalAlerts,
+      team: data.team,
       companyPhone: data.companyPhone,
     });
     return this.repository.save(permit);
@@ -69,8 +71,11 @@ export class WorkPermitRepository implements IWorkPermitRepository {
     const { o2, co, h2s, lel } = data.gas;
     const time = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     const text = `O₂ ${o2.toFixed(1)}% · CO ${co.toFixed(0)} ppm · H₂S ${h2s.toFixed(1)} ppm · LEL ${lel.toFixed(0)}%`;
+    const violations = findGasViolations(data.gas, time);
     permit.gas = data.gas;
     permit.readings = [...(permit.readings ?? []), { time, text }];
+    permit.atmosphereAlerts = [...violations, ...(permit.atmosphereAlerts ?? [])];
+    permit.alarm = violations.length > 0;
     return this.repository.save(permit);
   }
 

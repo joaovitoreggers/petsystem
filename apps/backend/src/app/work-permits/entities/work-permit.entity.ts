@@ -28,6 +28,30 @@ export interface WorkPermitReading {
   text: string;
 }
 
+export type WorkPermitGasKey = 'o2' | 'co' | 'h2s' | 'lel';
+
+// Uma leitura manual fora do limite de segurança gera um registro próprio,
+// distinto do log normal de medição (`readings`) — para não passar
+// despercebida no histórico da PET.
+export interface WorkPermitAtmosphereAlert {
+  gas: WorkPermitGasKey;
+  value: number;
+  limitText: string;
+  message: string;
+  timestamp: string;
+}
+
+export type WorkPermitTeamRole = 'equipe' | 'vigia' | 'resgate';
+
+// Quem foi liberado na PET, por papel — preenchido a partir da leitura de
+// crachá na etapa "Crachá e permissão" do assistente.
+export interface WorkPermitTeamMember {
+  name: string;
+  registration: string;
+  role: string;
+  petRole: WorkPermitTeamRole;
+}
+
 /**
  * PET (Permissão de Entrada e Trabalho): permissão emitida pelo técnico de
  * segurança para uma intervenção em área de risco. O id segue o formato
@@ -95,6 +119,12 @@ export class WorkPermit {
 
   @Column({ type: 'jsonb', nullable: true })
   readings?: WorkPermitReading[];
+
+  @Column({ type: 'jsonb', nullable: true })
+  team?: WorkPermitTeamMember[];
+
+  @Column({ name: 'atmosphere_alerts', type: 'jsonb', nullable: true })
+  atmosphereAlerts?: WorkPermitAtmosphereAlert[];
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt!: Date;

@@ -210,6 +210,14 @@
                       <div class="timeline__text">Nova medição: {{ reading.text }}</div>
                     </div>
                   }
+                  @for (alert of pet.atmosphereAlerts ?? []; track alert.timestamp + alert.gas + alert.value) {
+                    <div class="timeline__row timeline__row--critical">
+                      <div class="timeline__time">{{ alert.timestamp }}</div>
+                      <div class="timeline__text">
+                        <span class="timeline__critical-icon">⚠</span> Atmosfera fora do limite: {{ alert.message }}
+                      </div>
+                    </div>
+                  }
                   @if (pet.end) {
                     <div class="timeline__row">
                       <div class="timeline__time">{{ pet.end }}</div>

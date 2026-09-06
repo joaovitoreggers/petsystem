@@ -148,6 +148,10 @@
 .report__summary-value { font-family: var(--font-heading); font-weight: 600; font-size: 30px; line-height: 1.1; margin-top: 6px; }
 .report__summary-note { font-size: 11px; color: var(--color-neutral-700); }
 .report-table { font-size: 11px; }
+.report__team-list { display: flex; flex-direction: column; gap: 16px; margin-bottom: 8px; }
+.report__team { border: 1px solid var(--color-divider); padding: 12px 14px; }
+.report__team-head { display: flex; gap: 12px; align-items: baseline; margin-bottom: 8px; }
+.report__team-empty { font-size: 11px; color: var(--color-neutral-700); font-style: italic; }
 .report__monitor-note { font-size: 11px; color: var(--color-neutral-700); margin-bottom: 14px; }
 .report__monitor-list { display: flex; flex-direction: column; gap: 16px; }
 .report__monitor { border: 1px solid var(--color-divider); padding: 12px 14px; }

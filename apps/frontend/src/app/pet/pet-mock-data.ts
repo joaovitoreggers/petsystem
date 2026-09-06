@@ -73,6 +73,20 @@ export function isGasWithinLimit(key: GasKey, value: number): boolean {
   return value <= limit.max;
 }
 
+// Mensagem de violação para uma leitura manual fora do limite — null quando
+// o valor está dentro da faixa segura.
+export function gasViolationMessage(key: GasKey, value: number): string | null {
+  const limit = GAS_LIMITS[key];
+  const v = value.toFixed(limit.decimals);
+  if (limit.min !== undefined && value < limit.min) {
+    return `${limit.label} em ${v} ${limit.unit}, abaixo do mínimo de ${limit.min} ${limit.unit}.`;
+  }
+  if (value > limit.max) {
+    return `${limit.label} em ${v} ${limit.unit}, acima do limite de ${limit.max} ${limit.unit}.`;
+  }
+  return null;
+}
+
 // SIM / NÃO / NA — mesmo modelo de resposta da PET em papel (substituiu a
 // caixa de marcar simples: "não aplicável" é uma resposta válida e distinta
 // de "não").
@@ -371,6 +385,34 @@ export interface GasReadingEntry {
   text: string;
 }
 
+// Uma leitura manual fora do limite de segurança gera um registro próprio,
+// distinto do log normal de medição — para não passar despercebida no
+// histórico da PET.
+export interface AtmosphereAlert {
+  gas: GasKey;
+  value: number;
+  limitText: string;
+  message: string;
+  timestamp: string;
+}
+
+export type PetTeamRole = 'equipe' | 'vigia' | 'resgate';
+
+export const PET_TEAM_ROLE_LABEL: Record<PetTeamRole, string> = {
+  equipe: 'Equipe autorizada',
+  vigia: 'Vigia',
+  resgate: 'Resgatista',
+};
+
+// Quem foi liberado na PET, por papel — preenchido a partir da leitura de
+// crachá na etapa "Crachá e permissão" do assistente.
+export interface PetTeamMember {
+  name: string;
+  registration: string;
+  role: string;
+  petRole: PetTeamRole;
+}
+
 export interface Pet {
   id: string;
   areas: RiskAreaId[];
@@ -389,6 +431,8 @@ export interface Pet {
   durationMinutes?: number;
   criticalAlerts?: CriticalAlert[];
   readings?: GasReadingEntry[];
+  atmosphereAlerts?: AtmosphereAlert[];
+  team?: PetTeamMember[];
   companyPhone?: string;
   closeReason?: string;
   closedBy?: string;
