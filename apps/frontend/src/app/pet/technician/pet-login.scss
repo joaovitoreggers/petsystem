@@ -1,0 +1,326 @@
+/* ── Tela de acesso ───────────────────────────────────────────────────
+   Duas formas de entrar lado a lado: biometria facial (a simulação da
+   fatia de design) e credencial de e-mail e senha, que bate no AuthModule
+   real do back-end. Arquivo próprio porque é a única superfície escura do
+   fluxo de campo — misturar com o resto só atrapalhava a leitura.
+   Carregado junto via `styleUrls`. */
+
+.screen--login {
+  position: relative;
+  background: radial-gradient(
+    120% 90% at 50% -10%,
+    var(--color-accent-800) 0%,
+    var(--color-accent-900) 62%
+  );
+  color: var(--text-on-dark);
+  overflow: hidden;
+  isolation: isolate;
+}
+.login__logo-band {
+  background: #fff;
+  padding: var(--space-4) var(--space-6);
+  flex: none;
+  display: flex;
+  justify-content: center;
+}
+.login__logo {
+  width: min(196px, 58%);
+  height: auto;
+  mix-blend-mode: multiply;
+}
+
+/* Planta industrial isométrica ao fundo: dá profundidade sem competir
+   com a leitura do quadro da câmera. */
+.login__art {
+  position: absolute;
+  left: 50%;
+  bottom: -6%;
+  transform: translateX(-50%);
+  width: min(760px, 150%);
+  opacity: 0.16;
+  z-index: -1;
+  pointer-events: none;
+  --art-light: var(--color-accent-300);
+  --art-mid: var(--color-accent-500);
+  --art-dark: var(--color-accent-900);
+  --art-line: var(--color-accent-200);
+  --art-accent: var(--color-accent-200);
+  --art-glow: var(--color-accent-400);
+}
+
+.login__body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  padding: var(--space-5) var(--space-6) var(--space-6);
+  gap: var(--space-4);
+  min-height: 0;
+  /* A tela de login rola por dentro quando o aparelho é curto — nunca
+     empurra o conteúdo para baixo da navegação inferior. */
+  overflow-y: auto;
+}
+.login__header {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid rgba(238, 242, 246, 0.18);
+}
+.login__brand {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: var(--text-xl);
+  letter-spacing: 0.07em;
+  white-space: nowrap;
+}
+.login__unit {
+  font-size: var(--text-xs);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.62;
+  margin-left: auto;
+  text-align: right;
+  line-height: 1.4;
+}
+.login__center {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: var(--space-5);
+  padding: var(--space-2) 0;
+}
+
+/* Alternador entre as duas formas de acesso: as duas ficam visíveis, sem
+   esconder a biometria atrás de um link. */
+.login__methods {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3px;
+  padding: 3px;
+  border-radius: var(--radius-md);
+  background: rgba(9, 17, 26, 0.42);
+  border: 1px solid rgba(238, 242, 246, 0.14);
+  flex: none;
+}
+.login__method {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 38px;
+  padding: 0 var(--space-2);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: rgba(238, 242, 246, 0.66);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+/* `:not(--active)`: sem isso o hover sobre a aba já selecionada pintava o
+   texto de claro sobre o fundo claro do estado ativo — rótulo invisível. */
+.login__method:hover:not(.login__method--active) {
+  color: var(--text-on-dark);
+}
+.login__method--active {
+  background: var(--text-on-dark);
+  color: var(--color-accent-900);
+}
+
+/* Formulário de credencial — mesmo peso visual do quadro da câmera. */
+.login__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  width: 100%;
+  max-width: 340px;
+}
+.login__field > label {
+  color: rgba(238, 242, 246, 0.72);
+}
+.login__field .input {
+  background: rgba(9, 17, 26, 0.45);
+  border-color: rgba(238, 242, 246, 0.22);
+  color: var(--text-on-dark);
+}
+.login__field .input::placeholder {
+  color: rgba(238, 242, 246, 0.38);
+}
+.login__field .input:hover:not(:disabled) {
+  border-color: rgba(238, 242, 246, 0.42);
+}
+.login__field .input:focus-visible {
+  border-color: var(--color-accent-300);
+  box-shadow: 0 0 0 3px rgba(181, 217, 253, 0.24);
+}
+.login__password {
+  position: relative;
+  display: flex;
+}
+.login__password .input {
+  padding-right: 84px;
+}
+.login__reveal {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  min-height: 30px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--color-accent-300);
+}
+.login__reveal:hover:not(:disabled) {
+  background: rgba(238, 242, 246, 0.12);
+}
+.login__error {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  border-left: 3px solid #f0a6a6;
+  background: rgba(142, 32, 32, 0.32);
+  color: #ffdcdc;
+  font-size: var(--text-sm);
+  line-height: 1.45;
+}
+
+/* Quadro da câmera frontal. */
+@keyframes face-sweep {
+  0% {
+    top: 4%;
+    opacity: 0.2;
+  }
+  50% {
+    opacity: 0.9;
+  }
+  100% {
+    top: 92%;
+    opacity: 0.2;
+  }
+}
+.face-frame {
+  position: relative;
+  width: min(220px, 62vw);
+  aspect-ratio: 200 / 236;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: rgba(9, 17, 26, 0.55);
+  box-shadow:
+    0 0 0 1px rgba(238, 242, 246, 0.16),
+    var(--shadow-lg);
+}
+.face-frame__grid {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(238, 242, 246, 0.08) 0 8px,
+    rgba(238, 242, 246, 0.02) 8px 16px
+  );
+}
+.face-frame__video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* Espelhado: a câmera frontal precisa parecer um espelho para o técnico
+     conseguir se centralizar. */
+  transform: scaleX(-1);
+}
+.face-frame__border {
+  position: absolute;
+  inset: 0;
+  border: 1px solid rgba(238, 242, 246, 0.22);
+  border-radius: inherit;
+  pointer-events: none;
+}
+.face-frame__oval {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -54%);
+  width: 56%;
+  height: 68%;
+  border: 2px dashed currentColor;
+  border-radius: 50% / 42%;
+  opacity: 0.85;
+  transition: border-color var(--dur-slow) var(--ease-out);
+  pointer-events: none;
+}
+.face-frame__sweep {
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  height: 2px;
+  border-radius: var(--radius-pill);
+  animation: face-sweep 1.6s var(--ease-in-out) infinite;
+  pointer-events: none;
+}
+.face-frame__caption {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: var(--space-2);
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: rgba(238, 242, 246, 0.72);
+  padding: 0 var(--space-2);
+}
+
+.login__status {
+  text-align: center;
+  max-width: 34ch;
+}
+.login__title {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: var(--text-2xl);
+  line-height: 1.15;
+}
+.login__text {
+  font-size: var(--text-base);
+  opacity: 0.78;
+  line-height: 1.5;
+  margin-top: var(--space-1);
+}
+.login__btn {
+  width: 100%;
+  min-height: 48px;
+  font-size: var(--text-lg);
+  background: var(--text-on-dark);
+  color: var(--color-accent-900);
+  border-color: var(--text-on-dark);
+}
+.login__btn:hover:not(:disabled) {
+  background: #fff;
+  border-color: #fff;
+}
+.login__disclaimer {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  text-align: center;
+  opacity: 0.55;
+  line-height: 1.7;
+}
+
+/* Alvos de toque da tela de acesso: abas e o "mostrar" da senha são
+   tocados com luva, na portaria. */
+@media (pointer: coarse) {
+  .login__method {
+    min-height: 44px;
+  }
+  .login__reveal {
+    min-height: 38px;
+  }
+}

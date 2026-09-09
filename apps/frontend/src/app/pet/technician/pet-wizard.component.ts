@@ -7,13 +7,13 @@ import {
   EPI_CHECKLIST,
   GAS_LIMITS,
   GasKey,
-  MOCK_BADGES,
   RISK_AREAS,
   RiskAreaId,
   STEP_NAME,
   isGasWithinLimit,
   riskAreaNrs,
 } from '../pet-mock-data';
+import { IconComponent } from '../../shared/icon.component';
 
 interface GaugeView {
   key: GasKey;
@@ -24,9 +24,23 @@ interface GaugeView {
   limitText: string;
 }
 
-type WizardFieldName = 'descricao' | 'tipo' | 'empresa' | 'telefone' | 'inicio' | 'fim' | 'local' | 'unidade';
+type WizardFieldName =
+  | 'descricao'
+  | 'tipo'
+  | 'empresa'
+  | 'telefone'
+  | 'inicio'
+  | 'fim'
+  | 'local'
+  | 'unidade';
 
-export const PET_UNITS = ['Matelândia', 'Medianeira', 'Céu Azul', 'Itaipulândia', 'Missal'];
+export const PET_UNITS = [
+  'Matelândia',
+  'Medianeira',
+  'Céu Azul',
+  'Itaipulândia',
+  'Missal',
+];
 
 export const EXECUTING_COMPANIES = [
   'Lar · Manutenção',
@@ -55,9 +69,9 @@ export const SITE_LOCATIONS = [
 @Component({
   selector: 'app-pet-wizard',
   standalone: true,
-  imports: [],
+  imports: [IconComponent],
   templateUrl: './pet-wizard.component.html',
-  styleUrl: './pet-wizard.component.scss',
+  styleUrls: ['./pet-wizard.component.scss', './pet-wizard-instruments.scss'],
 })
 export class PetWizardComponent {
   @ViewChild('tecnicoCanvas') tecnicoCanvasRef?: ElementRef<HTMLCanvasElement>;
@@ -93,7 +107,13 @@ export class PetWizardComponent {
   readonly stepNumber = computed(() => this.state.stepIndex() + 1);
   readonly stepTotal = computed(() => this.state.steps().length);
   readonly stepBars = computed(() =>
-    this.state.steps().map((_, i) => (i <= this.state.stepIndex() ? 'var(--color-accent)' : 'var(--color-neutral-300)')),
+    this.state
+      .steps()
+      .map((_, i) =>
+        i <= this.state.stepIndex()
+          ? 'var(--color-accent)'
+          : 'var(--color-neutral-300)',
+      ),
   );
 
   readonly selectedAreaNames = computed(() =>
@@ -102,8 +122,12 @@ export class PetWizardComponent {
       .map((id) => RISK_AREAS.find((a) => a.id === id)?.name)
       .join(' + '),
   );
-  readonly selectedNrs = computed(() => riskAreaNrs(this.state.selectedAreas()));
-  readonly areaNotes = computed(() => this.state.selectedAreas().map((id) => ({ id, text: AREA_NOTE[id] })));
+  readonly selectedNrs = computed(() =>
+    riskAreaNrs(this.state.selectedAreas()),
+  );
+  readonly areaNotes = computed(() =>
+    this.state.selectedAreas().map((id) => ({ id, text: AREA_NOTE[id] })),
+  );
 
   // Leitura manual: o técnico digita o valor que leu no detector portátil —
   // sem simulação nem pareamento automático de aparelho.
@@ -142,7 +166,10 @@ export class PetWizardComponent {
     const epiGroup = {
       title: EPI_CHECKLIST.title,
       areaId: null as RiskAreaId | null,
-      items: EPI_CHECKLIST.items.map((label, itemIndex) => ({ key: `epi:0:${itemIndex}`, label })),
+      items: EPI_CHECKLIST.items.map((label, itemIndex) => ({
+        key: `epi:0:${itemIndex}`,
+        label,
+      })),
     };
     const areaGroups = this.state.selectedAreas().flatMap((areaId) =>
       CHECKLISTS[areaId].map((group, groupIndex) => ({
@@ -171,14 +198,20 @@ export class PetWizardComponent {
     this.state.setChecklistAnswer(key, answer);
   }
 
-  readonly needsFireWatch = computed(() => this.state.selectedAreas().includes('quente'));
+  readonly needsFireWatch = computed(() =>
+    this.state.selectedAreas().includes('quente'),
+  );
 
   onFireWatchTimeChange(index: number, event: Event): void {
-    this.state.updateFireWatchRound(index, { hora: (event.target as HTMLInputElement).value });
+    this.state.updateFireWatchRound(index, {
+      hora: (event.target as HTMLInputElement).value,
+    });
   }
 
   onFireWatchNameChange(index: number, event: Event): void {
-    this.state.updateFireWatchRound(index, { nome: (event.target as HTMLInputElement).value });
+    this.state.updateFireWatchRound(index, {
+      nome: (event.target as HTMLInputElement).value,
+    });
   }
 
   readonly unitOptions = PET_UNITS;
@@ -188,9 +221,11 @@ export class PetWizardComponent {
   readonly badgeStatusLabel = (status: 'ok' | 'prox' | 'venc') =>
     status === 'ok' ? '✓' : status === 'prox' ? '!' : '✕';
   readonly badgeStatusColor = (status: 'ok' | 'prox' | 'venc') =>
-    status === 'ok' ? 'var(--status-ok)' : status === 'prox' ? 'var(--status-warn)' : 'var(--status-bad)';
-
-  readonly hasMoreBadgesToScan = computed(() => this.state.badgeCycleIndex() < MOCK_BADGES.length * 2);
+    status === 'ok'
+      ? 'var(--status-ok)'
+      : status === 'prox'
+        ? 'var(--status-warn)'
+        : 'var(--status-bad)';
 
   addToTeam(): void {
     this.state.addBadgeToTeam();
@@ -211,12 +246,15 @@ export class PetWizardComponent {
   }
 
   onFieldChange(name: WizardFieldName, event: Event): void {
-    const value = (event.target as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement).value;
+    const value = (
+      event.target as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    ).value;
     this.state.setField(name, value);
   }
 
   clearSignature(which: 'tecnico' | 'exec'): void {
-    const ref = which === 'tecnico' ? this.tecnicoCanvasRef : this.execCanvasRef;
+    const ref =
+      which === 'tecnico' ? this.tecnicoCanvasRef : this.execCanvasRef;
     const canvas = ref?.nativeElement;
     if (canvas) {
       canvas.getContext('2d')?.clearRect(0, 0, canvas.width, canvas.height);
@@ -239,8 +277,13 @@ export class PetWizardComponent {
     this.drawing = false;
   }
 
-  private drawPoint(event: PointerEvent, which: 'tecnico' | 'exec', start: boolean): void {
-    const ref = which === 'tecnico' ? this.tecnicoCanvasRef : this.execCanvasRef;
+  private drawPoint(
+    event: PointerEvent,
+    which: 'tecnico' | 'exec',
+    start: boolean,
+  ): void {
+    const ref =
+      which === 'tecnico' ? this.tecnicoCanvasRef : this.execCanvasRef;
     const canvas = ref?.nativeElement;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
