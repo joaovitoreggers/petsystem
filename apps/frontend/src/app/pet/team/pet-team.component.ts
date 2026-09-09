@@ -8,6 +8,8 @@ import {
   dateToBr,
   daysUntil,
 } from '../pet-mock-data';
+import { IconComponent } from '../../shared/icon.component';
+import { IndustrialArtComponent } from '../../shared/industrial-art.component';
 
 type TeamFilter = 'todos' | 'vencimento próximo' | 'vencidos' | 'terceiros';
 
@@ -46,7 +48,12 @@ interface CadastroDocView {
   deadlineLabel: string;
 }
 
-const TEAM_FILTERS: TeamFilter[] = ['todos', 'vencimento próximo', 'vencidos', 'terceiros'];
+const TEAM_FILTERS: TeamFilter[] = [
+  'todos',
+  'vencimento próximo',
+  'vencidos',
+  'terceiros',
+];
 
 function documentStatus(days: number): BadgeItemStatus {
   if (days < 0) return 'venc';
@@ -57,7 +64,7 @@ function documentStatus(days: number): BadgeItemStatus {
 @Component({
   selector: 'app-pet-team',
   standalone: true,
-  imports: [],
+  imports: [IconComponent, IndustrialArtComponent],
   templateUrl: './pet-team.component.html',
   styleUrl: './pet-team.component.scss',
 })
@@ -92,7 +99,12 @@ export class PetTeamComponent {
           color: BADGE_STATUS[status].color,
           icon: BADGE_STATUS[status].icon,
           dateLabel: dateToBr(iso),
-          deadlineLabel: days < 0 ? `vencido há ${-days} d` : days === 0 ? 'vence hoje' : `em ${days} d`,
+          deadlineLabel:
+            days < 0
+              ? `vencido há ${-days} d`
+              : days === 0
+                ? 'vence hoje'
+                : `em ${days} d`,
         };
       })
       .sort((a, b) => a.days - b.days);
@@ -103,7 +115,12 @@ export class PetTeamComponent {
         ? 'prox'
         : 'ok';
     const next = documents[0];
-    const situationLabel = status === 'venc' ? 'acesso crítico' : status === 'prox' ? 'renovação próxima' : 'apto';
+    const situationLabel =
+      status === 'venc'
+        ? 'acesso crítico'
+        : status === 'prox'
+          ? 'renovação próxima'
+          : 'apto';
 
     return {
       member,
@@ -119,15 +136,26 @@ export class PetTeamComponent {
       nextDeadlineLabel: next?.deadlineLabel ?? '',
       nextDeadlineColor: next ? next.color : 'var(--color-text)',
       situationLabel,
-      situationFg: status === 'venc' ? '#fdf3f3' : status === 'prox' ? '#6b4600' : '#1d4d33',
-      situationBg: status === 'venc' ? 'var(--status-bad)' : status === 'prox' ? '#f6e6c4' : '#dff0e6',
+      situationFg:
+        status === 'venc'
+          ? '#fdf3f3'
+          : status === 'prox'
+            ? '#6b4600'
+            : '#1d4d33',
+      situationBg:
+        status === 'venc'
+          ? 'var(--status-bad)'
+          : status === 'prox'
+            ? '#f6e6c4'
+            : '#dff0e6',
       rowBg: status === 'venc' ? '#f9eded' : 'transparent',
     };
   }
 
   readonly allMembers = computed<TeamMemberView[]>(() => {
     const views = this.state.teamMembers().map((m) => this.toView(m));
-    const rank = (s: BadgeItemStatus) => (s === 'venc' ? 0 : s === 'prox' ? 1 : 2);
+    const rank = (s: BadgeItemStatus) =>
+      s === 'venc' ? 0 : s === 'prox' ? 1 : 2;
     return views.sort((a, b) => rank(a.status) - rank(b.status));
   });
 
@@ -145,10 +173,30 @@ export class PetTeamComponent {
   readonly kpis = computed(() => {
     const s = this.stats();
     return [
-      { label: 'Cadastrados', value: String(s.total), note: `${s.thirdParty} de empresas terceiras`, color: 'var(--color-text)' },
-      { label: 'Aptos sem pendência', value: String(s.ok), note: 'toda a documentação em dia', color: 'var(--color-text)' },
-      { label: 'Vencimento em 30 dias', value: String(s.prox), note: 'renovação a programar', color: '#8a5a00' },
-      { label: 'Acesso crítico', value: String(s.venc), note: 'documentação vencida', color: 'var(--status-bad)' },
+      {
+        label: 'Cadastrados',
+        value: String(s.total),
+        note: `${s.thirdParty} de empresas terceiras`,
+        color: 'var(--color-text)',
+      },
+      {
+        label: 'Aptos sem pendência',
+        value: String(s.ok),
+        note: 'toda a documentação em dia',
+        color: 'var(--color-text)',
+      },
+      {
+        label: 'Vencimento em 30 dias',
+        value: String(s.prox),
+        note: 'renovação a programar',
+        color: '#8a5a00',
+      },
+      {
+        label: 'Acesso crítico',
+        value: String(s.venc),
+        note: 'documentação vencida',
+        color: 'var(--status-bad)',
+      },
     ];
   });
 
@@ -186,7 +234,13 @@ export class PetTeamComponent {
         checked,
         iso,
         color: !iso ? 'var(--color-neutral-600)' : BADGE_STATUS[status].color,
-        deadlineLabel: !checked ? '' : !iso ? 'sem data' : days! < 0 ? 'vencido' : `em ${days} d`,
+        deadlineLabel: !checked
+          ? ''
+          : !iso
+            ? 'sem data'
+            : days! < 0
+              ? 'vencido'
+              : `em ${days} d`,
       };
     }),
   );
@@ -212,7 +266,8 @@ export class PetTeamComponent {
     const dates = this.cadDocDates();
     const codes = Object.keys(dates);
     if (codes.length === 0) missing.push('ao menos um documento');
-    else if (codes.some((c) => !dates[c])) missing.push('a validade dos documentos marcados');
+    else if (codes.some((c) => !dates[c]))
+      missing.push('a validade dos documentos marcados');
     return missing;
   });
 
