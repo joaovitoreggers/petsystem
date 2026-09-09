@@ -1,35 +1,57 @@
 @if (!viewingReport()) {
   <div class="dashboard">
+    <!-- 1 · O que exige atenção agora, antes de qualquer indicador. -->
     @if (state.hasAlert()) {
-      <div class="alert-banner">
-        <span class="alert-banner__dot"></span>
-        <span class="alert-banner__title">ALERTA ATMOSFÉRICO</span>
-        <span class="alert-banner__text">{{ state.alertText() }}</span>
-        <button type="button" class="btn alert-banner__btn" (click)="state.triggerEvacuation()">Acionar evacuação</button>
+      <div class="alert-banner" role="alert">
+        <span class="alert-banner__icon"
+          ><app-icon name="alert" [size]="20"
+        /></span>
+        <div class="alert-banner__content">
+          <div class="alert-banner__title">
+            <span class="pulse-dot"></span>
+            Alerta atmosférico
+          </div>
+          <div class="alert-banner__text">{{ state.alertText() }}</div>
+        </div>
+        <button
+          type="button"
+          class="btn alert-banner__btn"
+          (click)="state.triggerEvacuation()"
+        >
+          Acionar evacuação
+        </button>
       </div>
     }
 
     <div class="dashboard__head">
-      <div>
+      <div class="dashboard__head-text">
         <div class="section-kicker">Painel de gestão de risco · SESMT</div>
         <h1 class="dashboard__title">Permissões de entrada e trabalho</h1>
-        <div class="dashboard__clock">5 unidades industriais · atualizado agora</div>
+        <div class="dashboard__clock">
+          <span class="pulse-dot pulse-dot--ok"></span>
+          5 unidades industriais · atualizado agora
+        </div>
       </div>
       <div class="dashboard__head-actions">
-        <button type="button" class="btn btn-secondary blueprint dashboard__ai-btn" (click)="openAiModal()">
-          <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <button type="button" class="btn btn-secondary" (click)="openAiModal()">
+          <app-icon name="sparkles" [size]="17" />
           Analisar causas com IA
         </button>
-        <button type="button" class="btn btn-primary blueprint dashboard__report-btn" (click)="openReportModal()">
-          <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <button
+          type="button"
+          class="btn btn-primary"
+          (click)="openReportModal()"
+        >
+          <app-icon name="document" [size]="17" />
           Relatório PDF por período
         </button>
       </div>
     </div>
 
+    <!-- 2 · Indicadores de comando. -->
     <div class="kpi-grid">
       @for (k of kpis(); track k.label) {
-        <div>
+        <div class="kpi" [class.kpi--critical]="k.critical">
           <div class="section-kicker">{{ k.label }}</div>
           <div class="kpi-value" [style.color]="k.color">{{ k.value }}</div>
           <div class="kpi-note">{{ k.note }}</div>
@@ -37,191 +59,395 @@
       }
     </div>
 
-    <div class="dashboard__section-head">
-      <h3>Monitoramento em tempo real</h3>
-      <span class="dashboard__section-sub">medidores pareados · leitura contínua</span>
-    </div>
-    <div class="monitor-list">
-      @for (m of monitoredPetsView(); track m.pet.id) {
-        <div class="monitor-card blueprint">
-          <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-          <div class="monitor-card__head">
-            <div class="monitor-card__id">{{ m.pet.id }}</div>
-            <div class="monitor-card__local">{{ m.pet.location }}</div>
-            <div class="monitor-card__nr">{{ m.nr }}</div>
-            <div class="monitor-card__status" [style.color]="m.status.fg" [style.background]="m.status.bg">
-              {{ m.status.label }}
-            </div>
-          </div>
-          @if (m.pet.gas) {
-            <div class="monitor-card__gauges">
-              <div>
-                <div class="monitor-card__gauge-label">O₂</div>
-                <div class="monitor-card__gauge-value">{{ m.pet.gas.o2.toFixed(1) }}<span>%</span></div>
+    <!-- 3 · Frentes de trabalho em execução agora. -->
+    <section class="panel">
+      <div class="panel__head">
+        <div>
+          <h3>Frentes em execução</h3>
+          <span class="panel__head-sub"
+            >medidores pareados · leitura contínua</span
+          >
+        </div>
+        <span class="tag tag-accent"
+          >{{ monitoredPetsView().length }} ativas</span
+        >
+      </div>
+      <div class="panel__body">
+        <div class="monitor-list">
+          @for (m of monitoredPetsView(); track m.pet.id) {
+            <article
+              class="monitor-card"
+              [class.monitor-card--alarm]="m.pet.alarm"
+            >
+              <div class="monitor-card__head">
+                <div class="monitor-card__id mono">{{ m.pet.id }}</div>
+                <div
+                  class="status-pill monitor-card__status"
+                  [style.color]="m.status.fg"
+                  [style.background]="m.status.bg"
+                >
+                  {{ m.status.label }}
+                </div>
               </div>
-              <div>
-                <div class="monitor-card__gauge-label">CO</div>
-                <div class="monitor-card__gauge-value">{{ m.pet.gas.co.toFixed(0) }}<span>ppm</span></div>
+              <div class="monitor-card__local">{{ m.pet.location }}</div>
+              <div class="monitor-card__nr">{{ m.areaLabel }} · {{ m.nr }}</div>
+              @if (m.pet.gas) {
+                <div class="monitor-card__gauges">
+                  <div>
+                    <div class="monitor-card__gauge-label">O₂</div>
+                    <div class="monitor-card__gauge-value">
+                      {{ m.pet.gas.o2.toFixed(1) }}<span>%</span>
+                    </div>
+                  </div>
+                  <div>
+                    <div class="monitor-card__gauge-label">CO</div>
+                    <div class="monitor-card__gauge-value">
+                      {{ m.pet.gas.co.toFixed(0) }}<span>ppm</span>
+                    </div>
+                  </div>
+                  <div>
+                    <div class="monitor-card__gauge-label">H₂S</div>
+                    <div class="monitor-card__gauge-value">
+                      {{ m.pet.gas.h2s.toFixed(1) }}<span>ppm</span>
+                    </div>
+                  </div>
+                  <div>
+                    <div class="monitor-card__gauge-label">LEL</div>
+                    <div class="monitor-card__gauge-value">
+                      {{ m.pet.gas.lel.toFixed(0) }}<span>%</span>
+                    </div>
+                  </div>
+                </div>
+              }
+              <div class="monitor-card__foot">
+                <span>{{ m.pet.teamSize }} na equipe</span>
+                <span>emitida {{ m.pet.timeLabel }}</span>
+                <span>{{ m.pet.technician }}</span>
+                <span class="monitor-card__coord mono">{{
+                  m.pet.coordinates
+                }}</span>
               </div>
-              <div>
-                <div class="monitor-card__gauge-label">H₂S</div>
-                <div class="monitor-card__gauge-value">{{ m.pet.gas.h2s.toFixed(1) }}<span>ppm</span></div>
-              </div>
-              <div>
-                <div class="monitor-card__gauge-label">LEL</div>
-                <div class="monitor-card__gauge-value">{{ m.pet.gas.lel.toFixed(0) }}<span>%</span></div>
+            </article>
+          } @empty {
+            <div class="empty-state">
+              <app-industrial-art class="empty-state__art" scene="confined" />
+              <div class="empty-state__title">Nenhuma frente em execução</div>
+              <div class="empty-state__text">
+                Não há permissão em vigor nas unidades monitoradas. As frentes
+                ativas aparecem aqui com a leitura dos medidores em tempo real.
               </div>
             </div>
           }
-          <div class="monitor-card__foot">
-            <span>{{ m.pet.teamSize }} na equipe</span>
-            <span>emitida {{ m.pet.timeLabel }}</span>
-            <span>{{ m.pet.technician }}</span>
-            <span class="monitor-card__coord">{{ m.pet.coordinates }}</span>
-          </div>
         </div>
-      }
-    </div>
-
-    <div class="dashboard__section-head dashboard__section-head--chart">
-      <h3>Condição das medições por dia · 30 dias</h3>
-      <div class="chart-legend">
-        <span><span class="chart-legend__dot" style="background: var(--color-accent)"></span>dentro do limite</span>
-        <span><span class="chart-legend__dot" style="background: var(--status-bad)"></span>fora do limite</span>
-        <span><span class="chart-legend__dot" style="background: var(--color-neutral-300)"></span>fim de semana</span>
       </div>
-    </div>
-    <div class="chart">
-      @for (d of chartDays(); track d.iso) {
-        <div class="chart__col" [title]="d.tooltip">
-          <div class="chart__bar" [style.height.%]="d.heightPct" [style.background]="d.color">
-            <div class="chart__bar-out" [style.height.%]="d.outPct"></div>
-          </div>
-        </div>
-      }
-    </div>
-    <div class="chart__ticks">
-      @for (d of chartDays(); track d.iso + 't') {
-        <div class="chart__tick">{{ d.dayShort }}</div>
-      }
-    </div>
-    <div class="chart__summary">
-      <span>{{ totalMedicoes() }} medições registradas</span>
-      <span class="chart__summary-bad">{{ totalFora() }} leituras fora do limite</span>
-      <span>{{ conformidade() }} de conformidade atmosférica</span>
-      <span>maior desvio: {{ piorDia() }}</span>
-    </div>
+    </section>
 
-    <div class="dashboard__section-head">
-      <h3>Intercorrências por área de risco</h3>
-      <span class="dashboard__section-sub">uma PET conta para cada área que ela declara</span>
-    </div>
-    <table class="table">
-      <thead>
-        <tr>
-          <th>Área de risco</th><th>Norma</th><th>PETs</th><th>Intercorrências</th><th style="width: 34%">Taxa</th><th>Leituras fora do limite</th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (a of areaAnalysis(); track a.area.id) {
-          <tr>
-            <td>{{ a.area.name }}</td>
-            <td class="mono accent">{{ a.area.nr }}</td>
-            <td class="mono">{{ a.count }}</td>
-            <td class="mono" [style.color]="a.rateColor">{{ a.occurrences }}</td>
-            <td>
-              <div class="rate-cell">
-                <div class="rate-cell__track"><div class="rate-cell__fill" [style.width.%]="a.ratePercent" [style.background]="a.barColor"></div></div>
-                <span class="mono" [style.color]="a.rateColor">{{ a.rate }}</span>
+    <!-- 4 · Tendência das medições. -->
+    <section class="panel">
+      <div class="panel__head">
+        <div>
+          <h3>Condição das medições por dia · 30 dias</h3>
+          <span class="panel__head-sub"
+            >{{ totalMedicoes() }} medições no período</span
+          >
+        </div>
+        <div class="chart-legend">
+          <span
+            ><span
+              class="chart-legend__dot"
+              style="background: var(--color-accent)"
+            ></span
+            >dentro do limite</span
+          >
+          <span
+            ><span
+              class="chart-legend__dot"
+              style="background: var(--status-bad)"
+            ></span
+            >fora do limite</span
+          >
+          <span
+            ><span
+              class="chart-legend__dot"
+              style="background: var(--color-neutral-300)"
+            ></span
+            >fim de semana</span
+          >
+        </div>
+      </div>
+      <div class="panel__body">
+        <div class="chart">
+          @for (d of chartDays(); track d.iso) {
+            <div class="chart__col" [title]="d.tooltip">
+              <div
+                class="chart__bar"
+                [style.height.%]="d.heightPct"
+                [style.background]="d.color"
+              >
+                <div class="chart__bar-out" [style.height.%]="d.outPct"></div>
               </div>
-            </td>
-            <td class="mono">{{ a.outOfRange }}</td>
-          </tr>
-        }
-      </tbody>
-    </table>
-
-    <div class="incident-grid">
-      @for (o of incidents(); track o.pet.id) {
-        <div class="incident-card blueprint">
-          <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-          <div class="incident-card__head">
-            <span class="mono">{{ o.pet.id }}</span>
-            <span class="incident-card__nr">{{ o.nr }}</span>
-            <span class="incident-card__date mono">{{ o.dateLabel }} · {{ o.duration }}</span>
-          </div>
-          <div class="incident-card__local">{{ o.pet.location }} · {{ o.areaLabel }}</div>
-          <div class="incident-card__text">{{ o.cause }}</div>
+            </div>
+          }
         </div>
-      }
-    </div>
+        <div class="chart__ticks">
+          @for (d of chartDays(); track d.iso + 't') {
+            <div class="chart__tick">{{ d.dayShort }}</div>
+          }
+        </div>
+        <div class="chart__summary">
+          <span>{{ totalMedicoes() }} medições registradas</span>
+          <span class="chart__summary-bad"
+            >{{ totalFora() }} leituras fora do limite</span
+          >
+          <span>{{ conformidade() }} de conformidade atmosférica</span>
+          <span>maior desvio: {{ piorDia() }}</span>
+        </div>
+      </div>
+    </section>
 
-    <h3 class="history-title">Histórico</h3>
-    <div class="history-filters">
-      @for (f of historyFilters; track f.id) {
-        <button
-          type="button"
-          class="tag history-filter"
-          [class.history-filter--active]="historyFilter() === f.id"
-          (click)="setHistoryFilter(f.id)"
-        >
-          {{ f.label }}
-        </button>
-      }
-    </div>
-    <table class="table">
-      <thead>
-        <tr>
-          <th>PET</th><th>Data</th><th>Local / unidade</th><th>Áreas de risco</th><th>Equipe</th><th>Duração</th><th>Situação</th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (h of filteredHistory(); track h.pet.id) {
-          <tr>
-            <td class="mono nowrap">{{ h.pet.id }}</td>
-            <td class="mono nowrap">{{ h.dateLabel }}</td>
-            <td>{{ h.pet.location }}</td>
-            <td>
-              {{ h.areaLabel }}
-              <span class="history-nr mono">{{ h.nr }}</span>
-            </td>
-            <td>{{ h.pet.teamSize }}</td>
-            <td class="mono nowrap">{{ h.duration }}</td>
-            <td><span class="status-pill" [style.color]="h.status.fg" [style.background]="h.status.bg">{{ h.status.label }}</span></td>
-          </tr>
+    <!-- 5 · Análise por área de risco. -->
+    <section class="panel">
+      <div class="panel__head">
+        <div>
+          <h3>Intercorrências por área de risco</h3>
+          <span class="panel__head-sub"
+            >uma PET conta para cada área que ela declara</span
+          >
+        </div>
+      </div>
+      <div class="panel__body panel__body--flush">
+        <div class="table-wrap">
+          <table class="table table--cards">
+            <thead>
+              <tr>
+                <th>Área de risco</th>
+                <th>Norma</th>
+                <th>PETs</th>
+                <th>Intercorrências</th>
+                <th style="width: 34%">Taxa</th>
+                <th>Leituras fora do limite</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (a of areaAnalysis(); track a.area.id) {
+                <tr>
+                  <td data-label="Área de risco">{{ a.area.name }}</td>
+                  <td data-label="Norma" class="mono accent">
+                    {{ a.area.nr }}
+                  </td>
+                  <td data-label="PETs" class="mono">{{ a.count }}</td>
+                  <td
+                    data-label="Intercorrências"
+                    class="mono"
+                    [style.color]="a.rateColor"
+                  >
+                    {{ a.occurrences }}
+                  </td>
+                  <td data-label="Taxa">
+                    <div class="rate-cell">
+                      <div class="rate-cell__track">
+                        <div
+                          class="rate-cell__fill"
+                          [style.width.%]="a.ratePercent"
+                          [style.background]="a.barColor"
+                        ></div>
+                      </div>
+                      <span class="mono" [style.color]="a.rateColor">{{
+                        a.rate
+                      }}</span>
+                    </div>
+                  </td>
+                  <td data-label="Fora do limite" class="mono">
+                    {{ a.outOfRange }}
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6 · Ocorrências registradas. -->
+    @if (incidents().length > 0) {
+      <section class="panel">
+        <div class="panel__head">
+          <div>
+            <h3>Ocorrências registradas</h3>
+            <span class="panel__head-sub">causa apurada pelo SESMT</span>
+          </div>
+          <span class="tag tag-neutral">{{ incidents().length }}</span>
+        </div>
+        <div class="panel__body">
+          <div class="incident-grid">
+            @for (o of incidents(); track o.pet.id) {
+              <article class="incident-card">
+                <div class="incident-card__head">
+                  <span class="mono">{{ o.pet.id }}</span>
+                  <span class="tag tag-accent incident-card__nr">{{
+                    o.nr
+                  }}</span>
+                  <span class="incident-card__date mono"
+                    >{{ o.dateLabel }} · {{ o.duration }}</span
+                  >
+                </div>
+                <div class="incident-card__local">
+                  {{ o.pet.location }} · {{ o.areaLabel }}
+                </div>
+                <div class="incident-card__text">{{ o.cause }}</div>
+              </article>
+            }
+          </div>
+        </div>
+      </section>
+    }
+
+    <!-- 7 · Histórico completo. -->
+    <section class="panel">
+      <div class="panel__head">
+        <div>
+          <h3>Histórico</h3>
+          <span class="panel__head-sub"
+            >{{ filteredHistory().length }} permissões no filtro atual</span
+          >
+        </div>
+      </div>
+      <div class="panel__body panel__body--flush">
+        <div class="history-filters">
+          @for (f of historyFilters; track f.id) {
+            <button
+              type="button"
+              class="tag history-filter"
+              [class.history-filter--active]="historyFilter() === f.id"
+              (click)="setHistoryFilter(f.id)"
+            >
+              {{ f.label }}
+            </button>
+          }
+        </div>
+        <div class="table-wrap">
+          <table class="table table--cards">
+            <thead>
+              <tr>
+                <th>PET</th>
+                <th>Data</th>
+                <th>Local / unidade</th>
+                <th>Áreas de risco</th>
+                <th>Equipe</th>
+                <th>Duração</th>
+                <th>Situação</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (h of filteredHistory(); track h.pet.id) {
+                <tr>
+                  <td data-label="PET" class="mono nowrap">{{ h.pet.id }}</td>
+                  <td data-label="Data" class="mono nowrap">
+                    {{ h.dateLabel }}
+                  </td>
+                  <td data-label="Local">{{ h.pet.location }}</td>
+                  <td data-label="Áreas">
+                    {{ h.areaLabel }}
+                    <span class="history-nr mono">{{ h.nr }}</span>
+                  </td>
+                  <td data-label="Equipe">{{ h.pet.teamSize }}</td>
+                  <td data-label="Duração" class="mono nowrap">
+                    {{ h.duration }}
+                  </td>
+                  <td data-label="Situação">
+                    <span
+                      class="status-pill"
+                      [style.color]="h.status.fg"
+                      [style.background]="h.status.bg"
+                      >{{ h.status.label }}</span
+                    >
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        @if (filteredHistory().length === 0) {
+          <div class="empty-state history-empty">
+            <app-industrial-art class="empty-state__art" scene="clipboard" />
+            <div class="empty-state__title">Nenhuma PET neste filtro</div>
+            <div class="empty-state__text">
+              Ajuste o filtro acima para ver outras permissões do histórico.
+            </div>
+          </div>
         }
-      </tbody>
-    </table>
+      </div>
+    </section>
   </div>
 
   @if (reportModalOpen()) {
     <div class="dialog-backdrop" (click)="closeReportModal()">
-      <div class="dialog blueprint" (click)="$event.stopPropagation()">
-        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+      <div class="dialog" (click)="$event.stopPropagation()">
         <div class="dialog-title">Relatório de PETs por período</div>
-        <div class="dialog-body">
-          Selecione o intervalo. O relatório traz os dados de cada PET, a duração e o monitoramento dos medidores no
-          período.
-        </div>
+        <p class="dialog-body">
+          Selecione o intervalo. O relatório traz os dados de cada PET, a
+          duração e o monitoramento dos medidores no período.
+        </p>
         <div class="dialog-fields">
           <div class="field">
             <label>Data inicial</label>
-            <input class="input" type="date" [value]="reportFrom()" (change)="onReportFromChange($event)" />
+            <input
+              class="input"
+              type="date"
+              [value]="reportFrom()"
+              (change)="onReportFromChange($event)"
+            />
           </div>
           <div class="field">
             <label>Data final</label>
-            <input class="input" type="date" [value]="reportTo()" (change)="onReportToChange($event)" />
+            <input
+              class="input"
+              type="date"
+              [value]="reportTo()"
+              (change)="onReportToChange($event)"
+            />
           </div>
         </div>
         <div class="dialog-shortcuts">
-          <button type="button" class="btn btn-secondary" (click)="setReportRange(7)">Últimos 7 dias</button>
-          <button type="button" class="btn btn-secondary" (click)="setReportRange(30)">Últimos 30 dias</button>
-          <button type="button" class="btn btn-secondary" (click)="setReportRange(90)">Últimos 90 dias</button>
+          <button
+            type="button"
+            class="btn btn-secondary btn-sm"
+            (click)="setReportRange(7)"
+          >
+            Últimos 7 dias
+          </button>
+          <button
+            type="button"
+            class="btn btn-secondary btn-sm"
+            (click)="setReportRange(30)"
+          >
+            Últimos 30 dias
+          </button>
+          <button
+            type="button"
+            class="btn btn-secondary btn-sm"
+            (click)="setReportRange(90)"
+          >
+            Últimos 90 dias
+          </button>
         </div>
-        <div class="dialog-note">{{ reportPets().length }} PETs encontradas no período selecionado.</div>
+        <div class="dialog-note">
+          {{ reportPets().length }} PETs encontradas no período selecionado.
+        </div>
         <div class="dialog-actions">
-          <button type="button" class="btn btn-secondary" (click)="closeReportModal()">Cancelar</button>
-          <button type="button" class="btn btn-primary" [disabled]="reportPets().length === 0" (click)="generateReport()">
+          <button
+            type="button"
+            class="btn btn-secondary"
+            (click)="closeReportModal()"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            class="btn btn-primary"
+            [disabled]="reportPets().length === 0"
+            (click)="generateReport()"
+          >
             Gerar relatório
           </button>
         </div>
@@ -231,33 +457,74 @@
 
   @if (aiModalOpen()) {
     <div class="dialog-backdrop" (click)="closeAiModal()">
-      <div class="dialog blueprint ai-dialog" (click)="$event.stopPropagation()">
-        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+      <div class="dialog ai-dialog" (click)="$event.stopPropagation()">
         <div class="ai-dialog__letterhead">
-          <div class="ai-dialog__letterhead-kicker">Lar Cooperativa Agroindustrial · SESMT</div>
+          <div class="ai-dialog__letterhead-kicker">
+            Lar Cooperativa Agroindustrial · SESMT
+          </div>
           <div class="dialog-title">Análise de IA — causas e anomalias</div>
           @if (aiGeneratedAt()) {
-            <div class="ai-dialog__letterhead-date">gerado em {{ aiGeneratedAt() }}</div>
+            <div class="ai-dialog__letterhead-date">
+              gerado em {{ aiGeneratedAt() }}
+            </div>
           }
         </div>
         @if (aiLoading()) {
           <div class="ai-dialog__status">
-            <span class="pulse-dot"></span>
+            <span class="pulse-dot pulse-dot--accent"></span>
             Analisando as PETs registradas com IA…
           </div>
+          <div class="ai-dialog__skeleton">
+            <div class="skeleton" style="height: 12px; width: 92%"></div>
+            <div class="skeleton" style="height: 12px; width: 78%"></div>
+            <div class="skeleton" style="height: 12px; width: 86%"></div>
+            <div class="skeleton" style="height: 12px; width: 64%"></div>
+          </div>
         } @else if (aiError()) {
-          <div class="ai-dialog__error">{{ aiError() }}</div>
+          <div class="callout callout--bad callout--row">
+            <app-icon name="alert" [size]="18" />
+            <span>{{ aiError() }}</span>
+          </div>
         } @else if (aiReport()) {
           <div class="ai-dialog__report">{{ aiReport() }}</div>
+        } @else {
+          <!-- Resposta vazia: o back-end já barra isso com 503, mas se um dia
+               voltar 200 sem texto o operador precisa ver o porquê, não um
+               diálogo em branco com dois botões. -->
+          <div class="callout callout--row">
+            <app-icon name="alert" [size]="18" />
+            <span
+              >A análise voltou sem conteúdo. Gere novamente; se persistir,
+              verifique a configuração da IA no back-end.</span
+            >
+          </div>
         }
         <div class="dialog-actions no-print">
           @if (!aiLoading()) {
-            <button type="button" class="btn btn-secondary" (click)="runAiAnalysis()">Gerar novamente</button>
+            <button
+              type="button"
+              class="btn btn-secondary"
+              (click)="runAiAnalysis()"
+            >
+              Gerar novamente
+            </button>
           }
           @if (aiReport()) {
-            <button type="button" class="btn btn-secondary" (click)="printAiReport()">Baixar como PDF</button>
+            <button
+              type="button"
+              class="btn btn-secondary"
+              (click)="printAiReport()"
+            >
+              Baixar como PDF
+            </button>
           }
-          <button type="button" class="btn btn-primary" (click)="closeAiModal()">Fechar</button>
+          <button
+            type="button"
+            class="btn btn-primary"
+            (click)="closeAiModal()"
+          >
+            Fechar
+          </button>
         </div>
       </div>
     </div>
@@ -265,17 +532,37 @@
 } @else {
   <div class="report-page">
     <div class="report-page__toolbar no-print">
-      <button type="button" class="btn btn-secondary" (click)="closeReport()">← Voltar ao painel</button>
-      <button type="button" class="btn btn-primary report-page__print" (click)="printReport()">Salvar como PDF</button>
+      <button type="button" class="btn btn-secondary" (click)="closeReport()">
+        <app-icon name="arrow-left" [size]="17" />
+        Voltar ao painel
+      </button>
+      <button
+        type="button"
+        class="btn btn-primary report-page__print"
+        (click)="printReport()"
+      >
+        <app-icon name="document" [size]="17" />
+        Salvar como PDF
+      </button>
     </div>
 
     <div class="report">
       <div class="report__head">
-        <img class="report__logo" src="assets/artech-logo-trim.png" alt="Artech — tecnologia que transforma" />
+        <img
+          class="report__logo"
+          src="assets/artech-logo-trim.png"
+          alt="Artech — tecnologia que transforma"
+        />
         <div class="report__head-main">
-          <div class="section-kicker">Lar Cooperativa Agroindustrial · SESMT</div>
-          <h2 class="report__title">Relatório de Permissões de Entrada e Trabalho</h2>
-          <div class="report__period">Período de {{ reportFrom() }} a {{ reportTo() }}</div>
+          <div class="section-kicker">
+            Lar Cooperativa Agroindustrial · SESMT
+          </div>
+          <h2 class="report__title">
+            Relatório de Permissões de Entrada e Trabalho
+          </h2>
+          <div class="report__period">
+            Período de {{ reportFrom() }} a {{ reportTo() }}
+          </div>
         </div>
         <div class="report__meta mono">
           <div>emitido {{ reportTo() }}</div>
@@ -295,28 +582,40 @@
       </div>
 
       <h4>1. Permissões emitidas no período</h4>
-      <table class="table report-table">
-        <thead>
-          <tr>
-            <th>PET</th><th>Data</th><th>Local / unidade</th><th>Normas</th><th>Eq.</th><th>Início</th><th>Térm.</th><th>Duração</th><th>Situação</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (p of reportPets(); track p.pet.id) {
+      <div class="table-wrap">
+        <table class="table report-table">
+          <thead>
             <tr>
-              <td class="mono nowrap">{{ p.pet.id }}</td>
-              <td class="mono nowrap">{{ p.dateLabel }}</td>
-              <td>{{ p.pet.location }}</td>
-              <td class="mono nowrap accent">{{ p.nr }}</td>
-              <td>{{ p.pet.teamSize }}</td>
-              <td class="mono">{{ p.pet.start }}</td>
-              <td class="mono">{{ p.pet.end || '—' }}</td>
-              <td class="mono nowrap">{{ p.duration }}</td>
-              <td class="nowrap" [style.color]="p.status.fg">{{ p.status.label }}</td>
+              <th>PET</th>
+              <th>Data</th>
+              <th>Local / unidade</th>
+              <th>Normas</th>
+              <th>Eq.</th>
+              <th>Início</th>
+              <th>Térm.</th>
+              <th>Duração</th>
+              <th>Situação</th>
             </tr>
-          }
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            @for (p of reportPets(); track p.pet.id) {
+              <tr>
+                <td class="mono nowrap">{{ p.pet.id }}</td>
+                <td class="mono nowrap">{{ p.dateLabel }}</td>
+                <td>{{ p.pet.location }}</td>
+                <td class="mono nowrap accent">{{ p.nr }}</td>
+                <td>{{ p.pet.teamSize }}</td>
+                <td class="mono">{{ p.pet.start }}</td>
+                <td class="mono">{{ p.pet.end || '—' }}</td>
+                <td class="mono nowrap">{{ p.duration }}</td>
+                <td class="nowrap" [style.color]="p.status.fg">
+                  {{ p.status.label }}
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
 
       <h4>2. Relação de funcionários por PET</h4>
       <div class="report__team-list">
@@ -327,23 +626,32 @@
               <span>{{ t.pet.location }}</span>
             </div>
             @if (t.members.length > 0) {
-              <table class="table report-table">
-                <thead>
-                  <tr><th>Nome</th><th>Matrícula</th><th>Função</th><th>Papel na PET</th></tr>
-                </thead>
-                <tbody>
-                  @for (m of t.members; track m.registration + m.petRole) {
+              <div class="table-wrap">
+                <table class="table report-table">
+                  <thead>
                     <tr>
-                      <td>{{ m.name }}</td>
-                      <td class="mono">{{ m.registration }}</td>
-                      <td>{{ m.role }}</td>
-                      <td>{{ m.roleLabel }}</td>
+                      <th>Nome</th>
+                      <th>Matrícula</th>
+                      <th>Função</th>
+                      <th>Papel na PET</th>
                     </tr>
-                  }
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    @for (m of t.members; track m.registration + m.petRole) {
+                      <tr>
+                        <td>{{ m.name }}</td>
+                        <td class="mono">{{ m.registration }}</td>
+                        <td>{{ m.role }}</td>
+                        <td>{{ m.roleLabel }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
             } @else {
-              <div class="report__team-empty">Relação de funcionários não disponível para esta PET.</div>
+              <div class="report__team-empty">
+                Relação de funcionários não disponível para esta PET.
+              </div>
             }
           </div>
         }
@@ -351,8 +659,9 @@
 
       <h4>3. Monitoramento dos medidores por PET</h4>
       <div class="report__monitor-note">
-        Valores mínimo, médio e máximo registrados pelo medidor pareado durante a vigência de cada permissão. Limites
-        NR-33: O₂ 19,5–23,0 % · CO 25 ppm · H₂S 8 ppm · LEL 10 %.
+        Valores mínimo, médio e máximo registrados pelo medidor pareado durante
+        a vigência de cada permissão. Limites NR-33: O₂ 19,5–23,0 % · CO 25 ppm
+        · H₂S 8 ppm · LEL 10 %.
       </div>
       <div class="report__monitor-list">
         @for (m of reportMonitors(); track m.pet.id) {
@@ -360,25 +669,37 @@
             <div class="report__monitor-head">
               <span class="mono">{{ m.pet.id }}</span>
               <span>{{ m.pet.location }}</span>
-              <span class="report__monitor-meta mono">{{ m.readingCount }} leituras · {{ m.outOfRange }} fora do limite</span>
+              <span class="report__monitor-meta mono"
+                >{{ m.readingCount }} leituras · {{ m.outOfRange }} fora do
+                limite</span
+              >
             </div>
-            <table class="table report-table">
-              <thead>
-                <tr><th>Gás</th><th>Mínimo</th><th>Médio</th><th>Máximo</th><th>Limite</th><th>Situação</th></tr>
-              </thead>
-              <tbody>
-                @for (l of m.rows; track l.label) {
+            <div class="table-wrap">
+              <table class="table report-table">
+                <thead>
                   <tr>
-                    <td>{{ l.label }}</td>
-                    <td class="mono">{{ l.min }}</td>
-                    <td class="mono">{{ l.med }}</td>
-                    <td class="mono">{{ l.max }}</td>
-                    <td class="mono muted">{{ l.limit }}</td>
-                    <td [style.color]="l.color">{{ l.situation }}</td>
+                    <th>Gás</th>
+                    <th>Mínimo</th>
+                    <th>Médio</th>
+                    <th>Máximo</th>
+                    <th>Limite</th>
+                    <th>Situação</th>
                   </tr>
-                }
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  @for (l of m.rows; track l.label) {
+                    <tr>
+                      <td>{{ l.label }}</td>
+                      <td class="mono">{{ l.min }}</td>
+                      <td class="mono">{{ l.med }}</td>
+                      <td class="mono">{{ l.max }}</td>
+                      <td class="mono muted">{{ l.limit }}</td>
+                      <td [style.color]="l.color">{{ l.situation }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
           </div>
         }
       </div>
@@ -390,19 +711,24 @@
             <div
               class="report__chart-bar"
               [style.height.%]="d.heightPct"
-              [style.background]="d.isWeekend ? 'var(--color-neutral-300)' : 'var(--color-accent)'"
+              [style.background]="
+                d.isWeekend ? 'var(--color-neutral-300)' : 'var(--color-accent)'
+              "
             ></div>
           </div>
         }
       </div>
 
       <div class="report__signatures">
-        <div class="report__signature">Bárbara M. Garlini · Téc. Segurança do Trabalho</div>
+        <div class="report__signature">
+          Bárbara M. Garlini · Téc. Segurança do Trabalho
+        </div>
         <div class="report__signature">Coordenação SESMT</div>
       </div>
       <div class="report__footnote mono">
-        Documento gerado pelo PET Digital a partir dos registros assinados em campo. Cada PET carrega assinaturas
-        digitais, coordenada GPS e hash de integridade. Retenção mínima de 5 anos conforme procedimento interno do
+        Documento gerado pelo PET Digital a partir dos registros assinados em
+        campo. Cada PET carrega assinaturas digitais, coordenada GPS e hash de
+        integridade. Retenção mínima de 5 anos conforme procedimento interno do
         SESMT.
       </div>
     </div>
