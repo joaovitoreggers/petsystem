@@ -1,10 +1,20 @@
-/* You can add global styles to this file, and also import other style files */
+/* ═══════════════════════════════════════════════════════════════════════
+   ARTECH · PET Digital — Design System
+   ───────────────────────────────────────────────────────────────────────
+   Fonte única de verdade do visual. Tokens (cor, espaço, raio, tipografia,
+   elevação, movimento) + primitivas de UI compartilhadas por todas as
+   telas. Os SCSS de componente cuidam apenas do layout específico deles;
+   tudo que aparece em mais de uma tela (kicker, KPI, pill de status,
+   gauge, timeline, tabela responsiva…) mora aqui para não duplicar CSS.
 
-/* Design system "Industry" — tokens and component classes ported from the
-   product design mockup (ds/styles.css). Source of truth for look & feel. */
-@import url('https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;700&family=Barlow+Condensed:wght@400;600&display=swap');
+   A paleta da marca é preservada: cinza-claro industrial de fundo, azul
+   ARTECH como acento e a moldura "blueprint" de canto como motivo.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@400;500;600;700&display=swap');
 
 :root {
+  /* ── Marca (inalterada) ────────────────────────────────────────────── */
   --color-bg: #f2f2f3;
   --color-surface: #e9e9ea;
   --color-text: #1d1f20;
@@ -42,81 +52,273 @@
   --color-accent-2-800: #314457;
   --color-accent-2-900: #1f2d3a;
 
+  /* ── Superfícies e traços ──────────────────────────────────────────── */
+  /* Camadas explícitas em vez de "transparente sobre transparente": dá
+     profundidade sem sombra pesada e mantém o cinza da marca. */
+  --surface-0: #ececed; /* fundo da aplicação */
+  --surface-1: #ffffff; /* painel/card */
+  --surface-2: #f6f6f7; /* área interna, cabeçalho de tabela */
+  --surface-3: #e7e7ea; /* inset, trilhos, campos */
+  --surface-inverse: #1b2836; /* barras escuras, login, emergência */
+
+  --border-subtle: color-mix(in srgb, #1d1f20 10%, transparent);
+  --border-default: color-mix(in srgb, #1d1f20 16%, transparent);
+  --border-strong: color-mix(in srgb, #1d1f20 30%, transparent);
+
+  --text-strong: #14181c;
+  --text-default: #1d1f20;
+  --text-muted: #5c6167;
+  --text-faint: #83898f;
+  --text-on-dark: #eef2f6;
+
+  /* ── Estados operacionais (os 5 estados críticos da PET) ───────────── */
+  --status-ok: #2f8f5b; /* 🟢 seguro */
+  --status-warn: #8a5a00; /* 🟡 atenção */
+  --status-pending: #a35a17; /* 🟠 pendente */
+  --status-bad: #8e2020; /* 🔴 bloqueado */
+  --status-info: #2f6ea3; /* 🔵 em análise */
+
+  --status-ok-bg: #e3f2e9;
+  --status-warn-bg: #f8ecd2;
+  --status-pending-bg: #fae7d6;
+  --status-bad-bg: #f8e3e3;
+  --status-info-bg: #e2eefa;
+
+  /* ── Tipografia ────────────────────────────────────────────────────── */
   --font-heading: 'Barlow Condensed', system-ui, sans-serif;
   --font-heading-weight: 600;
   --font-body: 'Barlow', system-ui, sans-serif;
+  --font-mono: ui-monospace, 'SFMono-Regular', 'Roboto Mono', monospace;
 
-  --space-1: 3.4px;
-  --space-2: 6.8px;
-  --space-3: 10.2px;
-  --space-4: 13.6px;
-  --space-6: 20.4px;
-  --space-8: 27.2px;
+  --text-xs: 11px;
+  --text-sm: 12.5px;
+  --text-base: 14px;
+  --text-md: 15px;
+  --text-lg: 17px;
+  --text-xl: 21px;
+  --text-2xl: 26px;
+  --text-3xl: 32px;
+  --text-4xl: 40px;
 
-  --radius-sm: 2px;
-  --radius-md: 4px;
-  --radius-lg: 7px;
+  /* ── Espaçamento (escala 4px) ──────────────────────────────────────── */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
 
-  --shadow-sm: 0 1px 2px color-mix(in srgb, #2b2b2d 14%, transparent);
-  --shadow-md: 0 3px 10px color-mix(in srgb, #2b2b2d 16%, transparent);
-  --shadow-lg: 0 12px 32px color-mix(in srgb, #2b2b2d 22%, transparent);
+  /* ── Raio ──────────────────────────────────────────────────────────── */
+  --radius-xs: 3px;
+  --radius-sm: 5px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-pill: 999px;
 
-  --status-ok: #2f8f5b;
-  --status-bad: #8e2020;
-  --status-warn: #8a5a00;
+  /* ── Elevação (sutil — profundidade, não sombra pesada) ────────────── */
+  --shadow-xs: 0 1px 2px color-mix(in srgb, #101418 8%, transparent);
+  --shadow-sm:
+    0 1px 2px color-mix(in srgb, #101418 6%, transparent),
+    0 1px 1px color-mix(in srgb, #101418 4%, transparent);
+  --shadow-md:
+    0 2px 4px color-mix(in srgb, #101418 6%, transparent),
+    0 6px 16px color-mix(in srgb, #101418 8%, transparent);
+  --shadow-lg:
+    0 4px 8px color-mix(in srgb, #101418 6%, transparent),
+    0 18px 40px color-mix(in srgb, #101418 12%, transparent);
+  --ring-accent: 0 0 0 3px
+    color-mix(in srgb, var(--color-accent) 26%, transparent);
+
+  /* ── Movimento ─────────────────────────────────────────────────────── */
+  --ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --dur-fast: 110ms;
+  --dur-base: 170ms;
+  --dur-slow: 260ms;
+
+  /* ── Layout ────────────────────────────────────────────────────────── */
+  --sidebar-w: 244px;
+  --topbar-h: 60px;
+  --bottomnav-h: 62px;
+  --content-max: 1440px;
 }
 
-* ,
+/* Respeita quem pediu menos movimento no sistema operacional. Numa tela de
+   segurança isso não é detalhe: animação nunca pode atrapalhar a operação. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+*,
 *::before,
 *::after {
   box-sizing: border-box;
 }
 
+html,
+body {
+  height: 100%;
+}
+
 body {
   margin: 0;
-  background: var(--color-bg);
-  color: var(--color-text);
+  background: var(--surface-0);
+  color: var(--text-default);
   font-family: var(--font-body);
-  font-size: 16px;
+  font-size: var(--text-md);
   line-height: 1.55;
   font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   font-family: var(--font-heading);
   font-weight: var(--font-heading-weight);
-  line-height: 1.12;
-  letter-spacing: -0.015em;
+  line-height: 1.14;
+  letter-spacing: -0.012em;
+  color: var(--text-strong);
   margin: 0 0 var(--space-2);
 }
-h1 { font-size: 46px; }
-h2 { font-size: 35px; }
-h3 { font-size: 28px; }
-h4 { font-size: 22px; }
-h5 { font-size: 18px; }
-h6 { font-size: 14px; letter-spacing: 0.08em; text-transform: uppercase; }
-p { margin: 0 0 var(--space-3); }
-a { color: var(--color-accent-700); text-underline-offset: 3px; }
-a:hover { color: var(--color-accent-900); }
-img { display: block; max-width: 100%; }
+h1 {
+  font-size: var(--text-3xl);
+}
+h2 {
+  font-size: var(--text-2xl);
+}
+h3 {
+  font-size: var(--text-xl);
+}
+h4 {
+  font-size: var(--text-lg);
+}
+h5 {
+  font-size: var(--text-md);
+}
+h6 {
+  font-size: var(--text-xs);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+p {
+  margin: 0 0 var(--space-3);
+}
+a {
+  color: var(--color-accent-700);
+  text-underline-offset: 3px;
+}
+a:hover {
+  color: var(--color-accent-900);
+}
+img {
+  display: block;
+  max-width: 100%;
+}
 
-.text-muted { color: color-mix(in srgb, var(--color-text) 65%, transparent); }
-:focus { outline: none; }
-:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
-::selection { background: color-mix(in srgb, var(--color-accent) 30%, transparent); }
+:focus {
+  outline: none;
+}
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-xs);
+}
+::selection {
+  background: color-mix(in srgb, var(--color-accent) 26%, transparent);
+}
 
-/* — blueprint wireframe frame (square, hairline-bordered objects with
-   registration-mark corners) — the pervasive visual motif of the design — */
+/* Barras de rolagem discretas, no tom da interface. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-neutral-400) transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--color-neutral-400);
+  border: 3px solid transparent;
+  background-clip: content-box;
+  border-radius: var(--radius-pill);
+}
+*::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-neutral-500);
+  background-clip: content-box;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Utilitários de texto
+   ═══════════════════════════════════════════════════════════════════════ */
+.mono {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  letter-spacing: -0.01em;
+}
+.accent {
+  color: var(--color-accent-700);
+}
+.muted,
+.text-muted {
+  color: var(--text-muted);
+}
+.faint {
+  color: var(--text-faint);
+}
+.nowrap {
+  white-space: nowrap;
+}
+
+/* Rótulo de seção — o "kicker" que abre praticamente todo bloco do
+   sistema. Era redefinido em 4 SCSS de componente; agora vive só aqui. */
+.section-kicker {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.hr {
+  height: 1px;
+  border: 0;
+  margin: var(--space-4) 0;
+  background: var(--border-subtle);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Blueprint — moldura técnica com marcas de registro no canto.
+   Motivo visual da marca; reservado a objetos "de instrumento"
+   (medidores, crachá, leitor de QR, assinatura).
+   ═══════════════════════════════════════════════════════════════════════ */
 .blueprint {
   position: relative;
-  border: 1px solid var(--color-divider);
-  border-radius: 0;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-xs);
 }
 .blueprint > .corner {
   position: absolute;
   width: 11px;
   height: 11px;
-  color: color-mix(in srgb, var(--color-text) 55%, transparent);
+  color: color-mix(in srgb, var(--color-text) 45%, transparent);
+  pointer-events: none;
 }
 .blueprint > .corner::before,
 .blueprint > .corner::after {
@@ -124,152 +326,885 @@ img { display: block; max-width: 100%; }
   position: absolute;
   background: currentColor;
 }
-.blueprint > .corner::before { left: 5px; top: 0; width: 1px; height: 100%; }
-.blueprint > .corner::after { top: 5px; left: 0; width: 100%; height: 1px; }
-.blueprint > .corner.tl { top: -6px; left: -6px; }
-.blueprint > .corner.tr { top: -6px; right: -6px; }
-.blueprint > .corner.bl { bottom: -6px; left: -6px; }
-.blueprint > .corner.br { bottom: -6px; right: -6px; }
-
-.hr {
+.blueprint > .corner::before {
+  left: 5px;
+  top: 0;
+  width: 1px;
+  height: 100%;
+}
+.blueprint > .corner::after {
+  top: 5px;
+  left: 0;
+  width: 100%;
   height: 1px;
-  border: 0;
-  margin: var(--space-4) 0;
-  background: var(--color-divider);
+}
+.blueprint > .corner.tl {
+  top: -6px;
+  left: -6px;
+}
+.blueprint > .corner.tr {
+  top: -6px;
+  right: -6px;
+}
+.blueprint > .corner.bl {
+  bottom: -6px;
+  left: -6px;
+}
+.blueprint > .corner.br {
+  bottom: -6px;
+  right: -6px;
 }
 
-/* — buttons — */
+/* ═══════════════════════════════════════════════════════════════════════
+   Botões
+   ═══════════════════════════════════════════════════════════════════════ */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: var(--space-2);
   cursor: pointer;
   text-decoration: none;
-  font-family: var(--font-heading);
-  font-weight: var(--font-heading-weight);
-  font-size: 15px;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: var(--text-base);
   line-height: 1.2;
-  color: var(--color-text);
-  background: transparent;
-  border: 1px solid var(--color-divider);
-  padding: var(--space-2) calc(var(--space-3) * 1.2);
-  border-radius: 0;
+  letter-spacing: 0.005em;
+  color: var(--text-default);
+  background: var(--surface-1);
+  border: 1px solid var(--border-default);
+  padding: 0 var(--space-4);
+  min-height: 38px;
+  border-radius: var(--radius-sm);
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+  white-space: nowrap;
 }
-.btn:disabled { opacity: 0.45; cursor: not-allowed; }
-.btn-primary { background: var(--color-accent); color: var(--color-bg); border-color: var(--color-accent); }
-.btn-primary:hover:not(:disabled) { background: var(--color-accent-600); }
-.btn-primary:active:not(:disabled) { background: var(--color-accent-700); }
-.btn-secondary { border-color: var(--color-divider); }
-.btn-secondary:hover:not(:disabled) { background: color-mix(in srgb, var(--color-text) 7%, transparent); }
-.btn-secondary:active:not(:disabled) { background: color-mix(in srgb, var(--color-text) 14%, transparent); }
-.btn-ghost { color: var(--color-accent-700); padding-inline: var(--space-1); border-color: transparent; }
-.btn-ghost:hover:not(:disabled) { background: color-mix(in srgb, var(--color-accent) 10%, transparent); }
-.btn-icon { width: 36px; height: 36px; padding: 0; }
-.btn-block { width: 100%; margin-top: var(--space-2); }
+.btn:hover:not(:disabled) {
+  background: var(--surface-2);
+  border-color: var(--border-strong);
+}
+.btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.btn:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
 
-/* — forms — */
+.btn-primary {
+  background: var(--color-accent-700);
+  color: #f7fafd;
+  border-color: var(--color-accent-700);
+  box-shadow: var(--shadow-xs);
+}
+.btn-primary:hover:not(:disabled) {
+  background: var(--color-accent-800);
+  border-color: var(--color-accent-800);
+}
+.btn-primary:active:not(:disabled) {
+  background: var(--color-accent-900);
+}
+
+.btn-secondary {
+  background: var(--surface-1);
+}
+.btn-secondary:hover:not(:disabled) {
+  background: var(--surface-2);
+}
+
+.btn-ghost {
+  color: var(--color-accent-700);
+  background: transparent;
+  border-color: transparent;
+  padding-inline: var(--space-2);
+}
+.btn-ghost:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  border-color: transparent;
+}
+
+/* Ação perigosa (evacuação, encerramento). Cor de bloqueio, nunca discreta. */
+.btn-danger {
+  background: var(--status-bad);
+  color: #fdf3f3;
+  border-color: var(--status-bad);
+}
+.btn-danger:hover:not(:disabled) {
+  background: #a52a2a;
+  border-color: #a52a2a;
+}
+
+.btn-icon {
+  width: 38px;
+  min-width: 38px;
+  padding: 0;
+}
+.btn-block {
+  width: 100%;
+}
+.btn-sm {
+  min-height: 32px;
+  font-size: var(--text-sm);
+  padding-inline: var(--space-3);
+}
+.btn-lg {
+  min-height: 46px;
+  font-size: var(--text-lg);
+  padding-inline: var(--space-6);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Formulários
+   ═══════════════════════════════════════════════════════════════════════ */
+.field {
+  display: block;
+}
 .field > label {
   display: block;
-  font-size: 13px;
-  margin-bottom: 5px;
-  color: color-mix(in srgb, var(--color-text) 80%, transparent);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  margin-bottom: var(--space-1);
+  color: var(--text-muted);
 }
 .input {
   width: 100%;
-  min-height: 36px;
-  padding: 6px 10px;
+  min-height: 38px;
+  padding: 7px var(--space-3);
   font: inherit;
-  font-size: 15px;
-  color: var(--color-text);
+  font-size: var(--text-base);
+  color: var(--text-default);
   caret-color: var(--color-accent);
-  background: var(--color-surface);
-  border: 1px solid var(--color-divider);
-  border-radius: var(--radius-md);
+  background: var(--surface-1);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  transition:
+    border-color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out);
 }
-.input:hover { border-color: color-mix(in srgb, var(--color-text) 45%, transparent); }
-.input:focus-visible { border-color: var(--color-accent); outline-offset: 0; }
-textarea.input { min-height: 90px; resize: vertical; }
+.input::placeholder {
+  color: var(--text-faint);
+}
+.input:hover:not(:disabled) {
+  border-color: var(--border-strong);
+}
+.input:focus-visible {
+  border-color: var(--color-accent);
+  box-shadow: var(--ring-accent);
+  outline: none;
+}
+.input:disabled {
+  background: var(--surface-3);
+  color: var(--text-faint);
+  cursor: not-allowed;
+}
+textarea.input {
+  min-height: 92px;
+  resize: vertical;
+  line-height: 1.5;
+}
+select.input {
+  appearance: none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--text-muted) 50%),
+    linear-gradient(135deg, var(--text-muted) 50%, transparent 50%);
+  background-position:
+    calc(100% - 16px) center,
+    calc(100% - 11px) center;
+  background-size:
+    5px 5px,
+    5px 5px;
+  background-repeat: no-repeat;
+  padding-right: var(--space-8);
+}
+input[type='checkbox'] {
+  accent-color: var(--color-accent-700);
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
 
-/* — cards — */
+/* ═══════════════════════════════════════════════════════════════════════
+   Superfícies: card / painel
+   ═══════════════════════════════════════════════════════════════════════ */
 .card {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  padding: var(--space-3);
-  border-radius: 0;
-  background: transparent;
-  border: 1px solid var(--color-divider);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface-1);
+  border: 1px solid var(--border-subtle);
 }
-.card-kicker { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-accent-700); }
-.card-title { font-family: var(--font-heading); font-weight: var(--font-heading-weight); font-size: 19px; line-height: 1.2; }
-.card-body { margin: 0; font-size: 14px; opacity: 0.88; flex: 1; }
-.card-meta { display: flex; align-items: center; gap: 6px; font-size: 12px; color: color-mix(in srgb, var(--color-text) 62%, transparent); }
-.elev-sm { box-shadow: var(--shadow-sm); }
-.elev-md { box-shadow: var(--shadow-md); }
-.elev-lg { box-shadow: var(--shadow-lg); }
+.card-kicker {
+  font-size: var(--text-xs);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.card-title {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: var(--text-lg);
+  line-height: 1.2;
+}
+.card-body {
+  margin: 0;
+  font-size: var(--text-base);
+  color: var(--text-muted);
+  flex: 1;
+}
+.card-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--text-faint);
+}
+.elev-sm {
+  box-shadow: var(--shadow-sm);
+}
+.elev-md {
+  box-shadow: var(--shadow-md);
+}
+.elev-lg {
+  box-shadow: var(--shadow-lg);
+}
 
-/* — tags — */
+/* Painel: bloco padrão do painel de gestão (título + conteúdo). */
+.panel {
+  background: var(--surface-1);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+.panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--surface-2);
+  flex-wrap: wrap;
+}
+.panel__head h3 {
+  margin: 0;
+  font-size: var(--text-lg);
+}
+.panel__head-sub {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+.panel__body {
+  padding: var(--space-5);
+}
+.panel__body--flush {
+  padding: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Tags e pílulas de status
+   ═══════════════════════════════════════════════════════════════════════ */
 .tag {
   display: inline-flex;
   align-items: center;
-  font-size: 12px;
-  letter-spacing: 0.02em;
-  padding: 3px 10px;
-  border-radius: 3px;
+  gap: var(--space-1);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+  border: 1px solid transparent;
+  white-space: nowrap;
 }
-.tag-accent { background: var(--color-accent-100); color: var(--color-accent-800); }
-.tag-accent-2 { background: var(--color-accent-2-100); color: var(--color-accent-2-800); }
-.tag-neutral { background: var(--color-neutral-100); color: var(--color-neutral-800); }
-.tag-outline { border: 1px solid var(--color-accent); color: var(--color-accent-700); }
+.tag-accent {
+  background: var(--color-accent-100);
+  color: var(--color-accent-800);
+  border-color: color-mix(in srgb, var(--color-accent) 22%, transparent);
+}
+.tag-accent-2 {
+  background: var(--color-accent-2-100);
+  color: var(--color-accent-2-800);
+}
+.tag-neutral {
+  background: var(--surface-3);
+  color: var(--text-muted);
+}
+.tag-outline {
+  border-color: var(--color-accent);
+  color: var(--color-accent-700);
+}
 
-/* — tables — */
-.table { width: 100%; border-collapse: collapse; font-size: 15px; }
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+}
+/* Ponto de estado antes do rótulo — leitura instantânea sob pressão. */
+.status-pill::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Tabelas — viram lista de cards no celular (ver .table-wrap abaixo)
+   ═══════════════════════════════════════════════════════════════════════ */
+.table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-base);
+}
 .table th {
   text-align: left;
-  font-size: 12px;
-  letter-spacing: 0.08em;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.09em;
   text-transform: uppercase;
-  color: color-mix(in srgb, var(--color-text) 70%, transparent);
-  padding: var(--space-2);
-  border-bottom: 1px solid var(--color-divider);
+  color: var(--text-muted);
+  padding: var(--space-3);
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border-default);
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  z-index: 1;
 }
 .table td {
-  padding: var(--space-2);
-  border-bottom: 1px solid color-mix(in srgb, var(--color-text) 8%, transparent);
+  padding: var(--space-3);
+  border-bottom: 1px solid var(--border-subtle);
+  vertical-align: middle;
 }
-.table tbody tr:hover { background: color-mix(in srgb, var(--color-text) 4%, transparent); }
+.table tbody tr {
+  transition: background var(--dur-fast) var(--ease-out);
+}
+.table tbody tr:hover {
+  background: var(--surface-2);
+}
+.table tbody tr:last-child td {
+  border-bottom: 0;
+}
 
-/* — dialog — */
+/* Tabela que vira lista de cards em tela estreita.
+   Opt-in: só tabelas cujas células trazem `data-label` (o rótulo que
+   substitui o cabeçalho da coluna). Duas larguras de corte porque as
+   tabelas não têm a mesma densidade:
+     `.table--cards`      → vira cartão até 719px (tabelas do painel);
+     `.table--cards-wide` → até 1023px, para a tabela de funcionários, que
+                            tem 6 colunas e uma lista de NRs dentro de uma
+                            delas — no tablet ela transbordava e obrigava a
+                            rolagem lateral. */
+@mixin table-as-cards {
+  thead {
+    display: none;
+  }
+  &,
+  tbody,
+  tr,
+  td {
+    display: block;
+    width: 100%;
+  }
+  tr {
+    background: var(--surface-1);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--space-3);
+    padding: var(--space-1) var(--space-3);
+    box-shadow: var(--shadow-xs);
+  }
+  tr:hover {
+    background: var(--surface-1);
+  }
+  td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    padding: var(--space-2) 0;
+    border-bottom: 1px solid var(--border-subtle);
+    text-align: right;
+  }
+  td:last-child {
+    border-bottom: 0;
+  }
+  td::before {
+    content: attr(data-label);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    flex: none;
+    text-align: left;
+  }
+}
+
+@media (max-width: 719px) {
+  .table--cards {
+    @include table-as-cards;
+  }
+}
+@media (max-width: 1023px) {
+  .table--cards-wide {
+    @include table-as-cards;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Diálogos
+   ═══════════════════════════════════════════════════════════════════════ */
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
 .dialog-backdrop {
   position: fixed;
   inset: 0;
   display: grid;
   place-items: center;
   padding: var(--space-4);
-  background: color-mix(in srgb, var(--color-neutral-900) 50%, transparent);
+  background: color-mix(in srgb, #0d1218 58%, transparent);
+  backdrop-filter: blur(2px);
   z-index: 50;
+  animation: backdrop-in var(--dur-base) var(--ease-out);
+  overflow-y: auto;
 }
 .dialog {
-  width: min(440px, 100%);
+  width: min(480px, 100%);
+  max-height: calc(100vh - var(--space-8));
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  padding: var(--space-4);
-  border-radius: 0;
-  background: var(--color-bg);
-  border: 1px solid var(--color-divider);
+  padding: var(--space-6);
+  border-radius: var(--radius-lg);
+  background: var(--surface-1);
+  border: 1px solid var(--border-subtle);
   box-shadow: var(--shadow-lg);
+  animation: dialog-in var(--dur-slow) var(--ease-out);
 }
-.dialog-title { font-family: var(--font-heading); font-weight: var(--font-heading-weight); font-size: 22px; }
-.dialog-body { font-size: 15px; opacity: 0.9; }
-.dialog-actions { display: flex; justify-content: flex-end; gap: var(--space-2); margin-top: var(--space-2); }
+/* Nenhum filho do diálogo pode ser o "amortecedor" de altura.
+   Num flex column, um elemento com `overflow` diferente de visible tem
+   tamanho mínimo automático ZERO — então, quando o conteúdo passa do teto
+   do diálogo, é ele que colapsa (a lista de documentos do cadastro chegou a
+   ficar com 2px de altura, escondendo as sete NRs). Com `flex: none` a
+   sobra vira rolagem do diálogo inteiro, que é o esperado. */
+.dialog > * {
+  flex: none;
+}
 
-/* Impressão/"salvar como PDF" de um único dialog (ex.: a análise de IA) sem
-   sair da tela onde ele foi aberto — o resto da página some (visibility, não
-   display, para preservar o layout) e só o dialog marcado permanece visível.
-   O componente que abre o dialog alterna a classe no <body> antes de chamar
-   window.print() e remove no evento afterprint. */
+.dialog-title {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: var(--text-xl);
+  color: var(--text-strong);
+}
+.dialog-body {
+  font-size: var(--text-base);
+  color: var(--text-muted);
+  margin: 0;
+}
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  flex-wrap: wrap;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Indicadores compartilhados
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* KPI — usado no painel do gestor e no cadastro de funcionários. */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: var(--space-3);
+}
+.kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-4);
+  background: var(--surface-1);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-xs);
+  transition:
+    box-shadow var(--dur-base) var(--ease-out),
+    transform var(--dur-base) var(--ease-out);
+}
+.kpi:hover {
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-1px);
+}
+.kpi--critical {
+  border-color: color-mix(in srgb, var(--status-bad) 40%, transparent);
+  background: linear-gradient(
+    180deg,
+    var(--status-bad-bg),
+    var(--surface-1) 60%
+  );
+}
+.kpi-value {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: var(--text-3xl);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.kpi-note {
+  font-size: var(--text-sm);
+  color: var(--text-faint);
+}
+
+/* Ponto pulsante — "ao vivo"/processando. */
+@keyframes pulse-dot-anim {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.35;
+    transform: scale(0.8);
+  }
+}
+.pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--status-bad);
+  flex: none;
+  animation: pulse-dot-anim 1.4s var(--ease-in-out) infinite;
+}
+.pulse-dot--accent {
+  background: var(--color-accent);
+}
+.pulse-dot--ok {
+  background: var(--status-ok);
+}
+
+/* Medidor de gás — mesmo objeto no assistente, no detalhe e no diálogo de
+   nova medição; por isso é global. */
+.gauge-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
+  gap: var(--space-2);
+}
+.gauge {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-3);
+  background: var(--surface-1);
+  text-align: left;
+}
+.gauge__label {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.gauge__value {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: var(--text-2xl);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.gauge__unit {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text-faint);
+  margin-left: 3px;
+}
+.gauge__input-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
+}
+.gauge__input {
+  min-height: 34px;
+  padding: 2px 6px;
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: var(--text-xl);
+  font-variant-numeric: tabular-nums;
+  background: var(--surface-3);
+  border-color: transparent;
+}
+.gauge__input:focus-visible {
+  background: var(--surface-1);
+}
+.gauge__limit {
+  font-size: var(--text-xs);
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+}
+
+/* Linha do tempo — histórico da PET. */
+.timeline {
+  display: flex;
+  flex-direction: column;
+}
+.timeline__row {
+  display: grid;
+  grid-template-columns: 52px 1fr;
+  gap: var(--space-3);
+  padding: var(--space-3) 0 var(--space-3) var(--space-4);
+  position: relative;
+  font-size: var(--text-base);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.timeline__row:last-child {
+  border-bottom: 0;
+}
+/* Trilho + marcador do evento. */
+.timeline__row::before {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--border-default);
+}
+.timeline__row:first-child::before {
+  top: 18px;
+}
+.timeline__row:last-child::before {
+  bottom: calc(100% - 18px);
+}
+.timeline__row::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 15px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--surface-1);
+  border: 2px solid var(--color-accent);
+}
+.timeline__row--critical::after {
+  border-color: var(--status-bad);
+  background: var(--status-bad);
+}
+.timeline__time {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--text-faint);
+  padding-top: 1px;
+}
+.timeline__text {
+  color: var(--text-default);
+}
+.timeline__row--critical .timeline__text {
+  color: var(--status-bad);
+  font-weight: 500;
+}
+.timeline__critical-icon {
+  margin-right: 4px;
+}
+
+/* Tela do fluxo de campo: cabeçalho fixo + corpo rolável + rodapé de ação.
+   Vive no global porque o assistente "Nova PET" é um componente filho — com
+   o encapsulamento do Angular, um `.screen` declarado só no pai não
+   alcançaria o template do filho. */
+.screen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.petscroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* Caixa de aviso — o mesmo objeto aparece como "atmosfera dentro do limite",
+   "emissão bloqueada", "ventilação ligada", "alertas críticos desta PET",
+   "normas aplicáveis" e erro da IA. Uma primitiva com variantes de estado em
+   vez de cinco blocos quase iguais espalhados pelos componentes. */
+.callout {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  border-left: 3px solid var(--color-accent);
+  background: var(--color-accent-100);
+  color: var(--color-accent-900);
+  font-size: var(--text-base);
+  line-height: 1.5;
+}
+.callout--ok {
+  border-left-color: var(--status-ok);
+  background: var(--status-ok-bg);
+  color: #1d4d33;
+}
+.callout--warn {
+  border-left-color: var(--status-warn);
+  background: var(--status-warn-bg);
+  color: #6b4600;
+}
+.callout--bad {
+  border-left-color: var(--status-bad);
+  background: var(--status-bad-bg);
+  color: var(--status-bad);
+}
+/* Variante sólida: bloqueio de segurança, que precisa parar o olho. */
+.callout--blocking {
+  border-left-color: var(--status-bad);
+  background: var(--status-bad);
+  color: #fdf3f3;
+}
+.callout--row {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-2);
+}
+.callout__title {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: var(--text-lg);
+  line-height: 1.2;
+}
+
+/* Estados vazios — toda lista do sistema usa o mesmo bloco. */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-10) var(--space-5);
+  text-align: center;
+  color: var(--text-muted);
+  border: 1px dashed var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+.empty-state__art {
+  width: 96px;
+  height: auto;
+  opacity: 0.75;
+  margin-bottom: var(--space-1);
+}
+.empty-state__title {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: var(--text-lg);
+  color: var(--text-default);
+}
+.empty-state__text {
+  font-size: var(--text-base);
+  max-width: 42ch;
+}
+
+/* Estado de carregamento — barra de brilho discreta. */
+@keyframes skeleton-shimmer {
+  from {
+    background-position: -200% 0;
+  }
+  to {
+    background-position: 200% 0;
+  }
+}
+.skeleton {
+  border-radius: var(--radius-sm);
+  background: linear-gradient(
+    90deg,
+    var(--surface-3) 25%,
+    var(--surface-2) 37%,
+    var(--surface-3) 63%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s linear infinite;
+}
+
+/* Entrada de conteúdo — sutil e rápida, nunca atrasa uma ação. */
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.rise-in {
+  animation: rise-in var(--dur-slow) var(--ease-out) both;
+}
+
+/* Dedo em vez de mouse (fica no fim do arquivo de propósito: mesma
+   especificidade das regras base de .btn/.input, então precisa vir depois
+   delas para valer): alvos maiores onde o ponteiro é grosso — luva de
+   raspa e tela molhada não acertam um botão de 38px. Não mexe no desktop. */
+@media (pointer: coarse) {
+  .btn {
+    min-height: 44px;
+  }
+  .btn-sm {
+    min-height: 38px;
+  }
+  .input,
+  select.input {
+    min-height: 44px;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Impressão do relatório de IA (comportamento preservado do original):
+   só o diálogo marcado fica visível; o resto da página some via
+   visibility para não alterar o layout.
+   ═══════════════════════════════════════════════════════════════════════ */
 @media print {
   body.ai-report-printing {
     visibility: hidden;
@@ -288,11 +1223,14 @@ textarea.input { min-height: 90px; resize: vertical; }
     box-shadow: none;
     border: none;
     padding: 20mm;
+    animation: none;
   }
   body.ai-report-printing .dialog-backdrop {
     position: static;
     background: none;
+    backdrop-filter: none;
     padding: 0;
+    animation: none;
   }
   body.ai-report-printing .no-print {
     display: none !important;
