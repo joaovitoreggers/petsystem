@@ -30,7 +30,7 @@ import { TeamMembersApiService, UpdateTeamMemberPayload } from './services/team-
 import { AuthApiService, AuthenticatedUser } from './services/auth-api.service';
 import { AuthTokenService } from './services/auth-token.service';
 
-export type PortalRole = 'tecnico' | 'gestor' | 'equipe' | 'usuarios';
+export type PortalRole = 'tecnico' | 'gestor' | 'equipe' | 'usuarios' | 'empresas';
 export type TechnicianScreen =
   'login' | 'home' | 'nova' | 'emitida' | 'detalhe';
 export type HomeTab = 'abertas' | 'fechadas';
@@ -362,8 +362,14 @@ export class PetStateService {
   // não oferecer um botão/aba que a API vai recusar.
   readonly canManageTeam = computed(() => {
     const role = this.session()?.user.role;
-    return role === 'admin' || role === 'gestor';
+    return role === 'admin' || role === 'gestor' || role === 'platform-admin';
   });
+
+  // Grupos de empresas/filiais (tenants) — só o platform-admin gerencia a
+  // estrutura em si; ver a aba Empresas.
+  readonly isPlatformAdmin = computed(
+    () => this.session()?.user.role === 'platform-admin',
+  );
 
   setAuthMethod(method: AuthMethod): void {
     this.authMethod.set(method);

@@ -1,0 +1,114 @@
+<div class="companies">
+  <div class="companies__head">
+    <div class="section-kicker">Multi-tenancy · Plataforma</div>
+    <h1 class="companies__title">Grupos de empresas e filiais</h1>
+    <div class="companies__head-text">
+      Um grupo de empresas é um tenant: reúne várias filiais e todos os
+      usuários/PETs/funcionários cadastrados dentro dele. Só quem tem o papel
+      platform-admin vê e gerencia essa tela.
+    </div>
+  </div>
+
+  @if (loadError()) {
+    <div class="companies__form-error">{{ loadError() }}</div>
+  }
+
+  <div class="companies__layout">
+    <div class="companies__panel">
+      <div class="companies__panel-title">Grupos de empresas</div>
+
+      @if (loadingGroups()) {
+        <div class="companies__loading">Carregando…</div>
+      } @else if (groups().length === 0) {
+        <div class="empty-state companies__empty">
+          <app-industrial-art class="empty-state__art" scene="shield" />
+          <div class="empty-state__title">Nenhum grupo cadastrado</div>
+          <div class="empty-state__text">Crie o primeiro grupo de empresas abaixo.</div>
+        </div>
+      } @else {
+        <ul class="companies__list">
+          @for (g of groups(); track g.id) {
+            <li>
+              <button
+                type="button"
+                class="companies__list-item"
+                [class.companies__list-item--active]="g.id === selectedGroupId()"
+                (click)="selectGroup(g.id)"
+              >
+                <app-icon name="building" [size]="16" />
+                {{ g.name }}
+              </button>
+            </li>
+          }
+        </ul>
+      }
+
+      <div class="companies__form-row">
+        <input
+          class="input"
+          placeholder="Nome do novo grupo"
+          [value]="newGroupName()"
+          (input)="newGroupName.set($any($event.target).value)"
+        />
+        <button
+          type="button"
+          class="btn btn-secondary"
+          [disabled]="!newGroupName().trim() || creatingGroup()"
+          (click)="createGroup()"
+        >
+          <app-icon name="plus" [size]="16" />
+          {{ creatingGroup() ? 'Criando…' : 'Criar grupo' }}
+        </button>
+      </div>
+      @if (groupError()) {
+        <div class="companies__form-error">{{ groupError() }}</div>
+      }
+    </div>
+
+    <div class="companies__panel">
+      <div class="companies__panel-title">
+        Filiais
+        @if (selectedGroup(); as group) {
+          <span class="companies__panel-subtitle">de {{ group.name }}</span>
+        }
+      </div>
+
+      @if (!selectedGroupId()) {
+        <div class="companies__hint">Selecione um grupo à esquerda para ver as filiais.</div>
+      } @else if (loadingBranches()) {
+        <div class="companies__loading">Carregando…</div>
+      } @else {
+        @if (branches().length === 0) {
+          <div class="companies__hint">Nenhuma filial cadastrada neste grupo ainda.</div>
+        } @else {
+          <ul class="companies__list companies__list--plain">
+            @for (b of branches(); track b.id) {
+              <li class="companies__branch">{{ b.name }}</li>
+            }
+          </ul>
+        }
+
+        <div class="companies__form-row">
+          <input
+            class="input"
+            placeholder="Nome da nova filial"
+            [value]="newBranchName()"
+            (input)="newBranchName.set($any($event.target).value)"
+          />
+          <button
+            type="button"
+            class="btn btn-secondary"
+            [disabled]="!newBranchName().trim() || creatingBranch()"
+            (click)="createBranch()"
+          >
+            <app-icon name="plus" [size]="16" />
+            {{ creatingBranch() ? 'Criando…' : 'Criar filial' }}
+          </button>
+        </div>
+        @if (branchError()) {
+          <div class="companies__form-error">{{ branchError() }}</div>
+        }
+      }
+    </div>
+  </div>
+</div>

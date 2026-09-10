@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, signal } from '@angular/core';
+import { Component, OnInit, computed, effect, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { PetStateService } from '../pet-state.service';
 import {
@@ -7,6 +7,7 @@ import {
   UpdateUserPayload,
   UsersApiService,
 } from '../services/users-api.service';
+import { Branch, CompanyGroup, TenancyApiService } from '../services/tenancy-api.service';
 import { IconComponent } from '../../shared/icon.component';
 import { IndustrialArtComponent } from '../../shared/industrial-art.component';
 
@@ -56,18 +57,64 @@ export class PetUsersComponent implements OnInit {
   readonly formEmail = signal('');
   readonly formPassword = signal('');
   readonly formRole = signal('tecnico');
+  // '' = sem filial (enxerga todas as filiais do grupo).
+  readonly formBranchId = signal('');
+  // Só usado quando quem está logado é platform-admin (sem grupo próprio) —
+  // admin/gestor sempre cadastram dentro do próprio grupo, sem escolher.
+  readonly formCompanyGroupId = signal('');
 
   readonly deleteTarget = signal<SystemUser | null>(null);
   readonly deleting = signal(false);
   readonly deleteError = signal<string | null>(null);
 
+  // Grupos (só carregados/usados para platform-admin) e filiais do grupo
+  // relevante — o próprio, ou o escolhido no select acima.
+  readonly groups = signal<CompanyGroup[]>([]);
+  readonly branches = signal<Branch[]>([]);
+  readonly branchesLoading = signal(false);
+
   constructor(
     readonly state: PetStateService,
     private readonly usersApi: UsersApiService,
-  ) {}
+    private readonly tenancyApi: TenancyApiService,
+  ) {
+    if (this.state.isPlatformAdmin()) {
+      this.loadGroups();
+    }
+    effect(() => {
+      const groupId = this.state.isPlatformAdmin()
+        ? this.formCompanyGroupId()
+        : this.state.session()?.user.companyGroupId;
+      this.loadBranches(groupId || null);
+    });
+  }
 
   ngOnInit(): void {
     this.reload();
+  }
+
+  private async loadGroups(): Promise<void> {
+    try {
+      this.groups.set(await firstValueFrom(this.tenancyApi.findGroups()));
+    } catch {
+      // sem grupos disponíveis — o select fica vazio, o form acusa ao salvar
+    }
+  }
+
+  private async loadBranches(groupId: string | null): Promise<void> {
+    if (!groupId) {
+      this.branches.set([]);
+      return;
+    }
+    this.branchesLoading.set(true);
+    try {
+      const branches = await firstValueFrom(this.tenancyApi.findBranches(groupId));
+      this.branches.set(branches.sort((a, b) => a.name.localeCompare(b.name)));
+    } catch {
+      this.branches.set([]);
+    } finally {
+      this.branchesLoading.set(false);
+    }
   }
 
   private async reload(): Promise<void> {
@@ -87,9 +134,15 @@ export class PetUsersComponent implements OnInit {
     this.users().map((user) => ({
       user,
       roleLabel: roleLabel(user.role),
+      branchLabel: this.branchName(user.branchId),
       isSelf: user.id === this.state.session()?.user.id,
     })),
   );
+
+  private branchName(branchId: string | null): string {
+    if (!branchId) return 'Todas as filiais';
+    return this.branches().find((b) => b.id === branchId)?.name ?? '—';
+  }
 
   readonly dialogTitle = computed(() =>
     this.dialogMode() === 'edit' ? 'Editar usuário' : 'Cadastrar usuário',
@@ -112,6 +165,9 @@ export class PetUsersComponent implements OnInit {
     ) {
       missing.push('a nova senha precisa de ao menos 6 caracteres');
     }
+    if (this.state.isPlatformAdmin() && !this.formCompanyGroupId()) {
+      missing.push('grupo de empresas');
+    }
     return missing;
   });
 
@@ -125,6 +181,8 @@ export class PetUsersComponent implements OnInit {
     this.formEmail.set('');
     this.formPassword.set('');
     this.formRole.set('tecnico');
+    this.formBranchId.set('');
+    this.formCompanyGroupId.set('');
     this.modalOpen.set(true);
   }
 
@@ -136,6 +194,8 @@ export class PetUsersComponent implements OnInit {
     this.formEmail.set(user.email);
     this.formPassword.set('');
     this.formRole.set(user.role);
+    this.formBranchId.set(user.branchId ?? '');
+    this.formCompanyGroupId.set(user.companyGroupId ?? '');
     this.modalOpen.set(true);
   }
 
@@ -148,6 +208,9 @@ export class PetUsersComponent implements OnInit {
     this.saving.set(true);
     this.saveError.set(null);
     try {
+      const companyGroupId = this.state.isPlatformAdmin()
+        ? this.formCompanyGroupId() || undefined
+        : undefined;
       if (this.dialogMode() === 'edit') {
         const id = this.editingId();
         if (!id) return;
@@ -155,6 +218,10 @@ export class PetUsersComponent implements OnInit {
           name: this.formName().trim(),
           email: this.formEmail().trim(),
           role: this.formRole(),
+          // Sempre explícito na edição: '' precisa virar `null` (limpar a
+          // filial) e não `undefined` (que o back-end lê como "não mexer").
+          branchId: this.formBranchId() || null,
+          companyGroupId,
         };
         if (this.formPassword().trim()) patch.password = this.formPassword().trim();
         const updated = await firstValueFrom(this.usersApi.update(id, patch));
@@ -167,6 +234,8 @@ export class PetUsersComponent implements OnInit {
           email: this.formEmail().trim(),
           password: this.formPassword().trim(),
           role: this.formRole(),
+          branchId: this.formBranchId() || undefined,
+          companyGroupId,
         };
         const created = await firstValueFrom(this.usersApi.create(payload));
         this.users.update((list) => [...list, created].sort((a, b) => a.name.localeCompare(b.name)));

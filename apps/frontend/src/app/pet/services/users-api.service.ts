@@ -8,6 +8,8 @@ export interface SystemUser {
   name: string;
   email: string;
   role: string;
+  companyGroupId: string | null;
+  branchId: string | null;
 }
 
 export interface CreateUserPayload {
@@ -15,9 +17,15 @@ export interface CreateUserPayload {
   email: string;
   password: string;
   role: string;
+  companyGroupId?: string;
+  branchId?: string;
 }
 
-export type UpdateUserPayload = Partial<CreateUserPayload>;
+// `branchId` distingue "não mexer" (omitido) de "limpar a filial, ver todas
+// as filiais do grupo" (`null` explícito) — só faz sentido numa edição.
+export type UpdateUserPayload = Partial<Omit<CreateUserPayload, 'branchId'>> & {
+  branchId?: string | null;
+};
 
 /**
  * CRUD de contas de login (`User`) contra `/api/users` — todas as rotas

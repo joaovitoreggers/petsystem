@@ -29,7 +29,8 @@ export type IconName =
   | 'logout'
   | 'search'
   | 'pencil'
-  | 'trash';
+  | 'trash'
+  | 'building';
 
 @Component({
   selector: 'app-icon',
@@ -156,6 +157,12 @@ export type IconName =
           <path d="M18.5 6v14a2 2 0 0 1-2 2h-9a2 2 0 0 1-2-2V6" />
           <path d="M8.5 6V4a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v2" />
           <path d="M10.2 11v6M13.8 11v6" />
+        }
+        @case ('building') {
+          <rect x="4" y="3" width="12" height="18" rx="1" />
+          <path d="M16 9h4v12h-4" />
+          <path d="M7.5 7h1M11.5 7h1M7.5 11h1M11.5 11h1M7.5 15h1M11.5 15h1" />
+          <path d="M9 21v-3.5" />
         }
       }
     </svg>

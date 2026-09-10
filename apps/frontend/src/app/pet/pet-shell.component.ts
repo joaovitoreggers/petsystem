@@ -4,6 +4,7 @@ import { PetTechnicianComponent } from './technician/pet-technician.component';
 import { PetManagerComponent } from './manager/pet-manager.component';
 import { PetTeamComponent } from './team/pet-team.component';
 import { PetUsersComponent } from './users/pet-users.component';
+import { PetCompaniesComponent } from './companies/pet-companies.component';
 import { IconComponent, IconName } from '../shared/icon.component';
 import { riskAreaNames, riskAreaNrs } from './pet-mock-data';
 
@@ -25,6 +26,7 @@ interface NavItem {
     PetManagerComponent,
     PetTeamComponent,
     PetUsersComponent,
+    PetCompaniesComponent,
     IconComponent,
   ],
   templateUrl: './pet-shell.component.html',
@@ -64,16 +66,27 @@ export class PetShellComponent {
       icon: 'shield',
       badge: () => null,
     },
+    {
+      id: 'empresas',
+      label: 'Empresas',
+      shortLabel: 'Empresas',
+      description: 'Grupos de empresas e filiais (tenants)',
+      icon: 'building',
+      badge: () => null,
+    },
   ];
 
-  // "Usuários" só aparece com sessão de admin/gestor — a mesma checagem que
-  // libera editar/excluir em Funcionários. O back-end (RolesGuard) é quem
-  // aplica de verdade; isto só evita oferecer uma aba cujas rotas de
-  // escrita a API recusaria.
+  // "Usuários" só aparece com sessão de admin/gestor/platform-admin — a
+  // mesma checagem que libera editar/excluir em Funcionários. "Empresas" é
+  // mais restrita ainda: só platform-admin gerencia a estrutura de tenants.
+  // O back-end (RolesGuard) é quem aplica de verdade; isto só evita
+  // oferecer uma aba cujas rotas de escrita a API recusaria.
   readonly navItems = computed(() =>
-    this.state.canManageTeam()
-      ? this.allNavItems
-      : this.allNavItems.filter((item) => item.id !== 'usuarios'),
+    this.allNavItems.filter((item) => {
+      if (item.id === 'empresas') return this.state.isPlatformAdmin();
+      if (item.id === 'usuarios') return this.state.canManageTeam();
+      return true;
+    }),
   );
 
   readonly currentNav = computed(
@@ -89,10 +102,14 @@ export class PetShellComponent {
 
   constructor(readonly state: PetStateService) {
     // Se a sessão de admin/gestor cair (logout, expiração) enquanto a aba
-    // Usuários está aberta, volta para Campo em vez de deixar o conteúdo
-    // tentando carregar uma lista que a API não vai mais devolver.
+    // Usuários/Empresas está aberta, volta para Campo em vez de deixar o
+    // conteúdo tentando carregar uma lista que a API não vai mais devolver.
     effect(() => {
-      if (this.state.role() === 'usuarios' && !this.state.canManageTeam()) {
+      const role = this.state.role();
+      if (role === 'usuarios' && !this.state.canManageTeam()) {
+        this.state.setRole('tecnico');
+      }
+      if (role === 'empresas' && !this.state.isPlatformAdmin()) {
         this.state.setRole('tecnico');
       }
     });
