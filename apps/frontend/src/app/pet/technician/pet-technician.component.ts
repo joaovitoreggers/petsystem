@@ -10,8 +10,18 @@ import {
   signal,
 } from '@angular/core';
 import { PetStateService } from '../pet-state.service';
-import { GAS_LIMITS, GasKey, PET_STATUS, Pet, isGasWithinLimit, riskAreaNames, riskAreaNrs } from '../pet-mock-data';
+import {
+  GAS_LIMITS,
+  GasKey,
+  petStatusView,
+  Pet,
+  isGasWithinLimit,
+  riskAreaNames,
+  riskAreaNrs,
+} from '../pet-mock-data';
 import { PetWizardComponent } from './pet-wizard.component';
+import { IconComponent } from '../../shared/icon.component';
+import { IndustrialArtComponent } from '../../shared/industrial-art.component';
 
 interface PetCardView {
   pet: Pet;
@@ -35,9 +45,9 @@ interface MeasurementFieldView {
 @Component({
   selector: 'app-pet-technician',
   standalone: true,
-  imports: [PetWizardComponent],
+  imports: [PetWizardComponent, IconComponent, IndustrialArtComponent],
   templateUrl: './pet-technician.component.html',
-  styleUrl: './pet-technician.component.scss',
+  styleUrls: ['./pet-technician.component.scss', './pet-login.scss'],
 })
 export class PetTechnicianComponent implements OnDestroy {
   // O <video> só existe no DOM quando cameraActive() vira true (@if no
@@ -46,7 +56,8 @@ export class PetTechnicianComponent implements OnDestroy {
   // faceVideoRef logo após o .set(true). Sem isso, srcObject podia nunca
   // ser atribuído: a câmera ficava ligada (getUserMedia já resolvido) mas
   // sem imagem, e sem nova tentativa depois.
-  @ViewChild('faceVideo') private readonly faceVideoRef?: ElementRef<HTMLVideoElement>;
+  @ViewChild('faceVideo')
+  private readonly faceVideoRef?: ElementRef<HTMLVideoElement>;
 
   readonly cameraActive = signal(false);
   readonly cameraError = signal(false);
@@ -104,15 +115,21 @@ export class PetTechnicianComponent implements OnDestroy {
     this.cameraActive.set(false);
   }
 
-  readonly visibleCards = computed<PetCardView[]>(() => this.state.visiblePets().map((pet) => this.toCard(pet)));
+  readonly visibleCards = computed<PetCardView[]>(() =>
+    this.state.visiblePets().map((pet) => this.toCard(pet)),
+  );
 
-  readonly detailPet = computed<Pet | undefined>(() => this.state.pets().find((p) => p.id === this.state.detailPetId()));
+  readonly detailPet = computed<Pet | undefined>(() =>
+    this.state.pets().find((p) => p.id === this.state.detailPetId()),
+  );
   readonly detailCard = computed<PetCardView | undefined>(() => {
     const pet = this.detailPet();
     return pet ? this.toCard(pet) : undefined;
   });
 
-  readonly emittedPet = computed<Pet | undefined>(() => this.state.pets().find((p) => p.id === this.state.emittedPetId()));
+  readonly emittedPet = computed<Pet | undefined>(() =>
+    this.state.pets().find((p) => p.id === this.state.emittedPetId()),
+  );
 
   readonly faceTitle = computed(() => {
     switch (this.state.authPhase()) {
@@ -134,19 +151,50 @@ export class PetTechnicianComponent implements OnDestroy {
         return 'Posicione o rosto para acessar o PET Digital com sua credencial do SESMT.';
     }
   });
-  readonly faceColor = computed(() => (this.state.authPhase() === 'ok' ? 'var(--status-ok)' : 'var(--color-bg)'));
+  readonly faceColor = computed(() =>
+    this.state.authPhase() === 'ok' ? 'var(--status-ok)' : 'var(--color-bg)',
+  );
   readonly faceScanning = computed(() => this.state.authPhase() === 'scan');
-  readonly faceButtonLabel = computed(() => (this.state.authPhase() === 'idle' ? 'Iniciar reconhecimento facial' : 'Aguarde…'));
+  readonly faceButtonLabel = computed(() =>
+    this.state.authPhase() === 'idle'
+      ? 'Iniciar reconhecimento facial'
+      : 'Aguarde…',
+  );
 
   startAuth(): void {
     this.state.startAuth();
+  }
+
+  // ── Acesso por e-mail e senha ───────────────────────────────────────
+  readonly passwordVisible = signal(false);
+
+  togglePasswordVisible(): void {
+    this.passwordVisible.update((v) => !v);
+  }
+
+  onLoginEmail(event: Event): void {
+    this.state.setLoginEmail((event.target as HTMLInputElement).value);
+  }
+
+  onLoginPassword(event: Event): void {
+    this.state.setLoginPassword((event.target as HTMLInputElement).value);
+  }
+
+  /** Enter no formulário entra, como em qualquer tela de login. */
+  submitLogin(event: Event): void {
+    event.preventDefault();
+    this.state.loginWithPassword();
   }
 
   readonly cancelDialogOpen = signal(false);
   readonly cancelReason = signal('');
   readonly cancelClosedBy = signal('');
 
-  readonly canConfirmCancel = computed(() => this.cancelReason().trim().length > 0 && this.cancelClosedBy().trim().length > 0);
+  readonly canConfirmCancel = computed(
+    () =>
+      this.cancelReason().trim().length > 0 &&
+      this.cancelClosedBy().trim().length > 0,
+  );
 
   openCancelDialog(): void {
     this.cancelReason.set('');
@@ -168,7 +216,10 @@ export class PetTechnicianComponent implements OnDestroy {
 
   confirmCancel(): void {
     if (!this.canConfirmCancel()) return;
-    this.state.encerrarPet(this.cancelReason().trim(), this.cancelClosedBy().trim());
+    this.state.encerrarPet(
+      this.cancelReason().trim(),
+      this.cancelClosedBy().trim(),
+    );
     this.cancelDialogOpen.set(false);
   }
 
@@ -186,7 +237,14 @@ export class PetTechnicianComponent implements OnDestroy {
         : isGasWithinLimit(key, Number(raw))
           ? 'var(--status-ok)'
           : 'var(--status-bad)';
-      return { key, label: limit.label, unit: limit.unit, value: raw, color, limitText: limit.limitText };
+      return {
+        key,
+        label: limit.label,
+        unit: limit.unit,
+        value: raw,
+        color,
+        limitText: limit.limitText,
+      };
     });
   });
 
@@ -199,7 +257,10 @@ export class PetTechnicianComponent implements OnDestroy {
   }
 
   onMeasurementGasInputChange(key: GasKey, event: Event): void {
-    this.state.setMeasurementGasInput(key, (event.target as HTMLInputElement).value);
+    this.state.setMeasurementGasInput(
+      key,
+      (event.target as HTMLInputElement).value,
+    );
   }
 
   confirmMeasurement(): void {
@@ -207,7 +268,7 @@ export class PetTechnicianComponent implements OnDestroy {
   }
 
   private toCard(pet: Pet): PetCardView {
-    const status = PET_STATUS[pet.alarm ? 'alarme' : pet.status];
+    const status = petStatusView(pet);
     const gasLabel = pet.gas ? `O₂ ${pet.gas.o2.toFixed(1)}%` : 'sem gases';
     return {
       pet,

@@ -5,7 +5,7 @@ import {
   GAS_LIMITS,
   GasKey,
   INCIDENT_CAUSE,
-  PET_STATUS,
+  petStatusView,
   PET_TEAM_ROLE_LABEL,
   Pet,
   RISK_AREAS,
@@ -18,6 +18,9 @@ import {
   riskAreaNrs,
 } from '../pet-mock-data';
 import { PetAnalysisApiService } from '../services/pet-analysis-api.service';
+import { HttpErrorResponse } from '@angular/common/http';
+import { IconComponent } from '../../shared/icon.component';
+import { IndustrialArtComponent } from '../../shared/industrial-art.component';
 
 type HistoryFilter = 'todas' | 'aberta' | 'fechada' | 'ocorrencia' | RiskAreaId;
 
@@ -32,9 +35,9 @@ const HISTORY_FILTERS: { id: HistoryFilter; label: string }[] = [
 @Component({
   selector: 'app-pet-manager',
   standalone: true,
-  imports: [],
+  imports: [IconComponent, IndustrialArtComponent],
   templateUrl: './pet-manager.component.html',
-  styleUrl: './pet-manager.component.scss',
+  styleUrls: ['./pet-manager.component.scss', './pet-report.scss'],
 })
 export class PetManagerComponent {
   readonly gasKeys: GasKey[] = ['o2', 'co', 'h2s', 'lel'];
@@ -76,14 +79,13 @@ export class PetManagerComponent {
       const result = await firstValueFrom(this.petAnalysisApi.analyze());
       this.aiReport.set(result.reportText);
       this.aiGeneratedAt.set(
-        new Date(result.generatedAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }),
+        new Date(result.generatedAt).toLocaleString('pt-BR', {
+          dateStyle: 'short',
+          timeStyle: 'short',
+        }),
       );
     } catch (err) {
-      const message =
-        err && typeof err === 'object' && 'error' in err && (err as { error?: { message?: string } }).error?.message
-          ? (err as { error: { message: string } }).error.message
-          : 'Não foi possível gerar a análise agora. Verifique se o back-end está no ar e se a chave da OpenAI está configurada.';
-      this.aiError.set(message);
+      this.aiError.set(aiErrorMessage(err));
     } finally {
       this.aiLoading.set(false);
     }
@@ -99,28 +101,69 @@ export class PetManagerComponent {
     window.print();
   }
 
-  readonly activePets = computed(() => this.state.pets().filter((p) => p.status !== 'fechada'));
+  readonly activePets = computed(() =>
+    this.state.pets().filter((p) => p.status !== 'fechada'),
+  );
 
   readonly kpis = computed(() => {
     const pets = this.state.pets();
     const open = pets.filter((p) => p.status !== 'fechada').length;
     const occurrences30d = pets.filter((p) => p.status === 'ocorrencia').length;
-    const closed = pets.filter((p) => p.status === 'fechada' && p.durationMinutes);
-    const avgMinutes = closed.length ? Math.round(closed.reduce((sum, p) => sum + (p.durationMinutes ?? 0), 0) / closed.length) : 0;
+    const closed = pets.filter(
+      (p) => p.status === 'fechada' && p.durationMinutes,
+    );
+    const avgMinutes = closed.length
+      ? Math.round(
+          closed.reduce((sum, p) => sum + (p.durationMinutes ?? 0), 0) /
+            closed.length,
+        )
+      : 0;
     const totalReadings = this.thirtyDays.reduce((sum, d) => sum + d.total, 0);
     const totalOut = this.thirtyDays.reduce((sum, d) => sum + d.outOfRange, 0);
-    const compliance = totalReadings ? (((totalReadings - totalOut) / totalReadings) * 100).toFixed(1) : '100.0';
-    const criticalAlerts = pets.reduce((sum, p) => sum + (p.criticalAlerts?.length ?? 0), 0);
+    const compliance = totalReadings
+      ? (((totalReadings - totalOut) / totalReadings) * 100).toFixed(1)
+      : '100.0';
+    const criticalAlerts = pets.reduce(
+      (sum, p) => sum + (p.criticalAlerts?.length ?? 0),
+      0,
+    );
+    // Ordem = prioridade de leitura no painel: o que está acontecendo agora
+    // e o que está em risco vêm antes dos indicadores de tendência.
     return [
-      { label: 'PETs ativas agora', value: String(open), note: 'em campo nas 5 unidades', color: 'var(--color-text)' },
-      { label: 'Ocorrências registradas', value: String(occurrences30d), note: 'nos últimos 30 dias', color: occurrences30d > 0 ? 'var(--status-bad)' : 'var(--color-text)' },
-      { label: 'Duração média', value: minutesToLabel(avgMinutes), note: 'permissões encerradas', color: 'var(--color-text)' },
-      { label: 'Conformidade atmosférica', value: `${compliance}%`, note: 'leituras dentro do limite', color: 'var(--color-text)' },
+      {
+        label: 'PETs ativas agora',
+        value: String(open),
+        note: 'em campo nas 5 unidades',
+        color: 'var(--text-strong)',
+        critical: false,
+      },
       {
         label: 'Alertas críticos de documentação',
         value: String(criticalAlerts),
         note: 'liberações com ressalva por NR vencida',
-        color: criticalAlerts > 0 ? 'var(--status-bad)' : 'var(--color-text)',
+        color: criticalAlerts > 0 ? 'var(--status-bad)' : 'var(--text-strong)',
+        critical: criticalAlerts > 0,
+      },
+      {
+        label: 'Ocorrências registradas',
+        value: String(occurrences30d),
+        note: 'nos últimos 30 dias',
+        color: occurrences30d > 0 ? 'var(--status-bad)' : 'var(--text-strong)',
+        critical: occurrences30d > 0,
+      },
+      {
+        label: 'Conformidade atmosférica',
+        value: `${compliance}%`,
+        note: 'leituras dentro do limite',
+        color: 'var(--text-strong)',
+        critical: false,
+      },
+      {
+        label: 'Duração média',
+        value: minutesToLabel(avgMinutes),
+        note: 'permissões encerradas',
+        color: 'var(--text-strong)',
+        critical: false,
       },
     ];
   });
@@ -128,21 +171,27 @@ export class PetManagerComponent {
   readonly monitoredPetsView = computed(() =>
     this.activePets().map((pet) => ({
       pet,
-      status: PET_STATUS[pet.alarm ? 'alarme' : pet.status],
+      status: petStatusView(pet),
       areaLabel: riskAreaNames(pet.areas),
       nr: riskAreaNrs(pet.areas),
     })),
   );
 
-  readonly totalMedicoes = computed(() => this.thirtyDays.reduce((sum, d) => sum + d.total, 0));
-  readonly totalFora = computed(() => this.thirtyDays.reduce((sum, d) => sum + d.outOfRange, 0));
+  readonly totalMedicoes = computed(() =>
+    this.thirtyDays.reduce((sum, d) => sum + d.total, 0),
+  );
+  readonly totalFora = computed(() =>
+    this.thirtyDays.reduce((sum, d) => sum + d.outOfRange, 0),
+  );
   readonly conformidade = computed(() => {
     const total = this.totalMedicoes();
     const fora = this.totalFora();
     return total ? `${(((total - fora) / total) * 100).toFixed(1)}%` : '100.0%';
   });
   readonly piorDia = computed(() => {
-    const worst = [...this.thirtyDays].sort((a, b) => b.outOfRange - a.outOfRange)[0];
+    const worst = [...this.thirtyDays].sort(
+      (a, b) => b.outOfRange - a.outOfRange,
+    )[0];
     return worst ? `${worst.dayLabel} · ${worst.outOfRange} leituras` : '—';
   });
 
@@ -150,7 +199,9 @@ export class PetManagerComponent {
     this.thirtyDays.map((d) => {
       const maxTotal = Math.max(...this.thirtyDays.map((x) => x.total));
       const heightPct = Math.max(6, Math.round((d.total / maxTotal) * 100));
-      const outPct = d.total ? Math.round((d.outOfRange / d.total) * heightPct) : 0;
+      const outPct = d.total
+        ? Math.round((d.outOfRange / d.total) * heightPct)
+        : 0;
       return {
         ...d,
         heightPct,
@@ -166,14 +217,22 @@ export class PetManagerComponent {
       const pets = this.state.pets().filter((p) => p.areas.includes(area.id));
       const occurrences = pets.filter((p) => p.status === 'ocorrencia').length;
       const rate = pets.length ? (occurrences / pets.length) * 100 : 0;
-      const outOfRange = pets.reduce((sum, p) => sum + buildMonitorArchive(p).outOfRange, 0);
+      const outOfRange = pets.reduce(
+        (sum, p) => sum + buildMonitorArchive(p).outOfRange,
+        0,
+      );
       return {
         area,
         count: pets.length,
         occurrences,
         rate: `${rate.toFixed(0)}%`,
         ratePercent: rate,
-        rateColor: rate > 15 ? 'var(--status-bad)' : rate > 0 ? 'var(--status-warn)' : 'var(--color-text)',
+        rateColor:
+          rate > 15
+            ? 'var(--status-bad)'
+            : rate > 0
+              ? 'var(--status-warn)'
+              : 'var(--color-text)',
         barColor: rate > 15 ? 'var(--status-bad)' : 'var(--color-accent)',
         outOfRange,
       };
@@ -186,7 +245,9 @@ export class PetManagerComponent {
       .filter((p) => p.status === 'ocorrencia')
       .map((p) => ({
         pet: p,
-        cause: INCIDENT_CAUSE[p.id] ?? 'Ocorrência registrada durante a permissão. Detalhes no relatório interno do SESMT.',
+        cause:
+          INCIDENT_CAUSE[p.id] ??
+          'Ocorrência registrada durante a permissão. Detalhes no relatório interno do SESMT.',
         areaLabel: riskAreaNames(p.areas),
         nr: riskAreaNrs(p.areas),
         duration: p.durationMinutes ? minutesToLabel(p.durationMinutes) : '—',
@@ -196,15 +257,22 @@ export class PetManagerComponent {
 
   readonly filteredHistory = computed(() => {
     const filter = this.historyFilter();
-    const pets = [...this.state.pets()].sort((a, b) => (a.date < b.date ? 1 : -1));
+    const pets = [...this.state.pets()].sort((a, b) =>
+      a.date < b.date ? 1 : -1,
+    );
     const matches = (p: Pet) => {
       if (filter === 'todas') return true;
-      if (filter === 'aberta' || filter === 'fechada' || filter === 'ocorrencia') return p.status === filter;
+      if (
+        filter === 'aberta' ||
+        filter === 'fechada' ||
+        filter === 'ocorrencia'
+      )
+        return p.status === filter;
       return p.areas.includes(filter);
     };
     return pets.filter(matches).map((p) => ({
       pet: p,
-      status: PET_STATUS[p.alarm ? 'alarme' : p.status],
+      status: petStatusView(p),
       areaLabel: riskAreaNames(p.areas),
       nr: riskAreaNrs(p.areas),
       dateLabel: dateToBr(p.date),
@@ -226,8 +294,12 @@ export class PetManagerComponent {
     const to = new Date(2026, 8, 5);
     const from = new Date(to.getTime() - days * 86400000);
     const pad = (v: number) => String(v).padStart(2, '0');
-    this.reportFrom.set(`${from.getFullYear()}-${pad(from.getMonth() + 1)}-${pad(from.getDate())}`);
-    this.reportTo.set(`${to.getFullYear()}-${pad(to.getMonth() + 1)}-${pad(to.getDate())}`);
+    this.reportFrom.set(
+      `${from.getFullYear()}-${pad(from.getMonth() + 1)}-${pad(from.getDate())}`,
+    );
+    this.reportTo.set(
+      `${to.getFullYear()}-${pad(to.getMonth() + 1)}-${pad(to.getDate())}`,
+    );
   }
   onReportFromChange(event: Event): void {
     this.reportFrom.set((event.target as HTMLInputElement).value);
@@ -252,29 +324,52 @@ export class PetManagerComponent {
       .filter((p) => p.date >= this.reportFrom() && p.date <= this.reportTo())
       .map((p) => ({
         pet: p,
-        status: PET_STATUS[p.alarm ? 'alarme' : p.status],
+        status: petStatusView(p),
         dateLabel: dateToBr(p.date),
         nr: riskAreaNrs(p.areas),
-        duration: p.durationMinutes ? minutesToLabel(p.durationMinutes) : 'em andamento',
+        duration: p.durationMinutes
+          ? minutesToLabel(p.durationMinutes)
+          : 'em andamento',
       })),
   );
 
   readonly reportSummary = computed(() => {
     const pets = this.reportPets();
-    const occurrences = pets.filter((p) => p.pet.status === 'ocorrencia').length;
+    const occurrences = pets.filter(
+      (p) => p.pet.status === 'ocorrencia',
+    ).length;
     const totalTeam = pets.reduce((sum, p) => sum + p.pet.teamSize, 0);
     return [
-      { label: 'PETs no período', value: String(pets.length), note: 'permissões emitidas' },
-      { label: 'Ocorrências', value: String(occurrences), note: 'registradas no período' },
-      { label: 'Pessoas envolvidas', value: String(totalTeam), note: 'soma das equipes autorizadas' },
-      { label: 'Unidades', value: String(new Set(pets.map((p) => p.pet.unit)).size), note: 'unidades industriais' },
+      {
+        label: 'PETs no período',
+        value: String(pets.length),
+        note: 'permissões emitidas',
+      },
+      {
+        label: 'Ocorrências',
+        value: String(occurrences),
+        note: 'registradas no período',
+      },
+      {
+        label: 'Pessoas envolvidas',
+        value: String(totalTeam),
+        note: 'soma das equipes autorizadas',
+      },
+      {
+        label: 'Unidades',
+        value: String(new Set(pets.map((p) => p.pet.unit)).size),
+        note: 'unidades industriais',
+      },
     ];
   });
 
   readonly reportTeams = computed(() =>
     this.reportPets().map(({ pet }) => ({
       pet,
-      members: (pet.team ?? []).map((m) => ({ ...m, roleLabel: PET_TEAM_ROLE_LABEL[m.petRole] })),
+      members: (pet.team ?? []).map((m) => ({
+        ...m,
+        roleLabel: PET_TEAM_ROLE_LABEL[m.petRole],
+      })),
     })),
   );
 
@@ -286,7 +381,8 @@ export class PetManagerComponent {
         const rows = this.gasKeys.map((key) => {
           const limit = GAS_LIMITS[key];
           const [min, med, max] = archive.range[key];
-          const withinLimit = max <= limit.max && (limit.min === undefined || min >= limit.min);
+          const withinLimit =
+            max <= limit.max && (limit.min === undefined || min >= limit.min);
           return {
             label: limit.label,
             min: min.toFixed(limit.decimals),
@@ -297,7 +393,12 @@ export class PetManagerComponent {
             color: withinLimit ? 'var(--status-ok)' : 'var(--status-bad)',
           };
         });
-        return { pet, readingCount: archive.readingCount, outOfRange: archive.outOfRange, rows };
+        return {
+          pet,
+          readingCount: archive.readingCount,
+          outOfRange: archive.outOfRange,
+          rows,
+        };
       }),
   );
 
@@ -306,6 +407,34 @@ export class PetManagerComponent {
     const to = this.reportTo();
     const days = this.thirtyDays.filter((d) => d.iso >= from && d.iso <= to);
     const maxTotal = Math.max(1, ...days.map((d) => d.total));
-    return days.map((d) => ({ ...d, heightPct: Math.max(6, Math.round((d.total / maxTotal) * 100)) }));
+    return days.map((d) => ({
+      ...d,
+      heightPct: Math.max(6, Math.round((d.total / maxTotal) * 100)),
+    }));
   });
+}
+
+/**
+ * Mensagem de erro da análise de IA em português, para o operador.
+ *
+ * Só repassa o texto quando ele vem mesmo do nosso back-end (corpo JSON com
+ * `message`). Falha de rede (`status === 0`) devolve um `Error` do navegador
+ * cuja `message` é "Failed to fetch" — texto técnico em inglês que não diz
+ * nada a quem está no painel; nesses casos usa-se a explicação padrão.
+ */
+function aiErrorMessage(err: unknown): string {
+  const fallback =
+    'Não foi possível gerar a análise agora. Verifique se o back-end está no ar e se a chave da OpenAI está configurada.';
+  if (!(err instanceof HttpErrorResponse) || err.status === 0) return fallback;
+  const body = err.error as { message?: unknown } | string | null;
+  if (typeof body === 'string' && body.trim()) return body;
+  if (
+    body &&
+    typeof body === 'object' &&
+    typeof body.message === 'string' &&
+    body.message.trim()
+  ) {
+    return body.message;
+  }
+  return fallback;
 }

@@ -1,215 +1,369 @@
-@keyframes petpulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.45; }
-}
-@keyframes petsweep {
-  0% { top: 4%; }
-  100% { top: 92%; }
+/* ── Assistente "Nova PET" ────────────────────────────────────────────
+   Etapas com cabeçalho fixo (progresso sempre visível), corpo rolável e
+   rodapé de navegação sempre alcançável com o polegar. Os componentes
+   compartilhados (kicker, medidor, tag, campo, botão) vêm do design
+   system global — aqui fica só o que é específico do assistente. */
+
+:host {
+  display: contents;
 }
 
 .screen--wizard {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  flex: 1;
+  background: var(--surface-0);
 }
 
+/* ── Cabeçalho e progresso ─────────────────────────────────────────── */
 .wizard__header {
-  padding: 14px 16px 12px;
-  border-bottom: 1px solid var(--color-divider);
+  padding: var(--space-4) var(--space-4) var(--space-3);
+  background: var(--surface-1);
+  border-bottom: 1px solid var(--border-subtle);
+  position: sticky;
+  top: 0;
+  z-index: 5;
 }
-.wizard__header-row { display: flex; align-items: center; gap: 10px; }
-.wizard__back { width: 34px; height: 34px; padding: 0; font-size: 19px; }
-.wizard__header-text { flex: 1; min-width: 0; }
-.wizard__title { font-family: var(--font-heading); font-weight: 600; font-size: 20px; line-height: 1.1; }
-.wizard__step-label { font-size: 12px; color: var(--color-neutral-700); white-space: nowrap; }
-.wizard__bars { display: flex; gap: 3px; margin-top: 12px; }
-.wizard__bar { flex: 1; height: 3px; }
+.wizard__header-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.wizard__back {
+  flex: none;
+}
+.wizard__header-text {
+  min-width: 0;
+}
+.wizard__title {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: var(--text-xl);
+  line-height: 1.15;
+  color: var(--text-strong);
+}
+.wizard__step-label {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+.wizard__bars {
+  display: flex;
+  gap: 4px;
+  margin-top: var(--space-3);
+}
+.wizard__bar {
+  flex: 1;
+  height: 4px;
+  border-radius: var(--radius-pill);
+  transition: background var(--dur-slow) var(--ease-out);
+}
 
 .wizard__body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 16px;
+  gap: var(--space-6);
 }
 
-.step { display: flex; flex-direction: column; gap: 14px; }
-.step-hint { font-size: 14px; color: var(--color-neutral-700); margin-bottom: 4px; line-height: 1.45; }
-.section-kicker {
-  font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-accent-700);
+.step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  animation: rise-in var(--dur-base) var(--ease-out) both;
+}
+.step-hint {
+  font-size: var(--text-base);
+  color: var(--text-muted);
+  line-height: 1.5;
 }
 
-/* — área — */
+/* ── Etapa 1 · área de risco ───────────────────────────────────────── */
 .area-option {
-  padding: 11px 12px; display: flex; gap: 10px; align-items: flex-start; cursor: pointer;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface-1);
+  cursor: pointer;
+  transition:
+    border-color var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out);
 }
-.area-option__checkbox { width: 20px; height: 20px; accent-color: var(--color-accent); flex: none; margin-top: 2px; }
-.area-option__body { flex: 1; }
-.area-option__head { display: flex; align-items: baseline; gap: 8px; }
-.area-option__name { font-family: var(--font-heading); font-weight: 600; font-size: 18px; }
-.area-option__desc { display: block; font-size: 13px; color: var(--color-neutral-700); margin-top: 2px; }
-.area-notes { margin-top: 6px; display: flex; flex-direction: column; gap: 8px; }
-.area-note { background: var(--color-accent-100); padding: 11px 13px; font-size: 13px; color: var(--color-accent-800); line-height: 1.45; }
+.area-option:hover {
+  border-color: color-mix(in srgb, var(--color-accent) 45%, transparent);
+  box-shadow: var(--shadow-sm);
+}
+.area-option:has(.area-option__checkbox:checked) {
+  border-color: var(--color-accent);
+  box-shadow: var(--ring-accent);
+}
+.area-option__checkbox {
+  margin-top: 3px;
+  flex: none;
+}
+.area-option__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.area-option__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.area-option__name {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: var(--text-lg);
+  color: var(--text-strong);
+}
+.area-option__desc {
+  font-size: var(--text-base);
+  color: var(--text-muted);
+  line-height: 1.45;
+}
 
-/* — atividade — */
+.area-notes {
+  gap: var(--space-2);
+}
+.area-note {
+  padding-left: var(--space-3);
+  border-left: 2px solid
+    color-mix(in srgb, var(--color-accent) 45%, transparent);
+}
+
+/* ── Etapa 2 · atividade ───────────────────────────────────────────── */
 .atividade__summary {
-  display: flex; align-items: flex-start; gap: 10px; padding-bottom: 12px; border-bottom: 1px solid var(--color-divider);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface-1);
+  border: 1px solid var(--border-subtle);
 }
-.atividade__tags { display: flex; gap: 5px; flex-wrap: wrap; }
-.atividade__area { font-family: var(--font-heading); font-weight: 600; font-size: 18px; margin-top: 5px; line-height: 1.2; }
-.atividade__row { display: flex; gap: 10px; }
-.atividade__row .field { flex: 1; }
-.geo { padding: 12px; margin-top: 4px; }
-.geo__map {
-  height: 96px; margin-top: 10px; position: relative;
-  background: repeating-linear-gradient(135deg, var(--color-neutral-200) 0 6px, var(--color-neutral-100) 6px 12px);
+.atividade__tags {
+  display: flex;
+  gap: var(--space-1);
+  flex-wrap: wrap;
+  margin-bottom: 3px;
 }
-.geo__pin {
-  position: absolute; left: 46%; top: 44%; width: 12px; height: 12px; border-radius: 50%;
-  background: var(--color-accent); box-shadow: 0 0 0 6px color-mix(in srgb, var(--color-accent) 25%, transparent);
+.atividade__area {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: var(--text-lg);
+  line-height: 1.15;
 }
-.geo__coords { font-family: ui-monospace, monospace; font-size: 12px; margin-top: 8px; color: var(--color-neutral-700); }
+.atividade__row {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+.atividade__row .field {
+  flex: 1 1 160px;
+  min-width: 0;
+}
 
-/* — gases — */
-.gases__device { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--color-neutral-700); }
-.pulse-dot {
-  width: 7px; height: 7px; border-radius: 50%; background: var(--status-ok); animation: petpulse 1.4s infinite; flex: none;
+/* ── Etapa 3 · atmosfera ───────────────────────────────────────────── */
+.gases__device {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--surface-3);
 }
-.pulse-dot--accent { background: var(--color-accent); }
-.gauge-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-.gauge { padding: 11px 12px; }
-.gauge__label { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-neutral-700); }
-.gauge__input-row { display: flex; align-items: baseline; gap: 6px; margin-top: 4px; }
-.gauge__input {
-  width: 100%; border: none; border-bottom: 1px solid var(--color-divider); background: transparent; padding: 2px 0;
-  font-family: var(--font-heading); font-weight: 600; font-size: 29px; line-height: 1;
-}
-.gauge__input:focus { outline: none; border-bottom-color: var(--color-accent); }
-.gauge__unit { font-size: 13px; color: var(--color-neutral-700); font-family: var(--font-body); font-weight: 400; flex: none; }
-.gauge__limit { font-size: 11px; color: var(--color-neutral-600); margin-top: 5px; }
 
-.atmosphere-banner { padding: 12px; background: #dff0e6; color: #1d4d33; }
-.atmosphere-banner--bad { background: var(--status-bad); color: #fdf3f3; }
-.atmosphere-banner--pending { background: var(--color-neutral-200); color: var(--color-neutral-800); }
-.atmosphere-banner__title { font-family: var(--font-heading); font-weight: 600; font-size: 19px; }
-.atmosphere-banner__text { font-size: 13px; margin-top: 3px; opacity: 0.9; }
-.gases__register { height: 42px; }
-.gases__blocked { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; color: var(--status-bad); line-height: 1.45; }
-.gases__blocked-icon { font-family: var(--font-heading); font-weight: 600; }
-.gases__vent { height: 44px; margin: 0; }
-.gases__vent-on { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--color-accent-700); }
+.gases__vent-on {
+  font-weight: 500;
+}
 .gases__log-row {
-  display: flex; gap: 10px; font-family: ui-monospace, monospace; font-size: 12px; color: var(--color-neutral-700);
-  border-bottom: 1px solid var(--color-divider); padding-bottom: 6px;
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border-subtle);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+.gases__log-row span:first-child {
+  color: var(--text-faint);
+  flex: none;
 }
 
-/* — qr — */
-.qr-scan {
-  padding: 0; aspect-ratio: 1; position: relative; overflow: hidden;
-  background: repeating-linear-gradient(45deg, var(--color-neutral-300) 0 8px, var(--color-neutral-200) 8px 16px);
-}
-.qr-scan__frame { position: absolute; inset: 18%; border: 2px solid var(--color-accent); }
-.qr-scan__sweep {
-  position: absolute; left: 18%; right: 18%; height: 2px; background: var(--color-accent);
-  animation: petsweep 2.2s ease-in-out infinite alternate;
-}
-.qr-scan__caption {
-  position: absolute; bottom: 10px; left: 0; right: 0; text-align: center;
-  font-family: ui-monospace, monospace; font-size: 11px; color: var(--color-neutral-800);
-}
-.qr-scan__btn { height: 44px; margin: 0; }
-
-.badge-card { padding: 12px; }
-.badge-card__head { display: flex; align-items: baseline; gap: 8px; }
-.badge-card__name { font-family: var(--font-heading); font-weight: 600; font-size: 20px; }
-.badge-card__mat { margin-left: auto; font-family: ui-monospace, monospace; font-size: 12px; color: var(--color-neutral-700); }
-.badge-card__role { font-size: 13px; color: var(--color-neutral-700); }
-.badge-card__items { margin-top: 10px; display: flex; flex-direction: column; gap: 5px; }
-.badge-card__item { display: flex; gap: 8px; font-size: 13px; align-items: center; }
-.badge-card__item-val { margin-left: auto; font-size: 12px; }
-.badge-card__verdict {
-  margin-top: 12px; padding: 9px 11px; background: #dff0e6; color: #1d4d33;
-  font-family: var(--font-heading); font-weight: 600; font-size: 15px; letter-spacing: 0.04em;
-}
-.badge-card__verdict--bad { background: var(--status-bad); color: #fdf3f3; }
-.badge-card__warning {
-  display: flex; gap: 8px; align-items: flex-start; margin-top: 10px; padding: 9px 11px;
-  background: #f6e6c4; color: #6b4600; font-size: 13px; line-height: 1.45;
-}
-.badge-card__warning-icon { flex: none; font-size: 15px; }
-.badge-card__actions { display: flex; gap: 8px; margin-top: 10px; }
-.badge-card__actions .btn { flex: 1; font-size: 13px; padding: 0 6px; }
-
+/* ── Etapa 4 · crachás ─────────────────────────────────────────────── */
 .team-row {
-  display: flex; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--color-divider); font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: var(--text-base);
 }
 .team-row__initials {
-  width: 26px; height: 26px; border: 1px solid var(--color-divider); display: grid; place-items: center;
-  font-family: var(--font-heading); font-size: 12px;
+  width: 30px;
+  height: 30px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--surface-3);
+  color: var(--text-muted);
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: var(--text-sm);
 }
-.team-row__status { margin-left: auto; font-size: 12px; color: var(--status-ok); }
-.team-row__status--critical { color: var(--status-bad); font-weight: 600; }
-.team-row__empty { padding: 8px 0; font-size: 13px; color: var(--color-neutral-600); }
+.team-row__status {
+  margin-left: auto;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--status-ok);
+}
+.team-row__status--critical {
+  color: var(--status-bad);
+}
+.team-row__empty {
+  font-size: var(--text-base);
+  color: var(--text-faint);
+  padding: var(--space-2) 0;
+}
 
 .critical-alerts {
-  display: flex; flex-direction: column; gap: 8px; padding-top: 10px; border-top: 1px solid var(--color-divider);
+  gap: var(--space-2);
 }
-.critical-alerts__kicker { color: var(--status-bad); }
+.critical-alerts__kicker {
+  color: inherit;
+}
 .critical-alerts__row {
-  display: flex; gap: 8px; align-items: flex-start; font-size: 13px; background: #f9eded; color: #6b1414;
-  padding: 8px 10px; line-height: 1.4;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
 }
-.critical-alerts__icon { flex: none; }
-.critical-alerts__time { font-family: ui-monospace, monospace; font-size: 12px; flex: none; }
+.critical-alerts__icon {
+  flex: none;
+}
+.critical-alerts__time {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  flex: none;
+  opacity: 0.8;
+}
 
-/* — checklist — */
-.step--check { gap: 18px; }
+/* ── Etapa 5 · checklist e evidências ──────────────────────────────── */
+.step--check {
+  gap: var(--space-6);
+}
 .check-item {
-  display: flex; gap: 11px; align-items: center; justify-content: space-between; padding: 10px 0;
-  border-bottom: 1px solid var(--color-divider); font-size: 14px; line-height: 1.35;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--border-subtle);
 }
-.check-item__label { flex: 1; min-width: 0; }
-.check-item__options { display: flex; gap: 4px; flex: none; }
+.check-item__label {
+  flex: 1;
+  font-size: var(--text-base);
+  line-height: 1.4;
+}
+.check-item__options {
+  display: flex;
+  gap: 3px;
+  flex: none;
+  padding: 3px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-3);
+}
 .check-item__option {
-  border: 1px solid var(--color-divider); background: transparent; color: var(--color-text);
-  font-family: var(--font-heading); font-weight: 600; font-size: 12px; letter-spacing: 0.03em;
-  padding: 5px 9px; cursor: pointer;
+  min-width: 42px;
+  padding: 5px 8px;
+  font: inherit;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
 }
-.check-item__option--active { background: var(--color-accent); border-color: var(--color-accent); color: var(--color-bg); }
-.check-item__option--nao.check-item__option--active { background: var(--status-bad); border-color: var(--status-bad); }
+.check-item__option:hover {
+  color: var(--text-default);
+}
+.check-item__option--active {
+  background: var(--color-accent-700);
+  color: #f7fafd;
+  box-shadow: var(--shadow-xs);
+}
+.check-item__option--nao.check-item__option--active {
+  background: var(--status-bad);
+}
 
 .fire-watch {
-  display: flex; flex-direction: column; gap: 8px; padding-top: 8px; border-top: 1px solid var(--color-divider);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
 }
-.fire-watch__row { display: flex; gap: 8px; }
-.fire-watch__time { flex: 0 0 90px; }
-.fire-watch__name { flex: 1; }
-.photo { padding: 12px; }
-.photo__placeholder {
-  height: 110px; margin-top: 10px; display: grid; place-items: center; cursor: pointer;
-  background: repeating-linear-gradient(90deg, var(--color-neutral-200) 0 7px, var(--color-neutral-100) 7px 14px);
-  font-family: ui-monospace, monospace; font-size: 12px; color: var(--color-neutral-700);
+.fire-watch__row {
+  display: flex;
+  gap: var(--space-2);
 }
-.photo__preview {
-  position: relative; height: 160px; margin: 10px 0; cursor: pointer; overflow: hidden;
-  background: var(--color-neutral-200);
+.fire-watch__time {
+  flex: 0 0 96px;
+  font-family: var(--font-mono);
 }
-.photo__preview img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.photo__remove {
-  position: absolute; top: 6px; right: 6px; width: 26px; height: 26px; padding: 0; font-size: 14px;
-  background: color-mix(in srgb, var(--color-bg) 85%, transparent); border-color: var(--color-divider);
+.fire-watch__name {
+  flex: 1;
+  min-width: 0;
 }
 
-/* — assinaturas — */
-.step--sig { gap: 18px; }
-.sig__name { font-size: 15px; margin: 4px 0 8px; }
-.sig-pad { background: var(--color-neutral-100); }
-.sig-pad__canvas { display: block; width: 100%; height: 120px; touch-action: none; }
-.sig__footer { display: flex; align-items: center; gap: 12px; margin-top: 6px; font-size: 12px; }
-.sig__clear { font-size: 13px; margin-left: auto; }
-.sig__disclaimer { font-family: ui-monospace, monospace; font-size: 12px; color: var(--color-neutral-700); line-height: 1.6; }
+/* ── Etapa 6 · assinaturas ─────────────────────────────────────────── */
+.step--sig {
+  gap: var(--space-6);
+}
+.sig__name {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: var(--text-lg);
+  margin-bottom: var(--space-2);
+  color: var(--text-strong);
+}
+.sig__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+.sig__disclaimer {
+  font-size: var(--text-sm);
+  color: var(--text-faint);
+  line-height: 1.5;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-subtle);
+}
 
+/* ── Rodapé de navegação ───────────────────────────────────────────── */
 .wizard__footer {
-  display: flex; gap: 10px; padding: 12px 16px 16px; border-top: 1px solid var(--color-divider);
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  background: var(--surface-1);
+  border-top: 1px solid var(--border-subtle);
 }
-.wizard__footer-btn { height: 46px; flex: 1; }
-.wizard__footer-btn--primary { flex: 2; letter-spacing: 0.04em; }
+.wizard__footer-btn {
+  flex: 1;
+  min-height: 46px;
+  font-size: var(--text-md);
+}
+.wizard__footer-btn--primary {
+  flex: 1.6;
+}

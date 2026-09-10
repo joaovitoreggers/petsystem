@@ -1,77 +1,220 @@
-<div class="pet-shell">
-  <div class="pet-shell__topbar">
-    <img class="pet-shell__logo" src="assets/artech-logo-trim.png" alt="Artech — tecnologia que transforma" />
-    <div class="pet-shell__brand">PET DIGITAL</div>
-    <div class="pet-shell__unit">Lar Cooperativa Agroindustrial · SESMT</div>
-    <button type="button" class="btn pet-shell__evac-btn" (click)="state.triggerEvacuation()">
-      Acionar evacuação
-    </button>
-
-    <div class="pet-shell__switch">
-      <button
-        type="button"
-        class="btn"
-        [class.btn-primary]="state.role() === 'tecnico'"
-        (click)="state.setRole('tecnico')"
-      >
-        Técnico · celular
-      </button>
-      <button
-        type="button"
-        class="btn"
-        [class.btn-primary]="state.role() === 'gestor'"
-        (click)="state.setRole('gestor')"
-      >
-        Gestor · desktop
-      </button>
-      <button
-        type="button"
-        class="btn"
-        [class.btn-primary]="state.role() === 'equipe'"
-        (click)="state.setRole('equipe')"
-      >
-        Funcionários
-      </button>
+<div class="shell">
+  <!-- ── Sidebar (desktop/notebook) ─────────────────────────────────── -->
+  <aside class="shell__sidebar">
+    <div class="shell__brand">
+      <img
+        class="shell__logo"
+        src="assets/artech-logo-trim.png"
+        alt="Artech — tecnologia que transforma"
+      />
+      <div class="shell__brand-text">
+        <span class="shell__brand-name">PET DIGITAL</span>
+        <span class="shell__brand-unit">Lar Cooperativa · SESMT</span>
+      </div>
     </div>
-  </div>
 
-  @switch (state.role()) {
-    @case ('tecnico') {
-      <app-pet-technician />
-    }
-    @case ('gestor') {
-      <app-pet-manager />
-    }
-    @case ('equipe') {
-      <app-pet-team />
-    }
-  }
-
-  @if (state.evacuating()) {
-    <div class="evac-overlay">
-      <div class="evac-overlay__beacons">
-        <span class="evac-overlay__beacon"></span>
-        <span class="evac-overlay__beacon evac-overlay__beacon--delay"></span>
-        <span class="evac-overlay__beacon"></span>
-      </div>
-      <div class="evac-overlay__title">EVACUAÇÃO ACIONADA</div>
-      <div class="evac-overlay__text">{{ state.evacText() }}</div>
-      <div class="evac-overlay__note">
-        sirene local ativada · brigada e portaria notificadas<br />
-        equipes das frentes ativas recebendo alerta no app
-      </div>
-      <div class="evac-overlay__actions">
-        <button type="button" class="btn evac-overlay__btn evac-overlay__btn--solid" (click)="state.silenceSiren()">
-          Silenciar sirene
-        </button>
+    <nav class="shell__nav" aria-label="Módulos">
+      @for (item of navItems; track item.id) {
         <button
           type="button"
-          class="btn evac-overlay__btn evac-overlay__btn--outline"
-          (click)="state.finishEvacuation()"
+          class="navitem"
+          [attr.aria-label]="item.label"
+          [class.navitem--active]="state.role() === item.id"
+          [attr.aria-current]="state.role() === item.id ? 'page' : null"
+          (click)="state.setRole(item.id)"
         >
-          Registrar evacuação concluída
+          <span class="navitem__icon"
+            ><app-icon [name]="item.icon" [size]="19"
+          /></span>
+          <span class="navitem__text">
+            <span class="navitem__label">{{ item.label }}</span>
+            <span class="navitem__desc">{{ item.description }}</span>
+          </span>
+          @if (item.badge(); as count) {
+            <span class="navitem__badge">{{ count }}</span>
+          }
         </button>
+      }
+    </nav>
+
+    <div class="shell__sidebar-foot">
+      <div
+        class="shell__status"
+        [class.shell__status--alert]="state.hasAlert()"
+      >
+        <span
+          class="pulse-dot"
+          [class.pulse-dot--ok]="!state.hasAlert()"
+        ></span>
+        <span class="shell__status-text">
+          {{
+            state.hasAlert()
+              ? 'Alerta atmosférico ativo'
+              : 'Operação dentro dos limites'
+          }}
+        </span>
       </div>
+      <button
+        type="button"
+        class="btn btn-danger btn-block shell__evac-btn"
+        (click)="openEvacConfirm()"
+      >
+        Acionar evacuação
+      </button>
+      <div class="shell__version mono">ARTECH · PET Digital</div>
+    </div>
+  </aside>
+
+  <!-- ── Coluna principal ───────────────────────────────────────────── -->
+  <div class="shell__main">
+    <header class="shell__topbar">
+      <img
+        class="shell__topbar-logo"
+        src="assets/artech-logo-trim.png"
+        alt="Artech"
+      />
+      <div class="shell__topbar-title">
+        <span class="shell__topbar-label">{{ currentNav().label }}</span>
+        <span class="shell__topbar-desc">{{ currentNav().description }}</span>
+      </div>
+      @if (state.hasAlert()) {
+        <span class="shell__topbar-alert" title="Alerta atmosférico ativo">
+          <span class="pulse-dot"></span>
+          <span class="shell__topbar-alert-text">alerta</span>
+        </span>
+      }
+      <button
+        type="button"
+        class="btn btn-danger btn-sm shell__topbar-evac"
+        (click)="openEvacConfirm()"
+      >
+        Evacuação
+      </button>
+    </header>
+
+    <main class="shell__content">
+      @switch (state.role()) {
+        @case ('tecnico') {
+          <app-pet-technician />
+        }
+        @case ('gestor') {
+          <app-pet-manager />
+        }
+        @case ('equipe') {
+          <app-pet-team />
+        }
+      }
+    </main>
+  </div>
+
+  <!-- ── Navegação inferior (celular/tablet) ────────────────────────── -->
+  <nav class="shell__bottomnav" aria-label="Módulos">
+    @for (item of navItems; track item.id) {
+      <button
+        type="button"
+        class="bottomnav__item"
+        [attr.aria-label]="item.label"
+        [class.bottomnav__item--active]="state.role() === item.id"
+        [attr.aria-current]="state.role() === item.id ? 'page' : null"
+        (click)="state.setRole(item.id)"
+      >
+        <span class="bottomnav__icon"
+          ><app-icon [name]="item.icon" [size]="21"
+        /></span>
+        <span class="bottomnav__label">{{ item.shortLabel }}</span>
+        @if (item.badge(); as count) {
+          <span class="bottomnav__badge">{{ count }}</span>
+        }
+      </button>
+    }
+  </nav>
+
+  <!-- ── Confirmação de ação perigosa ───────────────────────────────── -->
+  @if (evacConfirmOpen()) {
+    <div class="dialog-backdrop" (click)="closeEvacConfirm()">
+      <div class="dialog evac-confirm" (click)="$event.stopPropagation()">
+        <div class="evac-confirm__mark">!</div>
+        <div class="dialog-title">Acionar evacuação geral?</div>
+        <p class="dialog-body">
+          A sirene local será ligada e a brigada, a portaria e as equipes das
+          frentes ativas recebem o alerta imediatamente. Use apenas em situação
+          real de risco.
+        </p>
+        @if (state.hasAlert()) {
+          <div class="evac-confirm__context">
+            <span class="evac-confirm__context-kicker">Motivo detectado</span>
+            {{ state.alertText() }}
+          </div>
+        }
+        <div class="dialog-actions">
+          <button
+            type="button"
+            class="btn btn-secondary"
+            (click)="closeEvacConfirm()"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            class="btn btn-danger"
+            (click)="confirmEvacuation()"
+          >
+            Confirmar evacuação
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ── Tela de emergência ─────────────────────────────────────────── -->
+  @if (state.evacuating()) {
+    <div class="evac" role="alertdialog" aria-label="Evacuação acionada">
+      <div class="evac__bar"></div>
+      <div class="evac__inner">
+        <div class="evac__head">
+          <span class="evac__beacon"></span>
+          <div>
+            <div class="evac__title">EVACUAÇÃO ACIONADA</div>
+            <div class="evac__clock mono">
+              {{ evacStartedAt() }} · sirene local ativada
+            </div>
+          </div>
+        </div>
+
+        <div class="evac__text">{{ state.evacText() }}</div>
+
+        <div class="evac__grid">
+          @for (f of evacFacts(); track f.label) {
+            <div class="evac__fact">
+              <div class="evac__fact-label">{{ f.label }}</div>
+              <div class="evac__fact-value">{{ f.value }}</div>
+            </div>
+          }
+        </div>
+
+        <div class="evac__note">
+          brigada e portaria notificadas · equipes das frentes ativas recebendo
+          alerta no app
+        </div>
+
+        <div class="evac__actions">
+          <button
+            type="button"
+            class="btn btn-lg evac__btn evac__btn--solid"
+            (click)="state.silenceSiren()"
+          >
+            Silenciar sirene
+          </button>
+          <button
+            type="button"
+            class="btn btn-lg evac__btn evac__btn--outline"
+            (click)="state.finishEvacuation()"
+          >
+            Registrar evacuação concluída
+          </button>
+        </div>
+      </div>
+      <div class="evac__bar"></div>
     </div>
   }
 </div>

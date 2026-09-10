@@ -360,6 +360,20 @@ export const PET_STATUS: Record<PetStatus, { label: string; fg: string; bg: stri
   ocorrencia: { label: 'ocorrência', fg: 'var(--status-bad)', bg: '#f6e3e3' },
 };
 
+/**
+ * Situação exibida de uma PET.
+ *
+ * O alarme atmosférico só se sobrepõe ao status enquanto a permissão está
+ * em vigor — é a mesma regra que `PetStateService.alarmedPets` já aplica
+ * (`p.alarm && p.status !== 'fechada'`). Sem essa guarda, uma PET encerrada
+ * durante um alarme continuava rotulada "em alarme" na lista, no histórico
+ * e no relatório, como se ainda houvesse gente exposta na frente.
+ */
+export function petStatusView(pet: Pick<Pet, 'alarm' | 'status'>): { label: string; fg: string; bg: string } {
+  const showAlarm = pet.alarm && pet.status !== 'fechada';
+  return PET_STATUS[showAlarm ? 'alarme' : pet.status];
+}
+
 export interface GasReading {
   o2: number;
   co: number;

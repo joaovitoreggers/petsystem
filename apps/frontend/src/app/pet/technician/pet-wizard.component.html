@@ -1,10 +1,19 @@
 <div class="screen screen--wizard">
   <div class="wizard__header">
     <div class="wizard__header-row">
-      <button type="button" class="btn btn-secondary wizard__back" (click)="state.back()">←</button>
+      <button
+        type="button"
+        class="btn btn-secondary btn-icon wizard__back"
+        aria-label="Voltar"
+        (click)="state.back()"
+      >
+        <app-icon name="arrow-left" [size]="18" />
+      </button>
       <div class="wizard__header-text">
         <div class="wizard__title">Nova PET</div>
-        <div class="wizard__step-label">Etapa {{ stepNumber() }} de {{ stepTotal() }} · {{ stepLabel() }}</div>
+        <div class="wizard__step-label">
+          Etapa {{ stepNumber() }} de {{ stepTotal() }} · {{ stepLabel() }}
+        </div>
       </div>
     </div>
     <div class="wizard__bars">
@@ -20,15 +29,18 @@
         <div class="step step--area">
           <div class="section-kicker">Classificação do risco</div>
           <div class="step-hint">
-            Marque todas as áreas de risco da intervenção. Cada norma acrescenta seus próprios campos e checklist ao
-            formulário.
+            Marque todas as áreas de risco da intervenção. Cada norma acrescenta
+            seus próprios campos e checklist ao formulário.
           </div>
           @for (area of areas; track area.id) {
             <label
-              class="area-option blueprint"
-              [style.background]="state.selectedAreas().includes(area.id) ? 'var(--color-accent-100)' : 'transparent'"
+              class="area-option"
+              [style.background]="
+                state.selectedAreas().includes(area.id)
+                  ? 'var(--color-accent-100)'
+                  : 'transparent'
+              "
             >
-              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
               <input
                 type="checkbox"
                 class="area-option__checkbox"
@@ -45,8 +57,10 @@
             </label>
           }
           @if (areaNotes().length > 0) {
-            <div class="area-notes">
-              <div class="section-kicker">Normas aplicáveis · {{ selectedNrs() }}</div>
+            <div class="callout area-notes">
+              <div class="section-kicker">
+                Normas aplicáveis · {{ selectedNrs() }}
+              </div>
               @for (note of areaNotes(); track note.id) {
                 <div class="area-note">{{ note.text }}</div>
               }
@@ -66,16 +80,30 @@
               </div>
               <div class="atividade__area">{{ selectedAreaNames() }}</div>
             </div>
-            <button type="button" class="btn btn-ghost" (click)="state.editArea()">Editar</button>
+            <button
+              type="button"
+              class="btn btn-ghost"
+              (click)="state.editArea()"
+            >
+              Editar
+            </button>
           </div>
 
           <div class="field">
             <label>Descrição do serviço</label>
-            <textarea class="input" [value]="fieldValue('descricao')" (change)="onFieldChange('descricao', $event)"></textarea>
+            <textarea
+              class="input"
+              [value]="fieldValue('descricao')"
+              (change)="onFieldChange('descricao', $event)"
+            ></textarea>
           </div>
           <div class="field">
             <label>Tipo de intervenção</label>
-            <select class="input" [value]="fieldValue('tipo')" (change)="onFieldChange('tipo', $event)">
+            <select
+              class="input"
+              [value]="fieldValue('tipo')"
+              (change)="onFieldChange('tipo', $event)"
+            >
               <option>Manutenção corretiva</option>
               <option>Manutenção preventiva</option>
               <option>Limpeza técnica</option>
@@ -86,7 +114,11 @@
           <div class="atividade__row">
             <div class="field">
               <label>Empresa executante</label>
-              <select class="input" [value]="fieldValue('empresa')" (change)="onFieldChange('empresa', $event)">
+              <select
+                class="input"
+                [value]="fieldValue('empresa')"
+                (change)="onFieldChange('empresa', $event)"
+              >
                 <option value="" disabled selected hidden>Selecione</option>
                 @for (c of companyOptions; track c) {
                   <option>{{ c }}</option>
@@ -95,23 +127,39 @@
             </div>
             <div class="field">
               <label>Telefone da empresa</label>
-              <input class="input" [value]="fieldValue('telefone')" (change)="onFieldChange('telefone', $event)" />
+              <input
+                class="input"
+                [value]="fieldValue('telefone')"
+                (change)="onFieldChange('telefone', $event)"
+              />
             </div>
           </div>
           <div class="atividade__row">
             <div class="field">
               <label>Início previsto</label>
-              <input class="input" [value]="fieldValue('inicio')" (change)="onFieldChange('inicio', $event)" />
+              <input
+                class="input"
+                [value]="fieldValue('inicio')"
+                (change)="onFieldChange('inicio', $event)"
+              />
             </div>
             <div class="field">
               <label>Término previsto</label>
-              <input class="input" [value]="fieldValue('fim')" (change)="onFieldChange('fim', $event)" />
+              <input
+                class="input"
+                [value]="fieldValue('fim')"
+                (change)="onFieldChange('fim', $event)"
+              />
             </div>
           </div>
           <div class="atividade__row">
             <div class="field">
               <label>Unidade</label>
-              <select class="input" [value]="fieldValue('unidade')" (change)="onFieldChange('unidade', $event)">
+              <select
+                class="input"
+                [value]="fieldValue('unidade')"
+                (change)="onFieldChange('unidade', $event)"
+              >
                 @for (u of unitOptions; track u) {
                   <option>{{ u }}</option>
                 }
@@ -119,7 +167,11 @@
             </div>
             <div class="field">
               <label>Local específico</label>
-              <select class="input" [value]="fieldValue('local')" (change)="onFieldChange('local', $event)">
+              <select
+                class="input"
+                [value]="fieldValue('local')"
+                (change)="onFieldChange('local', $event)"
+              >
                 <option value="" disabled selected hidden>Selecione</option>
                 @for (l of locationOptions; track l) {
                   <option>{{ l }}</option>
@@ -129,12 +181,15 @@
           </div>
 
           <div class="geo blueprint">
-            <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+            <i class="corner tl"></i><i class="corner tr"></i
+            ><i class="corner bl"></i><i class="corner br"></i>
             <div class="section-kicker">Georreferenciamento da frente</div>
             <div class="geo__map">
               <div class="geo__pin"></div>
             </div>
-            <div class="geo__coords">-25.2531, -53.9927 · precisão 4 m · fixado 09:28</div>
+            <div class="geo__coords">
+              -25.2531, -53.9927 · precisão 4 m · fixado 09:28
+            </div>
           </div>
         </div>
       }
@@ -147,7 +202,8 @@
           <div class="gauge-grid">
             @for (g of gauges(); track g.key) {
               <div class="gauge blueprint">
-                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                <i class="corner tl"></i><i class="corner tr"></i
+                ><i class="corner bl"></i><i class="corner br"></i>
                 <div class="gauge__label">{{ g.label }}</div>
                 <div class="gauge__input-row">
                   <input
@@ -167,21 +223,32 @@
             }
           </div>
           @if (state.gasReadingComplete()) {
-            <div class="atmosphere-banner" [class.atmosphere-banner--bad]="!atmosphereOk()">
-              <div class="atmosphere-banner__title">
-                {{ atmosphereOk() ? 'Atmosfera dentro dos limites' : 'Atmosfera fora dos limites de segurança' }}
+            <div
+              class="callout"
+              [class.callout--ok]="atmosphereOk()"
+              [class.callout--bad]="!atmosphereOk()"
+            >
+              <div class="callout__title">
+                {{
+                  atmosphereOk()
+                    ? 'Atmosfera dentro dos limites'
+                    : 'Atmosfera fora dos limites de segurança'
+                }}
               </div>
-              <div class="atmosphere-banner__text">
-                {{ atmosphereOk()
-                  ? 'Todos os parâmetros dentro da faixa segura conforme NR-33.'
-                  : 'Ligue a ventilação forçada, aguarde a estabilização e informe uma nova leitura.' }}
+              <div>
+                {{
+                  atmosphereOk()
+                    ? 'Todos os parâmetros dentro da faixa segura conforme NR-33.'
+                    : 'Ligue a ventilação forçada, aguarde a estabilização e informe uma nova leitura.'
+                }}
               </div>
             </div>
           } @else {
-            <div class="atmosphere-banner atmosphere-banner--pending">
-              <div class="atmosphere-banner__title">Aguardando leitura manual</div>
-              <div class="atmosphere-banner__text">
-                Informe os quatro parâmetros medidos com o detector portátil para liberar o avanço.
+            <div class="callout">
+              <div class="callout__title">Aguardando leitura manual</div>
+              <div>
+                Informe os quatro parâmetros medidos com o detector portátil
+                para liberar o avanço.
               </div>
             </div>
           }
@@ -194,26 +261,35 @@
             Registrar leitura no PET
           </button>
           @if (state.gasReadingComplete() && !atmosphereOk()) {
-            <div class="gases__blocked">
-              <span class="gases__blocked-icon">✕</span>
-              <span>Emissão bloqueada enquanto a atmosfera estiver fora do limite. Ligue a ventilação forçada e informe uma
-                nova leitura.</span>
+            <div class="callout callout--blocking callout--row">
+              <span aria-hidden="true">✕</span>
+              <span
+                >Emissão bloqueada enquanto a atmosfera estiver fora do limite.
+                Ligue a ventilação forçada e informe uma nova leitura.</span
+              >
             </div>
           }
           @if (!state.ventilationOn()) {
-            <button type="button" class="btn btn-primary btn-block blueprint gases__vent" (click)="state.toggleVentilation()">
-              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+            <button
+              type="button"
+              class="btn btn-primary btn-block gases__vent"
+              (click)="state.toggleVentilation()"
+            >
               Ligar ventilação forçada
             </button>
           } @else {
-            <div class="gases__vent-on">
+            <div class="callout callout--row gases__vent-on">
               <span class="pulse-dot pulse-dot--accent"></span>
               Ventilação forçada ligada · exaustor 2.500 m³/h
             </div>
           }
-          @for (reading of state.gasReadingsLog(); track reading.time + reading.text) {
+          @for (
+            reading of state.gasReadingsLog();
+            track reading.time + reading.text
+          ) {
             <div class="gases__log-row">
-              <span>{{ reading.time }}</span><span>{{ reading.text }}</span>
+              <span>{{ reading.time }}</span
+              ><span>{{ reading.text }}</span>
             </div>
           }
         </div>
@@ -222,29 +298,43 @@
       @case ('qr') {
         <div class="step step--qr">
           <div class="qr-scan blueprint">
-            <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+            <i class="corner tl"></i><i class="corner tr"></i
+            ><i class="corner bl"></i><i class="corner br"></i>
             <div class="qr-scan__frame"></div>
             <div class="qr-scan__sweep"></div>
             <div class="qr-scan__caption">aponte para o QR do crachá</div>
           </div>
-          <button type="button" class="btn btn-primary btn-block qr-scan__btn" (click)="state.scanBadge()">
+          <button
+            type="button"
+            class="btn btn-primary btn-block qr-scan__btn"
+            (click)="state.scanBadge()"
+          >
             Simular leitura do crachá
           </button>
 
           @if (state.currentBadge(); as badge) {
             <div class="badge-card blueprint">
-              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+              <i class="corner tl"></i><i class="corner tr"></i
+              ><i class="corner bl"></i><i class="corner br"></i>
               <div class="badge-card__head">
                 <div class="badge-card__name">{{ badge.name }}</div>
                 <div class="badge-card__mat">mat. {{ badge.registration }}</div>
               </div>
-              <div class="badge-card__role">{{ badge.role }} · {{ badge.company }}</div>
+              <div class="badge-card__role">
+                {{ badge.role }} · {{ badge.company }}
+              </div>
               <div class="badge-card__items">
                 @for (item of badge.items; track item.name) {
                   <div class="badge-card__item">
-                    <span [style.color]="badgeStatusColor(item.status)">{{ badgeStatusLabel(item.status) }}</span>
+                    <span [style.color]="badgeStatusColor(item.status)">{{
+                      badgeStatusLabel(item.status)
+                    }}</span>
                     <span>{{ item.name }}</span>
-                    <span class="badge-card__item-val" [style.color]="badgeStatusColor(item.status)">{{ item.value }}</span>
+                    <span
+                      class="badge-card__item-val"
+                      [style.color]="badgeStatusColor(item.status)"
+                      >{{ item.value }}</span
+                    >
                   </div>
                 }
               </div>
@@ -252,34 +342,74 @@
                 class="badge-card__verdict"
                 [class.badge-card__verdict--bad]="!state.badgeIsCleared(badge)"
               >
-                {{ state.badgeIsCleared(badge) ? 'LIBERADO PARA A ATIVIDADE' : 'ALERTA CRÍTICO · DOCUMENTAÇÃO VENCIDA' }}
+                {{
+                  state.badgeIsCleared(badge)
+                    ? 'LIBERADO PARA A ATIVIDADE'
+                    : 'ALERTA CRÍTICO · DOCUMENTAÇÃO VENCIDA'
+                }}
               </div>
               @if (!state.badgeIsCleared(badge)) {
                 <div class="badge-card__warning">
                   <span class="badge-card__warning-icon">⚠</span>
                   <span>
-                    Entrada permitida mediante ciência do técnico responsável, mesmo com
-                    {{ state.badgeExpiredDocs(badge).length > 1 ? 'os documentos' : 'o documento' }}
-                    vencid{{ state.badgeExpiredDocs(badge).length > 1 ? 'os' : 'o' }} listad{{ state.badgeExpiredDocs(badge).length > 1 ? 'os' : 'o' }} acima. Este evento será registrado no histórico da PET.
+                    Entrada permitida mediante ciência do técnico responsável,
+                    mesmo com
+                    {{
+                      state.badgeExpiredDocs(badge).length > 1
+                        ? 'os documentos'
+                        : 'o documento'
+                    }}
+                    vencid{{
+                      state.badgeExpiredDocs(badge).length > 1 ? 'os' : 'o'
+                    }}
+                    listad{{
+                      state.badgeExpiredDocs(badge).length > 1 ? 'os' : 'o'
+                    }}
+                    acima. Este evento será registrado no histórico da PET.
                   </span>
                 </div>
               }
               <div class="badge-card__actions">
-                <button type="button" class="btn btn-secondary" (click)="addToTeam()">+ Equipe</button>
-                <button type="button" class="btn btn-secondary" (click)="addToVigia()">+ Vigia</button>
-                <button type="button" class="btn btn-secondary" (click)="addToResgate()">+ Resgatista</button>
+                <button
+                  type="button"
+                  class="btn btn-secondary"
+                  (click)="addToTeam()"
+                >
+                  + Equipe
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-secondary"
+                  (click)="addToVigia()"
+                >
+                  + Vigia
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-secondary"
+                  (click)="addToResgate()"
+                >
+                  + Resgatista
+                </button>
               </div>
             </div>
           }
 
           <div>
-            <div class="section-kicker">Equipe autorizada · {{ state.authorizedTeam().length }}</div>
+            <div class="section-kicker">
+              Equipe autorizada · {{ state.authorizedTeam().length }}
+            </div>
             @for (member of state.authorizedTeam(); track member.registration) {
               <div class="team-row">
-                <span class="team-row__initials">{{ member.name.charAt(0) }}{{ member.name.split(' ')[1]?.charAt(0) }}</span>
+                <span class="team-row__initials"
+                  >{{ member.name.charAt(0)
+                  }}{{ member.name.split(' ')[1]?.charAt(0) }}</span
+                >
                 <span>{{ member.name }}</span>
                 @if (state.badgeExpiredDocs(member).length > 0) {
-                  <span class="team-row__status team-row__status--critical">liberado com ressalva</span>
+                  <span class="team-row__status team-row__status--critical"
+                    >liberado com ressalva</span
+                  >
                 } @else {
                   <span class="team-row__status">liberado</span>
                 }
@@ -288,46 +418,71 @@
           </div>
 
           <div>
-            <div class="section-kicker">Identificação vigia · {{ state.vigiaTeam().length }}</div>
+            <div class="section-kicker">
+              Identificação vigia · {{ state.vigiaTeam().length }}
+            </div>
             @for (member of state.vigiaTeam(); track member.registration) {
               <div class="team-row">
-                <span class="team-row__initials">{{ member.name.charAt(0) }}{{ member.name.split(' ')[1]?.charAt(0) }}</span>
+                <span class="team-row__initials"
+                  >{{ member.name.charAt(0)
+                  }}{{ member.name.split(' ')[1]?.charAt(0) }}</span
+                >
                 <span>{{ member.name }}</span>
                 @if (state.badgeExpiredDocs(member).length > 0) {
-                  <span class="team-row__status team-row__status--critical">liberado com ressalva</span>
+                  <span class="team-row__status team-row__status--critical"
+                    >liberado com ressalva</span
+                  >
                 } @else {
                   <span class="team-row__status">liberado</span>
                 }
               </div>
             } @empty {
-              <div class="team-row__empty">Nenhum vigia identificado ainda.</div>
+              <div class="team-row__empty">
+                Nenhum vigia identificado ainda.
+              </div>
             }
           </div>
 
           <div>
-            <div class="section-kicker">Identificação resgatistas · {{ state.resgateTeam().length }}</div>
+            <div class="section-kicker">
+              Identificação resgatistas · {{ state.resgateTeam().length }}
+            </div>
             @for (member of state.resgateTeam(); track member.registration) {
               <div class="team-row">
-                <span class="team-row__initials">{{ member.name.charAt(0) }}{{ member.name.split(' ')[1]?.charAt(0) }}</span>
+                <span class="team-row__initials"
+                  >{{ member.name.charAt(0)
+                  }}{{ member.name.split(' ')[1]?.charAt(0) }}</span
+                >
                 <span>{{ member.name }}</span>
                 @if (state.badgeExpiredDocs(member).length > 0) {
-                  <span class="team-row__status team-row__status--critical">liberado com ressalva</span>
+                  <span class="team-row__status team-row__status--critical"
+                    >liberado com ressalva</span
+                  >
                 } @else {
                   <span class="team-row__status">liberado</span>
                 }
               </div>
             } @empty {
-              <div class="team-row__empty">Nenhum resgatista identificado ainda.</div>
+              <div class="team-row__empty">
+                Nenhum resgatista identificado ainda.
+              </div>
             }
           </div>
 
           @if (state.criticalAlerts().length > 0) {
-            <div class="critical-alerts">
-              <div class="section-kicker critical-alerts__kicker">Alertas críticos desta PET</div>
-              @for (alert of state.criticalAlerts(); track alert.timestamp + alert.registration + alert.documentName) {
+            <div class="callout callout--bad critical-alerts">
+              <div class="section-kicker critical-alerts__kicker">
+                Alertas críticos desta PET
+              </div>
+              @for (
+                alert of state.criticalAlerts();
+                track alert.timestamp + alert.registration + alert.documentName
+              ) {
                 <div class="critical-alerts__row">
                   <span class="critical-alerts__icon">⚠</span>
-                  <span class="critical-alerts__time">{{ alert.timestamp }}</span>
+                  <span class="critical-alerts__time">{{
+                    alert.timestamp
+                  }}</span>
                   <span class="critical-alerts__text">{{ alert.message }}</span>
                 </div>
               }
@@ -349,8 +504,13 @@
                       <button
                         type="button"
                         class="check-item__option"
-                        [class.check-item__option--active]="checklistAnswer(item.key) === opt.value"
-                        [class.check-item__option--nao]="opt.value === 'nao' && checklistAnswer(item.key) === opt.value"
+                        [class.check-item__option--active]="
+                          checklistAnswer(item.key) === opt.value
+                        "
+                        [class.check-item__option--nao]="
+                          opt.value === 'nao' &&
+                          checklistAnswer(item.key) === opt.value
+                        "
                         (click)="setChecklistAnswer(item.key, opt.value)"
                       >
                         {{ opt.label }}
@@ -364,7 +524,9 @@
 
           @if (needsFireWatch()) {
             <div class="fire-watch">
-              <div class="section-kicker">Vigia após término (a cada 30 min · 04 rondas)</div>
+              <div class="section-kicker">
+                Vigia após término (a cada 30 min · 04 rondas)
+              </div>
               @for (round of state.fireWatchRounds(); track $index) {
                 <div class="fire-watch__row">
                   <input
@@ -385,7 +547,8 @@
           }
 
           <div class="photo blueprint">
-            <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+            <i class="corner tl"></i><i class="corner tr"></i
+            ><i class="corner bl"></i><i class="corner br"></i>
             <div class="section-kicker">Registro fotográfico do local</div>
             <input
               #photoInput
@@ -397,12 +560,32 @@
             @if (state.sitePhoto(); as photo) {
               <div class="photo__preview" (click)="triggerPhotoPicker()">
                 <img [src]="photo" alt="Foto do ponto de entrada" />
-                <button type="button" class="btn btn-ghost photo__remove" (click)="removePhoto($event)">✕</button>
+                <button
+                  type="button"
+                  class="btn btn-ghost photo__remove"
+                  (click)="removePhoto($event)"
+                >
+                  ✕
+                </button>
               </div>
-              <button type="button" class="btn btn-secondary btn-block" (click)="triggerPhotoPicker()">Trocar foto</button>
+              <button
+                type="button"
+                class="btn btn-secondary btn-block"
+                (click)="triggerPhotoPicker()"
+              >
+                Trocar foto
+              </button>
             } @else {
-              <div class="photo__placeholder" (click)="triggerPhotoPicker()">foto do ponto de entrada</div>
-              <button type="button" class="btn btn-secondary btn-block" (click)="triggerPhotoPicker()">Anexar foto</button>
+              <div class="photo__placeholder" (click)="triggerPhotoPicker()">
+                foto do ponto de entrada
+              </div>
+              <button
+                type="button"
+                class="btn btn-secondary btn-block"
+                (click)="triggerPhotoPicker()"
+              >
+                Anexar foto
+              </button>
             }
           </div>
         </div>
@@ -414,7 +597,8 @@
             <div class="section-kicker">Técnico de segurança emitente</div>
             <div class="sig__name">Bárbara M. Garlini · mat. 03177</div>
             <div class="sig-pad blueprint">
-              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+              <i class="corner tl"></i><i class="corner tr"></i
+              ><i class="corner bl"></i><i class="corner br"></i>
               <canvas
                 #tecnicoCanvas
                 width="740"
@@ -427,17 +611,34 @@
               ></canvas>
             </div>
             <div class="sig__footer">
-              <span [style.color]="state.technicianSigned() ? 'var(--status-ok)' : 'var(--color-neutral-600)'">
-                {{ state.technicianSigned() ? 'assinatura capturada' : 'aguardando assinatura' }}
+              <span
+                [style.color]="
+                  state.technicianSigned()
+                    ? 'var(--status-ok)'
+                    : 'var(--color-neutral-600)'
+                "
+              >
+                {{
+                  state.technicianSigned()
+                    ? 'assinatura capturada'
+                    : 'aguardando assinatura'
+                }}
               </span>
-              <button type="button" class="btn btn-ghost sig__clear" (click)="clearSignature('tecnico')">Limpar</button>
+              <button
+                type="button"
+                class="btn btn-ghost sig__clear"
+                (click)="clearSignature('tecnico')"
+              >
+                Limpar
+              </button>
             </div>
           </div>
           <div>
             <div class="section-kicker">Executante responsável</div>
             <div class="sig__name">Jonas R. Kirchner · mat. 04812</div>
             <div class="sig-pad blueprint">
-              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+              <i class="corner tl"></i><i class="corner tr"></i
+              ><i class="corner bl"></i><i class="corner br"></i>
               <canvas
                 #execCanvas
                 width="740"
@@ -450,14 +651,31 @@
               ></canvas>
             </div>
             <div class="sig__footer">
-              <span [style.color]="state.executorSigned() ? 'var(--status-ok)' : 'var(--color-neutral-600)'">
-                {{ state.executorSigned() ? 'assinatura capturada' : 'aguardando assinatura' }}
+              <span
+                [style.color]="
+                  state.executorSigned()
+                    ? 'var(--status-ok)'
+                    : 'var(--color-neutral-600)'
+                "
+              >
+                {{
+                  state.executorSigned()
+                    ? 'assinatura capturada'
+                    : 'aguardando assinatura'
+                }}
               </span>
-              <button type="button" class="btn btn-ghost sig__clear" (click)="clearSignature('exec')">Limpar</button>
+              <button
+                type="button"
+                class="btn btn-ghost sig__clear"
+                (click)="clearSignature('exec')"
+              >
+                Limpar
+              </button>
             </div>
           </div>
           <div class="sig__disclaimer">
-            Assinatura registrada com data, hora, matrícula e coordenada GPS. Hash gravado no histórico da PET.
+            Assinatura registrada com data, hora, matrícula e coordenada GPS.
+            Hash gravado no histórico da PET.
           </div>
         </div>
       }
@@ -465,7 +683,13 @@
   </div>
 
   <div class="wizard__footer">
-    <button type="button" class="btn btn-secondary wizard__footer-btn" (click)="state.back()">Voltar</button>
+    <button
+      type="button"
+      class="btn btn-secondary wizard__footer-btn"
+      (click)="state.back()"
+    >
+      Voltar
+    </button>
     <button
       type="button"
       class="btn btn-primary wizard__footer-btn wizard__footer-btn--primary"

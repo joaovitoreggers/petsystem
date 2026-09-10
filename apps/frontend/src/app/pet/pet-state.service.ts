@@ -27,11 +27,15 @@ import {
 } from './pet-mock-data';
 import { WorkPermitsApiService } from './services/work-permits-api.service';
 import { TeamMembersApiService } from './services/team-members-api.service';
+import { AuthApiService, AuthenticatedUser } from './services/auth-api.service';
 
 export type PortalRole = 'tecnico' | 'gestor' | 'equipe';
-export type TechnicianScreen = 'login' | 'home' | 'nova' | 'emitida' | 'detalhe';
+export type TechnicianScreen =
+  'login' | 'home' | 'nova' | 'emitida' | 'detalhe';
 export type HomeTab = 'abertas' | 'fechadas';
 export type AuthPhase = 'idle' | 'scan' | 'ok';
+/** Como o técnico está entrando: biometria facial ou e-mail e senha. */
+export type AuthMethod = 'facial' | 'senha';
 
 interface WizardFields {
   descricao: string;
@@ -71,7 +75,9 @@ export class PetStateService {
   private sirenOscillator: OscillatorNode | null = null;
   private sirenIntervalId: ReturnType<typeof setInterval> | null = null;
 
-  readonly alarmedPets = computed(() => this.pets().filter((p) => p.alarm && p.status !== 'fechada'));
+  readonly alarmedPets = computed(() =>
+    this.pets().filter((p) => p.alarm && p.status !== 'fechada'),
+  );
   readonly hasAlert = computed(() => this.alarmedPets().length > 0);
   readonly alertText = computed(() => {
     const pet = this.alarmedPets()[0];
@@ -106,7 +112,9 @@ export class PetStateService {
     try {
       this.stopSiren();
       const AudioCtx =
-        window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+        window.AudioContext ??
+        (window as unknown as { webkitAudioContext: typeof AudioContext })
+          .webkitAudioContext;
       if (!AudioCtx) return;
       const ctx = (this.audioContext ??= new AudioCtx());
       if (ctx.state === 'suspended') ctx.resume();
@@ -155,6 +163,7 @@ export class PetStateService {
   constructor(
     private readonly workPermitsApi: WorkPermitsApiService,
     private readonly teamMembersApi: TeamMembersApiService,
+    private readonly authApi: AuthApiService,
   ) {
     this.loadFromBackend();
   }
@@ -193,16 +202,29 @@ export class PetStateService {
   // "Nova medição" na tela de detalhe: leitura manual pós-emissão, mesmo
   // modelo da etapa 3 do assistente — sem sensor conectado.
   readonly measurementDialogOpen = signal(false);
-  readonly measurementGasInputs = signal<Record<GasKey, string>>({ o2: '', co: '', h2s: '', lel: '' });
+  readonly measurementGasInputs = signal<Record<GasKey, string>>({
+    o2: '',
+    co: '',
+    h2s: '',
+    lel: '',
+  });
 
   readonly measurementGasReadingComplete = computed(() => {
     const inputs = this.measurementGasInputs();
-    return (['o2', 'co', 'h2s', 'lel'] as GasKey[]).every((k) => inputs[k].trim() !== '' && !Number.isNaN(Number(inputs[k])));
+    return (['o2', 'co', 'h2s', 'lel'] as GasKey[]).every(
+      (k) => inputs[k].trim() !== '' && !Number.isNaN(Number(inputs[k])),
+    );
   });
 
-  readonly openPets = computed(() => this.pets().filter((p) => p.status !== 'fechada'));
-  readonly closedPets = computed(() => this.pets().filter((p) => p.status === 'fechada'));
-  readonly visiblePets = computed(() => (this.homeTab() === 'abertas' ? this.openPets() : this.closedPets()));
+  readonly openPets = computed(() =>
+    this.pets().filter((p) => p.status !== 'fechada'),
+  );
+  readonly closedPets = computed(() =>
+    this.pets().filter((p) => p.status === 'fechada'),
+  );
+  readonly visiblePets = computed(() =>
+    this.homeTab() === 'abertas' ? this.openPets() : this.closedPets(),
+  );
 
   // ── Wizard "Nova PET" ───────────────────────────────────────────────
   readonly selectedAreas = signal<RiskAreaId[]>([]);
@@ -211,7 +233,12 @@ export class PetStateService {
   readonly checklistState = signal<Record<string, ChecklistAnswer>>({});
   // Leitura do detector portátil digitada manualmente pelo técnico — não há
   // simulação automática nem pareamento de aparelho, conforme a PET física.
-  readonly gasInputs = signal<Record<GasKey, string>>({ o2: '', co: '', h2s: '', lel: '' });
+  readonly gasInputs = signal<Record<GasKey, string>>({
+    o2: '',
+    co: '',
+    h2s: '',
+    lel: '',
+  });
   readonly ventilationOn = signal(false);
   readonly gasReadingsLog = signal<{ time: string; text: string }[]>([]);
   readonly currentBadge = signal<Badge | null>(null);
@@ -239,19 +266,33 @@ export class PetStateService {
   // assistente e vai junto no registro da PET (ver finishPet()).
   readonly criticalAlerts = signal<CriticalAlert[]>([]);
 
-  readonly steps = computed<WizardStepId[]>(() => stepsFor(this.selectedAreas()));
-  readonly currentStep = computed<WizardStepId | undefined>(() => this.steps()[this.stepIndex()]);
-  readonly needsGasMonitoring = computed(() => requiresGasMonitoring(this.selectedAreas()));
+  readonly steps = computed<WizardStepId[]>(() =>
+    stepsFor(this.selectedAreas()),
+  );
+  readonly currentStep = computed<WizardStepId | undefined>(
+    () => this.steps()[this.stepIndex()],
+  );
+  readonly needsGasMonitoring = computed(() =>
+    requiresGasMonitoring(this.selectedAreas()),
+  );
 
   readonly liveGas = computed<GasReading>(() => {
     const inputs = this.gasInputs();
-    const num = (v: string) => (v.trim() === '' || Number.isNaN(Number(v)) ? 0 : Number(v));
-    return { o2: num(inputs.o2), co: num(inputs.co), h2s: num(inputs.h2s), lel: num(inputs.lel) };
+    const num = (v: string) =>
+      v.trim() === '' || Number.isNaN(Number(v)) ? 0 : Number(v);
+    return {
+      o2: num(inputs.o2),
+      co: num(inputs.co),
+      h2s: num(inputs.h2s),
+      lel: num(inputs.lel),
+    };
   });
 
   readonly gasReadingComplete = computed(() => {
     const inputs = this.gasInputs();
-    return (['o2', 'co', 'h2s', 'lel'] as GasKey[]).every((k) => inputs[k].trim() !== '' && !Number.isNaN(Number(inputs[k])));
+    return (['o2', 'co', 'h2s', 'lel'] as GasKey[]).every(
+      (k) => inputs[k].trim() !== '' && !Number.isNaN(Number(inputs[k])),
+    );
   });
 
   setRole(role: PortalRole): void {
@@ -271,9 +312,71 @@ export class PetStateService {
     }, 1600);
   }
 
+  // ── Login por e-mail e senha ────────────────────────────────────────
+  // Caminho real: chama o AuthModule do back-end (`POST /api/auth/login`),
+  // que valida a credencial no banco e devolve o JWT. Diferente do
+  // reconhecimento facial acima — esse continua sendo uma simulação da
+  // fatia de design, sem credencial nenhuma.
+  readonly authMethod = signal<AuthMethod>('facial');
+  readonly loginEmail = signal('');
+  readonly loginPassword = signal('');
+  readonly loginLoading = signal(false);
+  readonly loginError = signal<string | null>(null);
+  /** Sessão autenticada (JWT + usuário) enquanto o app estiver aberto. */
+  readonly session = signal<{
+    accessToken: string;
+    user: AuthenticatedUser;
+  } | null>(null);
+
+  readonly canSubmitLogin = computed(
+    () =>
+      this.loginEmail().trim().length > 0 &&
+      this.loginPassword().length > 0 &&
+      !this.loginLoading(),
+  );
+
+  setAuthMethod(method: AuthMethod): void {
+    this.authMethod.set(method);
+    this.loginError.set(null);
+  }
+
+  setLoginEmail(value: string): void {
+    this.loginEmail.set(value);
+  }
+
+  setLoginPassword(value: string): void {
+    this.loginPassword.set(value);
+  }
+
+  async loginWithPassword(): Promise<void> {
+    if (!this.canSubmitLogin()) return;
+    this.loginLoading.set(true);
+    this.loginError.set(null);
+    try {
+      const result = await firstValueFrom(
+        this.authApi.login(this.loginEmail().trim(), this.loginPassword()),
+      );
+      this.session.set(result);
+      this.loginPassword.set('');
+      this.screen.set('home');
+    } catch (err) {
+      // Sem atalho aqui: credencial não confere ou servidor fora do ar
+      // significa não entrar. O acesso offline continua sendo o facial,
+      // que é declaradamente uma simulação — senha errada nunca abre porta.
+      this.loginError.set(loginErrorMessage(err));
+    } finally {
+      this.loginLoading.set(false);
+    }
+  }
+
   logout(): void {
     this.screen.set('login');
     this.authPhase.set('idle');
+    this.session.set(null);
+    this.loginEmail.set('');
+    this.loginPassword.set('');
+    this.loginError.set(null);
+    this.authMethod.set('facial');
   }
 
   selectHomeTab(tab: HomeTab): void {
@@ -293,18 +396,33 @@ export class PetStateService {
     const id = this.detailPetId();
     if (!id) return;
     const pet = this.pets().find((p) => p.id === id);
-    const end = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const end = new Date().toLocaleTimeString('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
     const durationMinutes = pet ? minutesSince(pet.start) : 0;
     try {
       const closed = await firstValueFrom(
-        this.workPermitsApi.close(id, { end, durationMinutes, reason, closedBy }),
+        this.workPermitsApi.close(id, {
+          end,
+          durationMinutes,
+          reason,
+          closedBy,
+        }),
       );
       this.pets.update((list) => list.map((p) => (p.id === id ? closed : p)));
     } catch {
       this.pets.update((list) =>
         list.map((p) =>
           p.id === id
-            ? { ...p, status: 'fechada' as const, end, durationMinutes, closeReason: reason, closedBy }
+            ? {
+                ...p,
+                status: 'fechada' as const,
+                end,
+                durationMinutes,
+                closeReason: reason,
+                closedBy,
+              }
             : p,
         ),
       );
@@ -337,10 +455,15 @@ export class PetStateService {
       lel: Number(inputs.lel),
     };
     try {
-      const updated = await firstValueFrom(this.workPermitsApi.addReading(id, gas));
+      const updated = await firstValueFrom(
+        this.workPermitsApi.addReading(id, gas),
+      );
       this.pets.update((list) => list.map((p) => (p.id === id ? updated : p)));
     } catch {
-      const time = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      const time = new Date().toLocaleTimeString('pt-BR', {
+        hour: '2-digit',
+        minute: '2-digit',
+      });
       const text = `O₂ ${gas.o2.toFixed(1)}% · CO ${gas.co.toFixed(0)} ppm · H₂S ${gas.h2s.toFixed(1)} ppm · LEL ${gas.lel.toFixed(0)}%`;
       const violations = this.findGasViolations(gas, time);
       this.pets.update((list) =>
@@ -350,7 +473,10 @@ export class PetStateService {
                 ...p,
                 gas,
                 readings: [...(p.readings ?? []), { time, text }],
-                atmosphereAlerts: [...violations, ...(p.atmosphereAlerts ?? [])],
+                atmosphereAlerts: [
+                  ...violations,
+                  ...(p.atmosphereAlerts ?? []),
+                ],
                 alarm: violations.length > 0,
               }
             : p,
@@ -360,12 +486,23 @@ export class PetStateService {
     this.measurementDialogOpen.set(false);
   }
 
-  private findGasViolations(gas: GasReading, timestamp: string): AtmosphereAlert[] {
+  private findGasViolations(
+    gas: GasReading,
+    timestamp: string,
+  ): AtmosphereAlert[] {
     const keys: GasKey[] = ['o2', 'co', 'h2s', 'lel'];
     return keys.flatMap((key) => {
       const message = gasViolationMessage(key, gas[key]);
       if (!message) return [];
-      return [{ gas: key, value: gas[key], limitText: GAS_LIMITS[key].limitText, message, timestamp }];
+      return [
+        {
+          gas: key,
+          value: gas[key],
+          limitText: GAS_LIMITS[key].limitText,
+          message,
+          timestamp,
+        },
+      ];
     });
   }
 
@@ -396,7 +533,9 @@ export class PetStateService {
   }
 
   toggleArea(id: RiskAreaId): void {
-    this.selectedAreas.update((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]));
+    this.selectedAreas.update((ids) =>
+      ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id],
+    );
   }
 
   setField<K extends keyof WizardFields>(name: K, value: string): void {
@@ -412,7 +551,9 @@ export class PetStateService {
   }
 
   updateFireWatchRound(index: number, patch: Partial<FireWatchRound>): void {
-    this.fireWatchRounds.update((rounds) => rounds.map((r, i) => (i === index ? { ...r, ...patch } : r)));
+    this.fireWatchRounds.update((rounds) =>
+      rounds.map((r, i) => (i === index ? { ...r, ...patch } : r)),
+    );
   }
 
   // ── Gases (leitura manual) ──────────────────────────────────────────
@@ -423,23 +564,36 @@ export class PetStateService {
   toggleVentilation(): void {
     const turningOn = !this.ventilationOn();
     this.ventilationOn.set(turningOn);
-    const time = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const time = new Date().toLocaleTimeString('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
     this.gasReadingsLog.update((log) => [
-      { time, text: turningOn ? 'Ventilação forçada ligada' : 'Ventilação forçada desligada' },
+      {
+        time,
+        text: turningOn
+          ? 'Ventilação forçada ligada'
+          : 'Ventilação forçada desligada',
+      },
       ...log,
     ]);
   }
 
   registerReading(): void {
     const gas = this.liveGas();
-    const time = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const time = new Date().toLocaleTimeString('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
     const text = `O₂ ${gas.o2.toFixed(1)}% · CO ${gas.co.toFixed(0)} ppm · H₂S ${gas.h2s.toFixed(1)} ppm · LEL ${gas.lel.toFixed(0)}%`;
     this.gasReadingsLog.update((log) => [{ time, text }, ...log]);
   }
 
   atmosphereOutOfRange(): boolean {
     const gas = this.liveGas();
-    return gas.o2 < 19.5 || gas.o2 > 23 || gas.co > 25 || gas.h2s > 8 || gas.lel > 10;
+    return (
+      gas.o2 < 19.5 || gas.o2 > 23 || gas.co > 25 || gas.h2s > 8 || gas.lel > 10
+    );
   }
 
   // ── Crachá ────────────────────────────────────────────────────────
@@ -468,7 +622,10 @@ export class PetStateService {
       target.update((list) => [...list, badge]);
       const expiredDocs = badge.items.filter((i) => i.status === 'venc');
       if (expiredDocs.length > 0) {
-        const timestamp = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        const timestamp = new Date().toLocaleTimeString('pt-BR', {
+          hour: '2-digit',
+          minute: '2-digit',
+        });
         const alerts: CriticalAlert[] = expiredDocs.map((doc) => ({
           employeeName: badge.name,
           registration: badge.registration,
@@ -502,7 +659,8 @@ export class PetStateService {
   canAdvance(): boolean {
     const step = this.currentStep();
     if (step === 'area') return this.selectedAreas().length > 0;
-    if (step === 'gases') return this.gasReadingComplete() && !this.atmosphereOutOfRange();
+    if (step === 'gases')
+      return this.gasReadingComplete() && !this.atmosphereOutOfRange();
     if (step === 'qr') return this.authorizedTeam().length > 0;
     if (step === 'sig') return this.technicianSigned() && this.executorSigned();
     return true;
@@ -538,13 +696,21 @@ export class PetStateService {
   }
 
   private badgesToTeam(badges: Badge[], petRole: PetTeamRole): PetTeamMember[] {
-    return badges.map((b) => ({ name: b.name, registration: b.registration, role: b.role, petRole }));
+    return badges.map((b) => ({
+      name: b.name,
+      registration: b.registration,
+      role: b.role,
+      petRole,
+    }));
   }
 
   private async finishPet(): Promise<void> {
     const fields = this.fields();
     const now = new Date();
-    const time = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const time = now.toLocaleTimeString('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
     const areas = this.selectedAreas();
     const gas = this.needsGasMonitoring() ? this.liveGas() : undefined;
     const criticalAlerts = this.criticalAlerts();
@@ -601,6 +767,38 @@ export class PetStateService {
 function minutesSince(startHHmm: string): number {
   const [hours, minutes] = startHHmm.split(':').map(Number);
   const now = new Date();
-  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours || 0, minutes || 0);
+  const start = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+    hours || 0,
+    minutes || 0,
+  );
   return Math.max(1, Math.round((now.getTime() - start.getTime()) / 60000));
+}
+
+/**
+ * Mensagem de falha de login, em português, para quem está na portaria.
+ *
+ * 401 vem do `LocalAuthGuard` (credencial não confere) e `status === 0` é
+ * rede/servidor fora do ar — dois problemas diferentes que exigem ações
+ * diferentes de quem está na tela, então não podem virar o mesmo texto.
+ */
+function loginErrorMessage(err: unknown): string {
+  const status = (err as { status?: number })?.status;
+  if (status === 401) return 'E-mail ou senha inválidos.';
+  if (status === 400) return 'Informe um e-mail válido e a senha.';
+  if (status === 0 || status === undefined) {
+    return 'Servidor de autenticação indisponível. Verifique se o back-end está no ar.';
+  }
+  const body = (err as { error?: { message?: unknown } })?.error;
+  if (
+    body &&
+    typeof body === 'object' &&
+    typeof body.message === 'string' &&
+    body.message.trim()
+  ) {
+    return body.message;
+  }
+  return 'Não foi possível entrar agora. Tente novamente.';
 }

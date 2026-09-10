@@ -1,0 +1,287 @@
+/* ── Instrumentos do assistente ───────────────────────────────────────
+   Os objetos "de instrumento" da PET — miniatura de georreferenciamento,
+   leitor de QR do crachá, ficha do crachá, registro fotográfico e prancheta
+   de assinatura. Ficam num arquivo próprio porque são o vocabulário técnico
+   da marca (moldura blueprint com marcas de registro), não layout de etapa.
+   Carregado junto com o SCSS do assistente via `styleUrls`. */
+
+.geo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  background: var(--surface-1);
+}
+/* Miniatura de planta: malha técnica + pino, sem carregar mapa externo. */
+.geo__map {
+  position: relative;
+  height: 128px;
+  border-radius: var(--radius-sm);
+  background:
+    repeating-linear-gradient(
+      0deg,
+      var(--border-subtle) 0 1px,
+      transparent 1px 22px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      var(--border-subtle) 0 1px,
+      transparent 1px 22px
+    ),
+    linear-gradient(135deg, var(--color-accent-100), var(--surface-3));
+  overflow: hidden;
+}
+@keyframes geo-ping {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.55;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(3.4);
+    opacity: 0;
+  }
+}
+.geo__pin {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: var(--color-accent-700);
+  box-shadow: 0 0 0 3px var(--surface-1);
+}
+.geo__pin::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid var(--color-accent-600);
+  animation: geo-ping 2.4s var(--ease-out) infinite;
+}
+.geo__coords {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-faint);
+}
+
+@keyframes qr-sweep {
+  0% {
+    top: 8%;
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 0.9;
+  }
+  100% {
+    top: 88%;
+    opacity: 0.25;
+  }
+}
+.qr-scan {
+  position: relative;
+  height: 190px;
+  border-radius: var(--radius-md);
+  background: repeating-linear-gradient(
+    45deg,
+    var(--surface-3) 0 10px,
+    var(--surface-2) 10px 20px
+  );
+  overflow: hidden;
+}
+.qr-scan__frame {
+  position: absolute;
+  inset: 22% 28%;
+  border: 2px solid var(--color-accent-700);
+  border-radius: var(--radius-sm);
+}
+.qr-scan__sweep {
+  position: absolute;
+  left: 24%;
+  right: 24%;
+  height: 2px;
+  background: var(--color-accent-700);
+  animation: qr-sweep 1.8s var(--ease-in-out) infinite;
+}
+.qr-scan__caption {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: var(--space-2);
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.badge-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface-1);
+  animation: rise-in var(--dur-base) var(--ease-out) both;
+}
+.badge-card__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.badge-card__name {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: var(--text-xl);
+  line-height: 1.15;
+  color: var(--text-strong);
+}
+.badge-card__mat {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--text-faint);
+}
+.badge-card__role {
+  font-size: var(--text-base);
+  color: var(--text-muted);
+  margin-top: -4px;
+}
+.badge-card__items {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--border-subtle);
+  padding-top: var(--space-2);
+}
+.badge-card__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 5px 0;
+  font-size: var(--text-base);
+}
+.badge-card__item > span:first-child {
+  width: 16px;
+  text-align: center;
+  font-weight: 700;
+  flex: none;
+}
+.badge-card__item-val {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+.badge-card__verdict {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--status-ok-bg);
+  color: #1d4d33;
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: var(--text-base);
+  letter-spacing: 0.04em;
+  text-align: center;
+}
+.badge-card__verdict--bad {
+  background: var(--status-bad);
+  color: #fdf3f3;
+}
+.badge-card__warning {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--status-warn-bg);
+  color: #6b4600;
+  font-size: var(--text-sm);
+  line-height: 1.45;
+}
+.badge-card__warning-icon {
+  flex: none;
+}
+.badge-card__actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.badge-card__actions .btn {
+  flex: 1 1 96px;
+}
+
+.photo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface-1);
+}
+.photo__placeholder {
+  display: grid;
+  place-items: center;
+  height: 150px;
+  border-radius: var(--radius-sm);
+  border: 1px dashed var(--border-strong);
+  background: var(--surface-2);
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition:
+    border-color var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out);
+}
+.photo__placeholder:hover {
+  border-color: var(--color-accent);
+  background: var(--color-accent-100);
+}
+.photo__preview {
+  position: relative;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  cursor: pointer;
+  background: var(--surface-3);
+}
+.photo__preview img {
+  width: 100%;
+  max-height: 240px;
+  object-fit: cover;
+}
+.photo__remove {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  width: 30px;
+  min-height: 30px;
+  padding: 0;
+  border-radius: 50%;
+  background: color-mix(in srgb, #0d1218 62%, transparent);
+  color: #fff;
+  border-color: transparent;
+}
+.photo__remove:hover:not(:disabled) {
+  background: #0d1218;
+  border-color: transparent;
+}
+
+.sig-pad {
+  border-radius: var(--radius-md);
+  background: var(--surface-1);
+  overflow: hidden;
+  /* Linha-guia da assinatura, como no papel. */
+  background-image: linear-gradient(
+    var(--border-default),
+    var(--border-default)
+  );
+  background-size: calc(100% - 48px) 1px;
+  background-position: 24px 78%;
+  background-repeat: no-repeat;
+}
+.sig-pad__canvas {
+  display: block;
+  width: 100%;
+  height: 130px;
+  touch-action: none;
+  cursor: crosshair;
+}

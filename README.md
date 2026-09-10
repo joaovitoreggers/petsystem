@@ -24,7 +24,14 @@ apps/
 ```
 
 > **Estado atual do front-end:** o Angular renderiza o design do PET Digital
-> (fluxo do técnico no celular e painel do gestor no desktop). As telas
+> em um único aplicativo responsivo: sidebar + conteúdo no notebook/desktop,
+> header compacto + navegação inferior no tablet/celular. Os três módulos
+> (Campo, Painel de gestão e Funcionários) são papéis de uso, não versões
+> diferentes do sistema — não existe seletor de "desktop/celular". O visual
+> vem do design system em `apps/frontend/src/styles.scss` (tokens de cor,
+> espaçamento, tipografia, raio, elevação e movimento + primitivas de UI
+> compartilhadas); os SCSS de componente carregam só o layout específico
+> deles. As telas
 > antigas (login, CRUD de usuários/funcionários, crachás, scanner de QR) foram
 > removidas porque não faziam parte do design entregue. PETs e Funcionários
 > (`WorkPermitsModule`/`TeamMembersModule`, abaixo) já são funcionais de
