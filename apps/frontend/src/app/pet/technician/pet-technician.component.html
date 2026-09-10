@@ -156,14 +156,16 @@
               <button
                 type="button"
                 class="btn login__btn"
-                [disabled]="state.authPhase() !== 'idle'"
+                [disabled]="faceButtonDisabled()"
                 (click)="startAuth()"
               >
                 {{ faceButtonLabel() }}
               </button>
               <div class="login__disclaimer">
-                biometria facial validada contra o cadastro do SESMT<br />
-                nenhuma imagem é armazenada no dispositivo
+                reconhecimento roda no seu navegador (face-api.js) · só reabre
+                uma conta já cadastrada neste aparelho<br />
+                nenhuma imagem é enviada nem armazenada — só um descritor
+                numérico, local
               </div>
             } @else {
               <!-- `type="submit"` + `form` ligam o botão ao formulário mesmo
@@ -183,6 +185,58 @@
             }
           </div>
         </div>
+
+        @if (state.enrollPromptOpen()) {
+          <div class="dialog-backdrop">
+            <div class="dialog enroll-face">
+              <div class="dialog-title">Habilitar reconhecimento facial neste aparelho?</div>
+              <div class="dialog-body">
+                Da próxima vez, você entra só posicionando o rosto — sem digitar
+                senha. Guardamos só um descritor numérico do seu rosto (não uma
+                imagem) neste aparelho, e ele fica valendo até você clicar em
+                Sair.
+              </div>
+
+              <div class="face-frame enroll-face__frame">
+                @if (cameraActive()) {
+                  <video #enrollVideo class="face-frame__video" autoplay playsinline muted></video>
+                } @else {
+                  <div class="face-frame__grid"></div>
+                }
+                <div class="face-frame__border"></div>
+                <div class="face-frame__oval"></div>
+                <div class="face-frame__caption">
+                  {{
+                    cameraError()
+                      ? 'câmera indisponível · toque para tentar de novo'
+                      : 'câmera frontal'
+                  }}
+                </div>
+              </div>
+
+              @if (state.enrollError(); as erro) {
+                <div class="login__error" role="alert">
+                  <app-icon name="alert" [size]="16" />
+                  <span>{{ erro }}</span>
+                </div>
+              }
+
+              <div class="dialog-actions">
+                <button type="button" class="btn btn-secondary" (click)="skipEnroll()">
+                  Agora não
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-primary"
+                  [disabled]="state.enrolling() || !cameraActive()"
+                  (click)="confirmEnroll()"
+                >
+                  {{ state.enrolling() ? 'Cadastrando…' : 'Habilitar' }}
+                </button>
+              </div>
+            </div>
+          </div>
+        }
       }
 
       @case ('home') {
