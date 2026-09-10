@@ -11,7 +11,10 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { AuthenticatedUser } from '../auth/jwt-payload.interface';
+import { scopeFromUser } from '../auth/tenant-scope';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
 import { EmployeesService } from './employees.service';
@@ -23,6 +26,8 @@ interface EmployeeSummaryDto {
   role: string;
   canAccessRiskAreas: boolean;
   canPerformCorrectiveService: boolean;
+  companyGroupId: string | null;
+  branchId: string | null;
 }
 
 function toSummary(employee: Employee): EmployeeSummaryDto {
@@ -32,6 +37,8 @@ function toSummary(employee: Employee): EmployeeSummaryDto {
     role: employee.role,
     canAccessRiskAreas: employee.canAccessRiskAreas,
     canPerformCorrectiveService: employee.canPerformCorrectiveService,
+    companyGroupId: employee.companyGroupId,
+    branchId: employee.branchId,
   };
 }
 
@@ -45,14 +52,17 @@ export class EmployeesController {
   constructor(private readonly employeesService: EmployeesService) {}
 
   @Get()
-  async findAll(): Promise<EmployeeSummaryDto[]> {
-    const employees = await this.employeesService.findAll();
+  async findAll(@CurrentUser() currentUser: AuthenticatedUser): Promise<EmployeeSummaryDto[]> {
+    const employees = await this.employeesService.findAll(scopeFromUser(currentUser));
     return employees.map(toSummary);
   }
 
   @Get(':id')
-  async findOne(@Param('id') id: string): Promise<EmployeeSummaryDto> {
-    const employee = await this.employeesService.findById(id);
+  async findOne(
+    @Param('id') id: string,
+    @CurrentUser() currentUser: AuthenticatedUser,
+  ): Promise<EmployeeSummaryDto> {
+    const employee = await this.employeesService.findById(id, scopeFromUser(currentUser));
     if (!employee) {
       throw new NotFoundException('Funcionário não encontrado');
     }
@@ -61,8 +71,11 @@ export class EmployeesController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  async create(@Body() dto: CreateEmployeeDto): Promise<EmployeeSummaryDto> {
-    const employee = await this.employeesService.create(dto);
+  async create(
+    @Body() dto: CreateEmployeeDto,
+    @CurrentUser() currentUser: AuthenticatedUser,
+  ): Promise<EmployeeSummaryDto> {
+    const employee = await this.employeesService.create(dto, scopeFromUser(currentUser));
     return toSummary(employee);
   }
 
@@ -70,14 +83,18 @@ export class EmployeesController {
   async update(
     @Param('id') id: string,
     @Body() dto: UpdateEmployeeDto,
+    @CurrentUser() currentUser: AuthenticatedUser,
   ): Promise<EmployeeSummaryDto> {
-    const employee = await this.employeesService.update(id, dto);
+    const employee = await this.employeesService.update(id, dto, scopeFromUser(currentUser));
     return toSummary(employee);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async remove(@Param('id') id: string): Promise<void> {
-    await this.employeesService.delete(id);
+  async remove(
+    @Param('id') id: string,
+    @CurrentUser() currentUser: AuthenticatedUser,
+  ): Promise<void> {
+    await this.employeesService.delete(id, scopeFromUser(currentUser));
   }
 }

@@ -5,6 +5,8 @@ export interface CreateEmployeeData {
   role: string;
   canAccessRiskAreas: boolean;
   canPerformCorrectiveService: boolean;
+  companyGroupId: string | null;
+  branchId: string | null;
 }
 
 export interface UpdateEmployeeData {
@@ -12,6 +14,8 @@ export interface UpdateEmployeeData {
   role?: string;
   canAccessRiskAreas?: boolean;
   canPerformCorrectiveService?: boolean;
+  companyGroupId?: string | null;
+  branchId?: string | null;
 }
 
 /**
