@@ -5,8 +5,10 @@
   "scripts": {
     "backend:serve": "nx serve backend",
     "backend:seed": "TS_NODE_PROJECT=apps/backend/tsconfig.seed.json TS_NODE_TRANSPILE_ONLY=true ts-node apps/backend/src/seed.ts",
+    "backend:test:integration": "DB_HOST=localhost DB_PORT=55432 DB_USERNAME=petsystem DB_PASSWORD=petsystem DB_NAME=petsystem_test jest --config apps/backend/jest.integration.config.cts --runInBand",
     "frontend:serve": "nx serve frontend",
     "test": "nx run-many -t test",
+    "e2e": "playwright test",
     "docker:up": "docker compose up --build",
     "docker:down": "docker compose down",
     "docker:seed": "docker compose exec backend npm run backend:seed"
@@ -28,6 +30,7 @@
     "@nx/node": "23.2.0",
     "@nx/web": "23.2.0",
     "@nx/webpack": "23.2.0",
+    "@playwright/test": "^1.63.0",
     "@schematics/angular": "~22.1.0",
     "@swc-node/register": "1.11.1",
     "@swc/core": "1.15.8",

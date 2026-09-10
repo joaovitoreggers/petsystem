@@ -18,6 +18,10 @@ module.exports = {
   },
   moduleFileExtensions: ['ts', 'js', 'html'],
   coverageDirectory: 'test-output/jest/coverage',
+  // Testes de integração (Postgres de verdade) vivem à parte — ver
+  // jest.integration.config.cts — e não devem rodar aqui: este alvo (`nx
+  // run backend:test`) precisa continuar funcionando sem banco nenhum.
+  testPathIgnorePatterns: ['/node_modules/', '<rootDir>/src/integration/'],
   // @nestjs/jwt and @nestjs/config ship ESM-only builds; transform them too
   // instead of leaving them out of Jest's default node_modules exclusion.
   transformIgnorePatterns: [
