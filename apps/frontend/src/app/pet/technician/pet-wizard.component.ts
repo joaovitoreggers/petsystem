@@ -1,5 +1,7 @@
-import { Component, ElementRef, ViewChild, computed } from '@angular/core';
+import { Component, ElementRef, ViewChild, computed, signal } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
 import { PetStateService } from '../pet-state.service';
+import { TenancyApiService } from '../services/tenancy-api.service';
 import {
   AREA_NOTE,
   CHECKLISTS,
@@ -80,7 +82,32 @@ export class PetWizardComponent {
 
   readonly areas = RISK_AREAS;
 
-  constructor(readonly state: PetStateService) {}
+  // Lista de unidades do seletor "Unidade" — parte de PET_UNITS (mock) e
+  // troca pelas filiais reais do grupo da sessão assim que carregam. Sem
+  // sessão (reconhecimento facial, simulação) ou se a chamada falhar, fica
+  // no mock — mesmo padrão de fallback do resto do app.
+  readonly unitOptions = signal<string[]>(PET_UNITS);
+
+  constructor(
+    readonly state: PetStateService,
+    private readonly tenancyApi: TenancyApiService,
+  ) {
+    const companyGroupId = this.state.session()?.user.companyGroupId;
+    if (companyGroupId) {
+      this.loadBranchNames(companyGroupId);
+    }
+  }
+
+  private async loadBranchNames(companyGroupId: string): Promise<void> {
+    try {
+      const branches = await firstValueFrom(this.tenancyApi.findBranches(companyGroupId));
+      if (branches.length > 0) {
+        this.unitOptions.set(branches.map((b) => b.name).sort((a, b) => a.localeCompare(b)));
+      }
+    } catch {
+      // mantém PET_UNITS como fallback
+    }
+  }
 
   triggerPhotoPicker(): void {
     this.photoInputRef?.nativeElement.click();
@@ -214,7 +241,6 @@ export class PetWizardComponent {
     });
   }
 
-  readonly unitOptions = PET_UNITS;
   readonly companyOptions = EXECUTING_COMPANIES;
   readonly locationOptions = SITE_LOCATIONS;
 

@@ -243,11 +243,9 @@
             [value]="cadUnit()"
             (change)="cadUnit.set($any($event.target).value)"
           >
-            <option>Matelândia</option>
-            <option>Medianeira</option>
-            <option>Céu Azul</option>
-            <option>Itaipulândia</option>
-            <option>Missal</option>
+            @for (u of unitOptions(); track u) {
+              <option>{{ u }}</option>
+            }
           </select>
         </div>
         <div class="field" style="flex: 1; min-width: 180px">

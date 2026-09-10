@@ -1,4 +1,5 @@
 import { Component, computed, signal } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
 import { PetStateService } from '../pet-state.service';
 import {
   BADGE_STATUS,
@@ -8,8 +9,11 @@ import {
   dateToBr,
   daysUntil,
 } from '../pet-mock-data';
+import { TenancyApiService } from '../services/tenancy-api.service';
 import { IconComponent } from '../../shared/icon.component';
 import { IndustrialArtComponent } from '../../shared/industrial-art.component';
+
+const FALLBACK_UNITS = ['Matelândia', 'Medianeira', 'Céu Azul', 'Itaipulândia', 'Missal'];
 
 type TeamFilter = 'todos' | 'vencimento próximo' | 'vencidos' | 'terceiros';
 
@@ -91,7 +95,31 @@ export class PetTeamComponent {
   readonly deleting = signal(false);
   readonly deleteError = signal<string | null>(null);
 
-  constructor(readonly state: PetStateService) {}
+  // Lista de unidades do seletor "Unidade" — mesma lógica de fallback do
+  // assistente "Nova PET" (ver PetWizardComponent): mock por padrão, troca
+  // pelas filiais reais do grupo assim que carregam.
+  readonly unitOptions = signal<string[]>(FALLBACK_UNITS);
+
+  constructor(
+    readonly state: PetStateService,
+    private readonly tenancyApi: TenancyApiService,
+  ) {
+    const companyGroupId = this.state.session()?.user.companyGroupId;
+    if (companyGroupId) {
+      this.loadBranchNames(companyGroupId);
+    }
+  }
+
+  private async loadBranchNames(companyGroupId: string): Promise<void> {
+    try {
+      const branches = await firstValueFrom(this.tenancyApi.findBranches(companyGroupId));
+      if (branches.length > 0) {
+        this.unitOptions.set(branches.map((b) => b.name).sort((a, b) => a.localeCompare(b)));
+      }
+    } catch {
+      // mantém FALLBACK_UNITS
+    }
+  }
 
   private toView(member: TeamMember): TeamMemberView {
     const documents: DocumentView[] = Object.keys(member.documents)
@@ -230,7 +258,7 @@ export class PetTeamComponent {
     this.cadRegistration.set('');
     this.cadRole.set('');
     this.cadCompany.set('Lar · Manutenção');
-    this.cadUnit.set('Matelândia');
+    this.cadUnit.set(this.unitOptions()[0] ?? 'Matelândia');
     this.cadVinculo.set('Próprio');
     this.cadDocDates.set({ ASO: '' });
     this.modalOpen.set(true);
@@ -374,7 +402,7 @@ export class PetTeamComponent {
     this.cadRegistration.set('');
     this.cadRole.set('');
     this.cadCompany.set('Lar · Manutenção');
-    this.cadUnit.set('Matelândia');
+    this.cadUnit.set(this.unitOptions()[0] ?? 'Matelândia');
     this.cadVinculo.set('Próprio');
     this.cadDocDates.set({ ASO: '' });
   }

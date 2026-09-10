@@ -345,7 +345,7 @@ export class PetStateService {
   /** Sessão autenticada (JWT + usuário) enquanto o app estiver aberto. */
   readonly session = signal<{
     accessToken: string;
-    user: AuthenticatedUser;
+    user: AuthenticatedUser & { companyGroupName: string | null; branchName: string | null };
   } | null>(null);
 
   readonly canSubmitLogin = computed(
@@ -370,6 +370,17 @@ export class PetStateService {
   readonly isPlatformAdmin = computed(
     () => this.session()?.user.role === 'platform-admin',
   );
+
+  // Nome do tenant pra exibir na sidebar (ver PetShellComponent) — grupo
+  // sozinho pra uma sessão que enxerga o grupo inteiro, "grupo · filial"
+  // pra uma sessão restrita a uma filial. Nulo sem sessão real (facial) ou
+  // pra platform-admin (não tem grupo próprio) — a sidebar cai no texto
+  // fixo padrão nesses casos.
+  readonly tenantLabel = computed(() => {
+    const user = this.session()?.user;
+    if (!user?.companyGroupName) return null;
+    return user.branchName ? `${user.companyGroupName} · ${user.branchName}` : user.companyGroupName;
+  });
 
   setAuthMethod(method: AuthMethod): void {
     this.authMethod.set(method);

@@ -5,7 +5,8 @@
     <div class="companies__head-text">
       Um grupo de empresas é um tenant: reúne várias filiais e todos os
       usuários/PETs/funcionários cadastrados dentro dele. Só quem tem o papel
-      platform-admin vê e gerencia essa tela.
+      platform-admin vê e gerencia essa tela. Excluir um grupo ou filial só é
+      permitido quando não há mais nada vinculado a ele.
     </div>
   </div>
 
@@ -28,7 +29,7 @@
       } @else {
         <ul class="companies__list">
           @for (g of groups(); track g.id) {
-            <li>
+            <li class="companies__list-row">
               <button
                 type="button"
                 class="companies__list-item"
@@ -38,6 +39,24 @@
                 <app-icon name="building" [size]="16" />
                 {{ g.name }}
               </button>
+              <div class="companies__list-actions">
+                <button
+                  type="button"
+                  class="btn-icon-ghost"
+                  title="Renomear grupo"
+                  (click)="openRenameGroup(g)"
+                >
+                  <app-icon name="pencil" [size]="14" />
+                </button>
+                <button
+                  type="button"
+                  class="btn-icon-ghost btn-icon-ghost--danger"
+                  title="Excluir grupo"
+                  (click)="openDeleteGroup(g)"
+                >
+                  <app-icon name="trash" [size]="14" />
+                </button>
+              </div>
             </li>
           }
         </ul>
@@ -83,7 +102,27 @@
         } @else {
           <ul class="companies__list companies__list--plain">
             @for (b of branches(); track b.id) {
-              <li class="companies__branch">{{ b.name }}</li>
+              <li class="companies__branch companies__list-row">
+                <span>{{ b.name }}</span>
+                <div class="companies__list-actions">
+                  <button
+                    type="button"
+                    class="btn-icon-ghost"
+                    title="Renomear filial"
+                    (click)="openRenameBranch(b)"
+                  >
+                    <app-icon name="pencil" [size]="14" />
+                  </button>
+                  <button
+                    type="button"
+                    class="btn-icon-ghost btn-icon-ghost--danger"
+                    title="Excluir filial"
+                    (click)="openDeleteBranch(b)"
+                  >
+                    <app-icon name="trash" [size]="14" />
+                  </button>
+                </div>
+              </li>
             }
           </ul>
         }
@@ -112,3 +151,69 @@
     </div>
   </div>
 </div>
+
+@if (renameTarget(); as target) {
+  <div class="dialog-backdrop" (click)="closeRename()">
+    <div class="dialog" (click)="$event.stopPropagation()">
+      <div class="dialog-title">
+        Renomear {{ target.kind === 'group' ? 'grupo de empresas' : 'filial' }}
+      </div>
+      <div class="field">
+        <label>Nome</label>
+        <input
+          class="input"
+          [value]="renameValue()"
+          (input)="renameValue.set($any($event.target).value)"
+        />
+      </div>
+      @if (renameError()) {
+        <div class="companies__form-error">{{ renameError() }}</div>
+      }
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-secondary" (click)="closeRename()">Cancelar</button>
+        <button
+          type="button"
+          class="btn btn-primary"
+          [disabled]="!renameValue().trim() || renaming()"
+          (click)="confirmRename()"
+        >
+          {{ renaming() ? 'Salvando…' : 'Salvar' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (deleteTarget(); as target) {
+  <div class="dialog-backdrop" (click)="closeDeleteDialog()">
+    <div class="dialog" (click)="$event.stopPropagation()">
+      <div class="dialog-title">
+        Excluir {{ target.kind === 'group' ? 'grupo de empresas' : 'filial' }}
+      </div>
+      <div class="dialog-body">
+        Tem certeza que quer excluir <strong>{{ target.name }}</strong>?
+        @if (target.kind === 'group') {
+          Só é possível se o grupo não tiver mais nenhuma filial, usuário, PET
+          ou funcionário vinculado.
+        } @else {
+          Só é possível se a filial não tiver mais nenhum usuário, PET ou
+          funcionário vinculado.
+        }
+      </div>
+      @if (deleteError()) {
+        <div class="companies__form-error">{{ deleteError() }}</div>
+      }
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-secondary" (click)="closeDeleteDialog()">Cancelar</button>
+        <button
+          type="button"
+          class="btn btn-danger"
+          [disabled]="deleting()"
+          (click)="confirmDelete()"
+        >
+          {{ deleting() ? 'Excluindo…' : 'Excluir definitivamente' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
