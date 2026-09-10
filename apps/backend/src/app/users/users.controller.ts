@@ -17,6 +17,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { AuthenticatedUser } from '../auth/jwt-payload.interface';
+import { scopeFromUser } from '../auth/tenant-scope';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from './entities/user.entity';
@@ -27,6 +28,8 @@ interface UserSummaryDto {
   name: string;
   email: string;
   role: string;
+  companyGroupId: string | null;
+  branchId: string | null;
 }
 
 function toSummary(user: User): UserSummaryDto {
@@ -35,29 +38,19 @@ function toSummary(user: User): UserSummaryDto {
     name: user.name,
     email: user.email,
     role: user.role,
+    companyGroupId: user.companyGroupId,
+    branchId: user.branchId,
   };
 }
 
-/**
- * CRUD de usuários (contas de login). O `password` nunca sai daqui. Ver
- * EmployeesController para o CRUD de funcionários de campo (Employee) e
- * TeamMembersController para o cadastro do SESMT (TeamMember) — nenhum dos
- * três é a mesma entidade.
- *
- * Criar/editar/excluir usuário decide quem tem acesso ao sistema e com que
- * papel — por isso, além de exigir login (`JwtAuthGuard`, no controller
- * inteiro), essas três rotas também exigem papel admin/gestor
- * (`RolesGuard`), senão qualquer conta autenticada (até uma `tecnico`)
- * poderia se promover ou criar outra conta com mais privilégio.
- */
 @Controller('users')
 @UseGuards(JwtAuthGuard)
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Get()
-  async findAll(): Promise<UserSummaryDto[]> {
-    const users = await this.usersService.findAll();
+  async findAll(@CurrentUser() currentUser: AuthenticatedUser): Promise<UserSummaryDto[]> {
+    const users = await this.usersService.findAll(scopeFromUser(currentUser));
     return users.map(toSummary);
   }
 
@@ -74,8 +67,13 @@ export class UsersController {
   @UseGuards(RolesGuard)
   @Roles('admin', 'gestor')
   @HttpCode(HttpStatus.CREATED)
-  async create(@Body() dto: CreateUserDto): Promise<UserSummaryDto> {
-    const user = await this.usersService.create(dto);
+  async create(
+    @Body() dto: CreateUserDto,
+    @CurrentUser() currentUser: AuthenticatedUser,
+  ): Promise<UserSummaryDto> {
+    const user = await this.usersService.create(dto, {
+      companyGroupId: currentUser.companyGroupId,
+    });
     return toSummary(user);
   }
 
@@ -85,8 +83,11 @@ export class UsersController {
   async update(
     @Param('id') id: string,
     @Body() dto: UpdateUserDto,
+    @CurrentUser() currentUser: AuthenticatedUser,
   ): Promise<UserSummaryDto> {
-    const user = await this.usersService.update(id, dto);
+    const user = await this.usersService.update(id, dto, {
+      companyGroupId: currentUser.companyGroupId,
+    });
     return toSummary(user);
   }
 

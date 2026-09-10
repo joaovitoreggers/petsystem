@@ -35,6 +35,8 @@ export class UserRepository implements IUserRepository {
       email: data.email,
       password: data.passwordHash,
       role: data.role,
+      companyGroupId: data.companyGroupId,
+      branchId: data.branchId,
     });
     return this.repository.save(user);
   }
@@ -48,6 +50,8 @@ export class UserRepository implements IUserRepository {
     if (data.email !== undefined) user.email = data.email;
     if (data.passwordHash !== undefined) user.password = data.passwordHash;
     if (data.role !== undefined) user.role = data.role;
+    if (data.companyGroupId !== undefined) user.companyGroupId = data.companyGroupId;
+    if (data.branchId !== undefined) user.branchId = data.branchId;
     return this.repository.save(user);
   }
 

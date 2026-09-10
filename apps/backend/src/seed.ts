@@ -1,12 +1,29 @@
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app/app.module';
+import { BranchesService } from './app/tenancy/branches.service';
+import { CompanyGroupsService } from './app/tenancy/company-groups.service';
 import { EmployeesService } from './app/employees/employees.service';
 import { UsersService } from './app/users/users.service';
 import { WorkPermitsService } from './app/work-permits/work-permits.service';
 import { TeamMembersService } from './app/team-members/team-members.service';
 
+const LAR_GROUP_NAME = 'Lar Cooperativa Agroindustrial';
+const LAR_BRANCH_NAMES = [
+  'Matelândia',
+  'Medianeira',
+  'Céu Azul',
+  'Itaipulândia',
+  'Missal',
+];
+
 const SEED_USERS = [
+  {
+    name: 'Root Platform',
+    email: 'platform-admin@petsystem.local',
+    password: 'senha123',
+    role: 'platform-admin',
+  },
   {
     name: 'Default Doorkeeper',
     email: 'porteiro@petsystem.local',
@@ -84,20 +101,58 @@ const SEED_TEAM_MEMBERS = [
   { name: 'Éder S. Vasconcelos', registration: '08201', role: 'Eletricista de manutenção', company: 'Lar · Manutenção', unit: 'Missal', documents: { ASO: '2027-01-25', 'NR-10': '2027-08-09', 'NR-35': '2026-09-23', 'NR-12': '2027-03-11' } },
 ];
 
+async function seedTenancy(
+  companyGroupsService: CompanyGroupsService,
+  branchesService: BranchesService,
+): Promise<{ groupId: string; branchIdByName: Map<string, string> }> {
+  const existingGroups = await companyGroupsService.findAll();
+  let group = existingGroups.find((g) => g.name === LAR_GROUP_NAME);
+  if (!group) {
+    group = await companyGroupsService.create({ name: LAR_GROUP_NAME });
+    Logger.log(`Company group created: ${group.name}`);
+  } else {
+    Logger.log(`Company group already exists, skipping: ${group.name}`);
+  }
+
+  const existingBranches = await branchesService.findByCompanyGroup(group.id);
+  const branchIdByName = new Map(existingBranches.map((b) => [b.name, b.id]));
+  for (const name of LAR_BRANCH_NAMES) {
+    if (branchIdByName.has(name)) {
+      Logger.log(`Branch already exists, skipping: ${name}`);
+      continue;
+    }
+    const branch = await branchesService.create({ companyGroupId: group.id, name });
+    branchIdByName.set(branch.name, branch.id);
+    Logger.log(`Branch created: ${branch.name}`);
+  }
+
+  return { groupId: group.id, branchIdByName };
+}
+
 async function seed() {
   const app = await NestFactory.createApplicationContext(AppModule);
   const usersService = app.get(UsersService);
   const employeesService = app.get(EmployeesService);
   const workPermitsService = app.get(WorkPermitsService);
   const teamMembersService = app.get(TeamMembersService);
+  const companyGroupsService = app.get(CompanyGroupsService);
+  const branchesService = app.get(BranchesService);
+
+  const { groupId, branchIdByName } = await seedTenancy(companyGroupsService, branchesService);
 
   for (const data of SEED_USERS) {
     const existing = await usersService.findByEmail(data.email);
     if (existing) {
-      Logger.log(`User already exists, skipping: ${data.email}`);
+      if (data.role !== 'platform-admin' && !existing.companyGroupId) {
+        await usersService.update(existing.id, {}, { companyGroupId: groupId });
+        Logger.log(`User backfilled with company group: ${data.email}`);
+      } else {
+        Logger.log(`User already exists, skipping: ${data.email}`);
+      }
       continue;
     }
-    await usersService.create(data);
+    const companyGroupId = data.role === 'platform-admin' ? undefined : groupId;
+    await usersService.create({ ...data, companyGroupId });
     Logger.log(`User created: ${data.email}`);
   }
 
@@ -117,20 +172,36 @@ async function seed() {
   for (const data of SEED_WORK_PERMITS) {
     const existing = await workPermitsService.findById(data.id);
     if (existing) {
-      Logger.log(`Work permit already exists, skipping: ${data.id}`);
+      if (!existing.branchId && branchIdByName.has(data.unit)) {
+        await workPermitsService.backfillBranch(existing.id, branchIdByName.get(data.unit) ?? null);
+        Logger.log(`Work permit backfilled with branch: ${data.id}`);
+      } else {
+        Logger.log(`Work permit already exists, skipping: ${data.id}`);
+      }
       continue;
     }
-    await workPermitsService.create(data);
+    await workPermitsService.create({ ...data, branchId: branchIdByName.get(data.unit) ?? null });
     Logger.log(`Work permit created: ${data.id}`);
   }
 
   for (const data of SEED_TEAM_MEMBERS) {
     const existing = await teamMembersService.findByRegistration(data.registration);
     if (existing) {
-      Logger.log(`Team member already exists, skipping: ${data.name} (mat. ${data.registration})`);
+      if (!existing.branchId && branchIdByName.has(data.unit)) {
+        await teamMembersService.backfillBranch(
+          existing.registration,
+          branchIdByName.get(data.unit) ?? null,
+        );
+        Logger.log(`Team member backfilled with branch: ${data.name} (mat. ${data.registration})`);
+      } else {
+        Logger.log(`Team member already exists, skipping: ${data.name} (mat. ${data.registration})`);
+      }
       continue;
     }
-    await teamMembersService.create(data);
+    await teamMembersService.create({
+      ...data,
+      branchId: branchIdByName.get(data.unit) ?? null,
+    });
     Logger.log(`Team member created: ${data.name} (mat. ${data.registration})`);
   }
 

@@ -1,4 +1,19 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, NotFoundException, Param, Patch, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  NotFoundException,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { AuthenticatedUser } from '../auth/jwt-payload.interface';
+import { scopeFromUser } from '../auth/tenant-scope';
 import { AddReadingDto } from './dto/add-reading.dto';
 import { CloseWorkPermitDto } from './dto/close-work-permit.dto';
 import { CreateWorkPermitDto } from './dto/create-work-permit.dto';
@@ -6,18 +21,19 @@ import { WorkPermit } from './entities/work-permit.entity';
 import { WorkPermitsService } from './work-permits.service';
 
 /**
- * CRUD de PETs (Permissão de Entrada e Trabalho). Sem @UseGuards(JwtAuthGuard)
- * de propósito: o front-end do PET Digital não tem mais uma tela de login
- * real (o reconhecimento facial é só uma simulação de UI), então não há
- * token JWT disponível para autenticar essas chamadas neste MVP.
+ * CRUD de PETs (Permissão de Entrada e Trabalho). Exige login de verdade
+ * (JwtAuthGuard) em toda a rota — sem sessão não dá pra saber a qual tenant
+ * a PET pertence. O caminho de reconhecimento facial (sem token) cai no
+ * fallback local do front-end nesse caso.
  */
 @Controller('work-permits')
+@UseGuards(JwtAuthGuard)
 export class WorkPermitsController {
   constructor(private readonly workPermitsService: WorkPermitsService) {}
 
   @Get()
-  findAll(): Promise<WorkPermit[]> {
-    return this.workPermitsService.findAll();
+  findAll(@CurrentUser() currentUser: AuthenticatedUser): Promise<WorkPermit[]> {
+    return this.workPermitsService.findAll(scopeFromUser(currentUser));
   }
 
   @Get(':id')
@@ -31,8 +47,11 @@ export class WorkPermitsController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  create(@Body() dto: CreateWorkPermitDto): Promise<WorkPermit> {
-    return this.workPermitsService.create(dto);
+  create(
+    @Body() dto: CreateWorkPermitDto,
+    @CurrentUser() currentUser: AuthenticatedUser,
+  ): Promise<WorkPermit> {
+    return this.workPermitsService.create(dto, scopeFromUser(currentUser));
   }
 
   @Patch(':id/close')

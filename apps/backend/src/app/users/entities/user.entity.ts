@@ -31,6 +31,15 @@ export class User {
   @Column()
   role!: string;
 
+  // Tenant do usuário. Nulo só para platform-admin (papel acima de todos os
+  // grupos); obrigatório para os demais papéis. `branchId` nulo significa
+  // "enxerga todas as filiais do grupo"; preenchido restringe a uma só.
+  @Column({ name: 'company_group_id', type: 'uuid', nullable: true })
+  companyGroupId!: string | null;
+
+  @Column({ name: 'branch_id', type: 'uuid', nullable: true })
+  branchId!: string | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt!: Date;
 }

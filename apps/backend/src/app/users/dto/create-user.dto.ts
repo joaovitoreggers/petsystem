@@ -1,4 +1,13 @@
-import { IsEmail, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsIn, IsOptional, IsString, IsUUID, MinLength } from 'class-validator';
+
+export const USER_ROLES = [
+  'platform-admin',
+  'admin',
+  'gestor',
+  'tecnico',
+  'porteiro',
+  'operador',
+] as const;
 
 export class CreateUserDto {
   @IsString()
@@ -12,7 +21,17 @@ export class CreateUserDto {
   @MinLength(6)
   password!: string;
 
-  @IsString()
-  @MinLength(1)
+  @IsIn(USER_ROLES)
   role!: string;
+
+  // Opcional: se ausente, admin/gestor cadastram dentro do próprio grupo
+  // (o controller resolve isso a partir da sessão). Só precisa ser
+  // informado explicitamente por um platform-admin, que não tem grupo.
+  @IsOptional()
+  @IsUUID()
+  companyGroupId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  branchId?: string;
 }
