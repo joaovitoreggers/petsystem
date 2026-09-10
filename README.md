@@ -199,9 +199,13 @@ Sobe o `AppModule` inteiro (guards, controllers, services, repositórios) de
 verdade contra um banco de teste dedicado (`petsystem_test`, criado
 automaticamente na mesma instância Postgres do docker compose — nunca toca
 no banco `petsystem` de desenvolvimento) e bate nas rotas por HTTP via
-supertest. Cobre isolamento entre tenants, restrição por filial, os guards
-(401/403) e a regressão do bug de "limpar filial via PATCH" de ponta a
-ponta, com dado real persistido e lido de volta — o que um teste unitário
+supertest. Cobre isolamento entre tenants (grupo e filial), os guards
+(401/403), o bloqueio de escrita entre tenants em `PATCH`/`DELETE` de
+usuário/funcionário/PET (rejeitados com `404`, não só omitidos de uma
+listagem), a leitura de crachá recusando um QR de outro tenant sem
+confirmar que ele existe em outro lugar, e a regressão do bug de "limpar
+filial via PATCH" — tudo de ponta a ponta, com dado real persistido e lido
+de volta, o que um teste unitário
 com repositório mockado não prova sozinho. Zera as tabelas relevantes no
 início de cada execução, então pode rodar quantas vezes quiser.
 
@@ -314,15 +318,20 @@ histórico de `AccessEvent` — persiste normalmente.
    transiciona para `AWAITING_READS`
 4. `POST /api/qr-validation/attempts/:id/reads` `{ qrCode }` (uma vez por
    pessoa detectada) → busca o `Employee` pelo `qrCode` (que é o próprio
-   `id`), checa duplicidade, autoriza só se `canAccessRiskAreas` for
-   verdadeiro, registra um `AccessEvent` e avança a máquina de estados; ao
-   atingir a quantidade esperada de leituras **distintas**, a tentativa vai
-   para `COMPLETE` e expõe `finalResult` (`AUTHORIZED` somente se todas as
-   leituras foram autorizadas)
+   `id`) **dentro do tenant de quem está validando**, checa duplicidade,
+   autoriza só se `canAccessRiskAreas` for verdadeiro, registra um
+   `AccessEvent` e avança a máquina de estados; ao atingir a quantidade
+   esperada de leituras **distintas**, a tentativa vai para `COMPLETE` e
+   expõe `finalResult` (`AUTHORIZED` somente se todas as leituras foram
+   autorizadas)
 
 Uma leitura repetida do mesmo `qrCode` na mesma tentativa é rejeitada com
 `409 Conflict` e registra um `AccessEvent` com resultado `DUPLICATE`, sem
-contar como uma leitura distinta.
+contar como uma leitura distinta. Um crachá de outro grupo de empresas (ou
+de outra filial, se quem está validando estiver restrito a uma) vira
+`INVALID_QR` — o mesmo resultado de um crachá que não existe em lugar
+nenhum, de propósito: quem valida não descobre que aquele QR pertence a
+alguém "de outro lugar".
 
 ## CRUD de usuários (API)
 
@@ -350,16 +359,18 @@ Nenhuma resposta inclui o campo `password` (nem o hash).
 Pessoas de campo validadas pelo `QrValidationModule` — `name`, `role`, e as
 duas permissões independentes `canAccessRiskAreas` e
 `canPerformCorrectiveService` (ambas booleanas, default `false`). Sem
-`email`/`password`: funcionário não faz login. Mesmas garantias de JWT da
-API de usuários; a tela `/employees` usa exatamente essa API.
+`email`/`password`: funcionário não faz login. Mesmas garantias de JWT e o
+mesmo isolamento por tenant da API de usuários — sem campo de unidade em
+texto livre aqui (o crachá nunca teve um), então o funcionário herda o
+grupo/filial de quem cadastrou (ver "Multi-tenancy" abaixo).
 
 | Rota | Descrição |
 |------|-----------|
-| `GET /api/employees` | Lista todos os funcionários |
-| `GET /api/employees/:id` | Busca um funcionário — `404` se não existir |
-| `POST /api/employees` | Cria um funcionário |
-| `PATCH /api/employees/:id` | Atualiza campos parcialmente — `404` se não existir |
-| `DELETE /api/employees/:id` | Remove um funcionário — `404` se não existir |
+| `GET /api/employees` | Lista os funcionários visíveis no tenant de quem pergunta |
+| `GET /api/employees/:id` | Busca um funcionário — `404` se não existir ou for de outro tenant |
+| `POST /api/employees` | Cria um funcionário no grupo/filial de quem está autenticado |
+| `PATCH /api/employees/:id` | Atualiza campos parcialmente — `404` se não existir ou for de outro tenant |
+| `DELETE /api/employees/:id` | Remove um funcionário — mesma exigência |
 
 `canAccessRiskAreas` é a permissão realmente aplicada hoje (é o que o
 `QrValidationModule` verifica para autorizar uma leitura de QR).
@@ -421,12 +432,33 @@ usuários e determina o quanto cada um enxerga:
   do próprio grupo (ex. o `gestor` do seed, que vê as 5 filiais de Lar).
 - Papel com `companyGroupId` **e** `branchId` — só enxerga a própria filial.
 
-Essa mesma regra filtra `GET /api/users`, `GET /api/work-permits` e
-`GET /api/team-members`. PETs e funcionários ainda usam o campo texto livre
-`unit` (sem seletor de filial na tela de PET/funcionário nesta fase) — ao
-criar, o back-end tenta casar `unit` com o nome de uma filial do grupo de
-quem está autenticado e preenche `branchId` automaticamente; sem match (ou
-sem sessão), o registro fica sem filial.
+Essa mesma regra filtra `GET /api/users`, `GET /api/work-permits`,
+`GET /api/team-members` e `GET /api/employees`. PETs e funcionários ainda
+usam o campo texto livre `unit` (sem seletor de filial na tela de
+PET/funcionário nesta fase) — ao criar, o back-end tenta casar `unit` com o
+nome de uma filial do grupo de quem está autenticado e preenche `branchId`
+automaticamente; sem match, o registro fica sem filial mesmo assim
+pertencendo ao grupo (funcionário de crachá, sem `unit`, sempre fica sem
+filial a menos que quem cadastrou já estivesse restrito a uma).
+
+**Toda escrita num registro específico** — `PATCH`/`DELETE` de
+usuário/funcionário/PET, `PATCH .../close` e `.../reading` de PET — passa
+pela mesma barreira antes de mexer em qualquer coisa: se o registro não
+pertence ao tenant de quem está pedindo, a resposta é `404` (não `403`) —
+de propósito, pra nem confirmar que o registro existe em outro lugar.
+`platform-admin` passa direto por essa barreira, igual ao `RolesGuard`. Sem
+isso, `findAll` filtra o que aparece numa lista, mas nada impediria uma
+sessão de um tenant de editar um registro de outro cujo id/matrícula ela já
+soubesse — foi exatamente esse buraco que motivou adicionar
+`companyGroupId` direto em `TeamMember`/`WorkPermit`/`Employee` (antes só
+tinham `branchId`, que fica nulo quando `unit` não casa com nenhuma
+filial — sem `companyGroupId` não haveria como saber de qual tenant um
+registro sem filial é dono).
+
+A leitura de crachá (`QrValidationModule`) e a análise de causas por IA
+(`PetAnalysisModule`, abaixo) seguem a mesma regra: um crachá de outro
+tenant vira `INVALID_QR` (não autoriza nem nega — como se não existisse) e
+o relatório de IA só usa as PETs do tenant de quem pediu.
 
 Gestão de tenants tem tela própria, na aba **Empresas** (só aparece com
 sessão `platform-admin` — ver `PetCompaniesComponent`): lista grupos, cria
@@ -455,9 +487,10 @@ depois de atualizar).
 ## Análise de causas por IA (OpenAI)
 
 O botão **Analisar causas com IA** no painel do gestor chama
-`POST /api/pet-analysis` (também sem `JwtAuthGuard`, mesmo motivo acima).
-`PetAnalysisService` busca todas as PETs via `WorkPermitsService`, calcula um
-resumo estatístico (contagem por área/NR, taxa de ocorrência, volume por dia,
+`POST /api/pet-analysis` (exige `JwtAuthGuard`, como o resto da API desde a
+multi-tenancy). `PetAnalysisService` busca as PETs do tenant de quem pediu
+via `WorkPermitsService`, calcula um resumo estatístico (contagem por
+área/NR, taxa de ocorrência, volume por dia,
 e uma lista de dias/áreas fora do padrão — dias com mais de 1,5x a média
 diária, ou áreas com mais de 25% de taxa de ocorrência) e manda esse resumo
 para a API de chat da OpenAI, pedindo um relatório em português com quatro

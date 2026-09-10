@@ -144,7 +144,7 @@ async function seed() {
     const existing = await usersService.findByEmail(data.email);
     if (existing) {
       if (data.role !== 'platform-admin' && !existing.companyGroupId) {
-        await usersService.update(existing.id, {}, { companyGroupId: groupId });
+        await usersService.update(existing.id, { companyGroupId: groupId });
         Logger.log(`User backfilled with company group: ${data.email}`);
       } else {
         Logger.log(`User already exists, skipping: ${data.email}`);
@@ -156,14 +156,23 @@ async function seed() {
     Logger.log(`User created: ${data.email}`);
   }
 
+  const existingEmployees = await employeesService.findAll({
+    role: 'platform-admin',
+    companyGroupId: null,
+    branchId: null,
+  });
   for (const data of SEED_EMPLOYEES) {
-    const existingAll = await employeesService.findAll();
-    const existing = existingAll.find((employee) => employee.name === data.name);
+    const existing = existingEmployees.find((employee) => employee.name === data.name);
     if (existing) {
-      Logger.log(`Employee already exists, skipping: ${data.name} (id/qrCode: ${existing.id})`);
+      if (!existing.companyGroupId) {
+        await employeesService.backfillTenancy(existing.id, { companyGroupId: groupId, branchId: null });
+        Logger.log(`Employee backfilled with company group: ${data.name} (id/qrCode: ${existing.id})`);
+      } else {
+        Logger.log(`Employee already exists, skipping: ${data.name} (id/qrCode: ${existing.id})`);
+      }
       continue;
     }
-    const employee = await employeesService.create(data);
+    const employee = await employeesService.create({ ...data, companyGroupId: groupId });
     Logger.log(
       `Employee created: ${data.name} (canAccessRiskAreas=${data.canAccessRiskAreas}, canPerformCorrectiveService=${data.canPerformCorrectiveService}, id/qrCode: ${employee.id})`,
     );
@@ -172,27 +181,34 @@ async function seed() {
   for (const data of SEED_WORK_PERMITS) {
     const existing = await workPermitsService.findById(data.id);
     if (existing) {
-      if (!existing.branchId && branchIdByName.has(data.unit)) {
-        await workPermitsService.backfillBranch(existing.id, branchIdByName.get(data.unit) ?? null);
-        Logger.log(`Work permit backfilled with branch: ${data.id}`);
+      if (!existing.companyGroupId) {
+        await workPermitsService.backfillTenancy(existing.id, {
+          companyGroupId: groupId,
+          branchId: branchIdByName.get(data.unit) ?? null,
+        });
+        Logger.log(`Work permit backfilled with tenant: ${data.id}`);
       } else {
         Logger.log(`Work permit already exists, skipping: ${data.id}`);
       }
       continue;
     }
-    await workPermitsService.create({ ...data, branchId: branchIdByName.get(data.unit) ?? null });
+    await workPermitsService.create({
+      ...data,
+      companyGroupId: groupId,
+      branchId: branchIdByName.get(data.unit) ?? null,
+    });
     Logger.log(`Work permit created: ${data.id}`);
   }
 
   for (const data of SEED_TEAM_MEMBERS) {
     const existing = await teamMembersService.findByRegistration(data.registration);
     if (existing) {
-      if (!existing.branchId && branchIdByName.has(data.unit)) {
-        await teamMembersService.backfillBranch(
-          existing.registration,
-          branchIdByName.get(data.unit) ?? null,
-        );
-        Logger.log(`Team member backfilled with branch: ${data.name} (mat. ${data.registration})`);
+      if (!existing.companyGroupId) {
+        await teamMembersService.backfillTenancy(existing.registration, {
+          companyGroupId: groupId,
+          branchId: branchIdByName.get(data.unit) ?? null,
+        });
+        Logger.log(`Team member backfilled with tenant: ${data.name} (mat. ${data.registration})`);
       } else {
         Logger.log(`Team member already exists, skipping: ${data.name} (mat. ${data.registration})`);
       }
@@ -200,6 +216,7 @@ async function seed() {
     }
     await teamMembersService.create({
       ...data,
+      companyGroupId: groupId,
       branchId: branchIdByName.get(data.unit) ?? null,
     });
     Logger.log(`Team member created: ${data.name} (mat. ${data.registration})`);

@@ -195,15 +195,82 @@ describe('UsersService', () => {
 
   describe('delete', () => {
     it('throws NotFoundException when the user does not exist', async () => {
-      repository.delete.mockResolvedValue(false);
+      repository.findById.mockResolvedValue(null);
 
       await expect(service.delete('unknown-id')).rejects.toThrow(NotFoundException);
     });
 
     it('resolves when the user is deleted', async () => {
+      repository.findById.mockResolvedValue(user({}));
       repository.delete.mockResolvedValue(true);
 
       await expect(service.delete('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa')).resolves.toBeUndefined();
+    });
+
+    it('rejects deleting a user from a different tenant, as if it did not exist', async () => {
+      repository.findById.mockResolvedValue(user({ companyGroupId: 'other-group' }));
+
+      await expect(
+        service.delete('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', {
+          role: 'gestor',
+          companyGroupId: GROUP_ID,
+          branchId: null,
+        }),
+      ).rejects.toThrow(NotFoundException);
+      expect(repository.delete).not.toHaveBeenCalled();
+    });
+
+    it('lets platform-admin delete a user from any tenant', async () => {
+      repository.findById.mockResolvedValue(user({ companyGroupId: 'other-group' }));
+      repository.delete.mockResolvedValue(true);
+
+      await expect(
+        service.delete('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', {
+          role: 'platform-admin',
+          companyGroupId: null,
+          branchId: null,
+        }),
+      ).resolves.toBeUndefined();
+    });
+  });
+
+  describe('update — tenant isolation', () => {
+    it('rejects editing a user that belongs to a different tenant, as if it did not exist', async () => {
+      repository.findById.mockResolvedValue(user({ companyGroupId: 'other-group' }));
+
+      await expect(
+        service.update(
+          'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+          { name: 'Hackeado' },
+          { role: 'gestor', companyGroupId: GROUP_ID, branchId: null },
+        ),
+      ).rejects.toThrow(NotFoundException);
+      expect(repository.update).not.toHaveBeenCalled();
+    });
+
+    it('rejects a non-platform-admin trying to move a user to a different company group', async () => {
+      repository.findById.mockResolvedValue(user({}));
+
+      await expect(
+        service.update(
+          'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+          { companyGroupId: 'other-group' },
+          { role: 'gestor', companyGroupId: GROUP_ID, branchId: null },
+        ),
+      ).rejects.toThrow(BadRequestException);
+      expect(repository.update).not.toHaveBeenCalled();
+    });
+
+    it('a branch-restricted caller cannot edit a user from a sibling branch in the same group', async () => {
+      repository.findById.mockResolvedValue(user({ companyGroupId: GROUP_ID, branchId: 'b2' }));
+
+      await expect(
+        service.update(
+          'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+          { name: 'Hackeado' },
+          { role: 'gestor', companyGroupId: GROUP_ID, branchId: 'b1' },
+        ),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 

@@ -65,4 +65,20 @@ describe('PetAnalysisService', () => {
       expect(createMock).toHaveBeenCalledTimes(1);
     });
   });
+
+  describe('tenant scoping', () => {
+    it('forwards the caller scope to WorkPermitsService.findAll, so the report never mixes tenants', async () => {
+      const workPermitsService = { findAll: jest.fn().mockResolvedValue([]) } as unknown as WorkPermitsService;
+      const service = new PetAnalysisService(workPermitsService, configService({ OPENAI_API_KEY: 'test-key' }));
+      const createMock = jest.fn().mockResolvedValue({ choices: [{ message: { content: 'ok' } }] });
+      (service as unknown as { client: { chat: { completions: { create: typeof createMock } } } }).client = {
+        chat: { completions: { create: createMock } },
+      };
+
+      const scope = { role: 'gestor', companyGroupId: 'group-1', branchId: null };
+      await service.analyze(scope);
+
+      expect(workPermitsService.findAll).toHaveBeenCalledWith(scope);
+    });
+  });
 });

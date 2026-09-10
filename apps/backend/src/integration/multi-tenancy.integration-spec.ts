@@ -47,7 +47,7 @@ describe('Multi-tenancy (integration)', () => {
     // cada execução ser determinística, independente do que sobrou de uma
     // rodada anterior.
     await dataSource.query(
-      'TRUNCATE TABLE team_members, work_permits, users, branches, company_groups RESTART IDENTITY CASCADE',
+      'TRUNCATE TABLE team_members, work_permits, employees, access_events, users, branches, company_groups RESTART IDENTITY CASCADE',
     );
 
     const usersService = moduleRef.get(UsersService);
@@ -332,6 +332,126 @@ describe('Multi-tenancy (integration)', () => {
         expect(res.body[0].unit).toBe('Matelândia');
       });
     });
+
+    describe('proteção de escrita entre tenants (PATCH/DELETE)', () => {
+      // Um cadastro isolado nesta suíte — os outros testes acima não podem
+      // ficar sujeitos a este aqui deletar algo que eles ainda usam.
+      let writeTestRegistration: string;
+      let writeTestPermitId: string;
+      let writeTestUserId: string;
+
+      beforeAll(async () => {
+        writeTestRegistration = `TA-${uniqueSuffix}-write`;
+        await request(app.getHttpServer())
+          .post('/api/team-members')
+          .set('Authorization', `Bearer ${adminAToken}`)
+          .send({
+            registration: writeTestRegistration,
+            name: 'Funcionário Alvo de Escrita',
+            role: 'Técnico',
+            company: 'Tenant A',
+            unit: 'Matelândia',
+            documents: {},
+          })
+          .expect(201);
+
+        const permitRes = await request(app.getHttpServer())
+          .post('/api/work-permits')
+          .set('Authorization', `Bearer ${adminAToken}`)
+          .send({
+            areas: ['confinado'],
+            location: 'Silo alvo de escrita',
+            unit: 'Matelândia',
+            teamSize: 1,
+            date: '2026-09-10',
+            start: '10:00',
+            technician: 'Admin Tenant A',
+          })
+          .expect(201);
+        writeTestPermitId = permitRes.body.id;
+
+        const userRes = await request(app.getHttpServer())
+          .post('/api/users')
+          .set('Authorization', `Bearer ${adminAToken}`)
+          .send({
+            name: 'Usuário Alvo de Escrita',
+            email: email('write-target'),
+            password: 'senha123',
+            role: 'tecnico',
+          })
+          .expect(201);
+        writeTestUserId = userRes.body.id;
+      });
+
+      it('rejects tenant B editing/deleting a tenant A team member, as if it did not exist', async () => {
+        await request(app.getHttpServer())
+          .patch(`/api/team-members/${writeTestRegistration}`)
+          .set('Authorization', `Bearer ${userB_Token}`)
+          .send({ role: 'Hackeado' })
+          .expect(404);
+
+        await request(app.getHttpServer())
+          .delete(`/api/team-members/${writeTestRegistration}`)
+          .set('Authorization', `Bearer ${userB_Token}`)
+          .expect(404);
+
+        // Continua lá, do jeito que estava — nada foi de fato alterado.
+        const res = await request(app.getHttpServer())
+          .get('/api/team-members')
+          .set('Authorization', `Bearer ${adminAToken}`)
+          .expect(200);
+        const stillThere = res.body.find(
+          (m: { registration: string }) => m.registration === writeTestRegistration,
+        );
+        expect(stillThere?.role).toBe('Técnico');
+      });
+
+      it('rejects tenant B closing or adding a reading to a tenant A PET, as if it did not exist', async () => {
+        await request(app.getHttpServer())
+          .patch(`/api/work-permits/${writeTestPermitId}/close`)
+          .set('Authorization', `Bearer ${userB_Token}`)
+          .send({ end: '11:00', durationMinutes: 60 })
+          .expect(404);
+
+        await request(app.getHttpServer())
+          .patch(`/api/work-permits/${writeTestPermitId}/reading`)
+          .set('Authorization', `Bearer ${userB_Token}`)
+          .send({ gas: { o2: 20.9, co: 0, h2s: 0, lel: 0 } })
+          .expect(404);
+
+        await request(app.getHttpServer())
+          .get(`/api/work-permits/${writeTestPermitId}`)
+          .set('Authorization', `Bearer ${userB_Token}`)
+          .expect(404);
+      });
+
+      it('rejects tenant B editing/deleting a tenant A user, as if it did not exist', async () => {
+        await request(app.getHttpServer())
+          .patch(`/api/users/${writeTestUserId}`)
+          .set('Authorization', `Bearer ${userB_Token}`)
+          .send({ name: 'Hackeado' })
+          .expect(404);
+
+        await request(app.getHttpServer())
+          .delete(`/api/users/${writeTestUserId}`)
+          .set('Authorization', `Bearer ${userB_Token}`)
+          .expect(404);
+      });
+
+      it('still lets tenant A itself edit/close its own records normally', async () => {
+        await request(app.getHttpServer())
+          .patch(`/api/team-members/${writeTestRegistration}`)
+          .set('Authorization', `Bearer ${adminAToken}`)
+          .send({ role: 'Técnico Sênior' })
+          .expect(200);
+
+        await request(app.getHttpServer())
+          .patch(`/api/work-permits/${writeTestPermitId}/close`)
+          .set('Authorization', `Bearer ${adminAToken}`)
+          .send({ end: '11:00', durationMinutes: 60 })
+          .expect(200);
+      });
+    });
   });
 
   describe('regressão: limpar a filial de um usuário via PATCH /users/:id', () => {
@@ -401,6 +521,142 @@ describe('Multi-tenancy (integration)', () => {
         .expect(200);
 
       expect(res.body.branchId).toBeNull();
+    });
+  });
+
+  describe('Employees e QR do crachá (isolamento entre tenants)', () => {
+    let groupA: { id: string };
+    let groupB: { id: string };
+    let adminAToken: string;
+    let userB_Token: string;
+    let employeeAId: string;
+
+    beforeAll(async () => {
+      const groupARes = await request(app.getHttpServer())
+        .post('/api/company-groups')
+        .set('Authorization', `Bearer ${platformAdminToken}`)
+        .send({ name: `Employees Tenant A ${uniqueSuffix}` })
+        .expect(201);
+      groupA = groupARes.body;
+
+      const groupBRes = await request(app.getHttpServer())
+        .post('/api/company-groups')
+        .set('Authorization', `Bearer ${platformAdminToken}`)
+        .send({ name: `Employees Tenant B ${uniqueSuffix}` })
+        .expect(201);
+      groupB = groupBRes.body;
+
+      await request(app.getHttpServer())
+        .post('/api/users')
+        .set('Authorization', `Bearer ${platformAdminToken}`)
+        .send({
+          name: 'Admin Employees A',
+          email: email('employees-admin-a'),
+          password: 'senha123',
+          role: 'admin',
+          companyGroupId: groupA.id,
+        })
+        .expect(201);
+      adminAToken = (await login(email('employees-admin-a'))).accessToken;
+
+      await request(app.getHttpServer())
+        .post('/api/users')
+        .set('Authorization', `Bearer ${platformAdminToken}`)
+        .send({
+          name: 'User Employees B',
+          email: email('employees-user-b'),
+          password: 'senha123',
+          role: 'porteiro',
+          companyGroupId: groupB.id,
+        })
+        .expect(201);
+      userB_Token = (await login(email('employees-user-b'))).accessToken;
+
+      const employeeRes = await request(app.getHttpServer())
+        .post('/api/employees')
+        .set('Authorization', `Bearer ${adminAToken}`)
+        .send({ name: 'Funcionário Crachá A', role: 'tecnico', canAccessRiskAreas: true })
+        .expect(201);
+      employeeAId = employeeRes.body.id;
+    });
+
+    it('creates the employee already scoped to the caller company group', async () => {
+      const res = await request(app.getHttpServer())
+        .get(`/api/employees/${employeeAId}`)
+        .set('Authorization', `Bearer ${adminAToken}`)
+        .expect(200);
+      expect(res.body.companyGroupId).toBe(groupA.id);
+    });
+
+    it('hides the employee from a different tenant on every read/write route', async () => {
+      await request(app.getHttpServer())
+        .get(`/api/employees/${employeeAId}`)
+        .set('Authorization', `Bearer ${userB_Token}`)
+        .expect(404);
+
+      await request(app.getHttpServer())
+        .patch(`/api/employees/${employeeAId}`)
+        .set('Authorization', `Bearer ${userB_Token}`)
+        .send({ name: 'Hackeado' })
+        .expect(404);
+
+      const list = await request(app.getHttpServer())
+        .get('/api/employees')
+        .set('Authorization', `Bearer ${userB_Token}`)
+        .expect(200);
+      expect(list.body.find((e: { id: string }) => e.id === employeeAId)).toBeUndefined();
+    });
+
+    it('treats a QR badge from a different tenant as invalid, without leaking that it exists', async () => {
+      const attemptRes = await request(app.getHttpServer())
+        .post('/api/qr-validation/attempts')
+        .set('Authorization', `Bearer ${userB_Token}`)
+        .expect(201);
+      const attemptId = attemptRes.body.id;
+
+      await request(app.getHttpServer())
+        .post(`/api/qr-validation/attempts/${attemptId}/detection`)
+        .set('Authorization', `Bearer ${userB_Token}`)
+        .send({ personCount: 1 })
+        .expect(201);
+
+      const readRes = await request(app.getHttpServer())
+        .post(`/api/qr-validation/attempts/${attemptId}/reads`)
+        .set('Authorization', `Bearer ${userB_Token}`)
+        .send({ qrCode: employeeAId })
+        .expect(201);
+
+      const read = readRes.body.reads[0];
+      expect(read.result).toBe('INVALID_QR');
+      expect(read.employeeId).toBeNull();
+    });
+
+    it('validates the same QR badge normally from within its own tenant', async () => {
+      const attemptRes = await request(app.getHttpServer())
+        .post('/api/qr-validation/attempts')
+        .set('Authorization', `Bearer ${adminAToken}`)
+        .expect(201);
+      const attemptId = attemptRes.body.id;
+
+      await request(app.getHttpServer())
+        .post(`/api/qr-validation/attempts/${attemptId}/detection`)
+        .set('Authorization', `Bearer ${adminAToken}`)
+        .send({ personCount: 1 })
+        .expect(201);
+
+      const readRes = await request(app.getHttpServer())
+        .post(`/api/qr-validation/attempts/${attemptId}/reads`)
+        .set('Authorization', `Bearer ${adminAToken}`)
+        .send({ qrCode: employeeAId })
+        .expect(201);
+
+      expect(readRes.body.reads[0].result).toBe('AUTHORIZED');
+    });
+  });
+
+  describe('PetAnalysis exige login', () => {
+    it('rejects POST /pet-analysis without a token', async () => {
+      await request(app.getHttpServer()).post('/api/pet-analysis').expect(401);
     });
   });
 });

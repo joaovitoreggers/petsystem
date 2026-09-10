@@ -13,6 +13,8 @@ const AUTHORIZED_ID_2 = 'cccccccc-cccc-cccc-cccc-cccccccccccc';
 const DENIED_ID = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
 const UNKNOWN_ID = 'dddddddd-dddd-dddd-dddd-dddddddddddd';
 
+const GROUP_ID = 'gggggggg-gggg-gggg-gggg-gggggggggggg';
+
 function employee(overrides: Partial<Employee>): Employee {
   return {
     id: AUTHORIZED_ID,
@@ -20,6 +22,8 @@ function employee(overrides: Partial<Employee>): Employee {
     role: 'tecnico',
     canAccessRiskAreas: true,
     canPerformCorrectiveService: false,
+    companyGroupId: GROUP_ID,
+    branchId: null,
     createdAt: new Date(),
     ...overrides,
   };
@@ -144,5 +148,74 @@ describe('QrValidationService', () => {
     await service.recordRead(attempt.id, DENIED_ID);
 
     expect(attempt.finalResult).toBe(AccessResult.DENIED);
+  });
+
+  describe('tenant isolation', () => {
+    it('treats a badge from a different tenant as an invalid QR, never as authorized/denied', async () => {
+      employeesService.findById.mockResolvedValue(
+        employee({ id: AUTHORIZED_ID, canAccessRiskAreas: true, companyGroupId: 'other-group' }),
+      );
+      const attempt = service.startAttempt();
+      attempt.startDetection(1);
+
+      const { read } = await service.recordRead(attempt.id, AUTHORIZED_ID, {
+        role: 'porteiro',
+        companyGroupId: GROUP_ID,
+        branchId: null,
+      });
+
+      // Não vaza que o crachá existe em outro tenant — mesmo resultado de
+      // um crachá que não existe em lugar nenhum.
+      expect(read.result).toBe(AccessResult.INVALID_QR);
+      expect(read.employeeId).toBeNull();
+    });
+
+    it('accepts a badge from the same tenant normally', async () => {
+      employeesService.findById.mockResolvedValue(
+        employee({ id: AUTHORIZED_ID, canAccessRiskAreas: true, companyGroupId: GROUP_ID }),
+      );
+      const attempt = service.startAttempt();
+      attempt.startDetection(1);
+
+      const { read } = await service.recordRead(attempt.id, AUTHORIZED_ID, {
+        role: 'porteiro',
+        companyGroupId: GROUP_ID,
+        branchId: null,
+      });
+
+      expect(read.result).toBe(AccessResult.AUTHORIZED);
+    });
+
+    it('rejects a badge from a sibling branch when the reader session is branch-restricted', async () => {
+      employeesService.findById.mockResolvedValue(
+        employee({ id: AUTHORIZED_ID, canAccessRiskAreas: true, companyGroupId: GROUP_ID, branchId: 'b2' }),
+      );
+      const attempt = service.startAttempt();
+      attempt.startDetection(1);
+
+      const { read } = await service.recordRead(attempt.id, AUTHORIZED_ID, {
+        role: 'porteiro',
+        companyGroupId: GROUP_ID,
+        branchId: 'b1',
+      });
+
+      expect(read.result).toBe(AccessResult.INVALID_QR);
+    });
+
+    it('lets a platform-admin session validate a badge from any tenant', async () => {
+      employeesService.findById.mockResolvedValue(
+        employee({ id: AUTHORIZED_ID, canAccessRiskAreas: true, companyGroupId: 'other-group' }),
+      );
+      const attempt = service.startAttempt();
+      attempt.startDetection(1);
+
+      const { read } = await service.recordRead(attempt.id, AUTHORIZED_ID, {
+        role: 'platform-admin',
+        companyGroupId: null,
+        branchId: null,
+      });
+
+      expect(read.result).toBe(AccessResult.AUTHORIZED);
+    });
   });
 });
