@@ -1,14 +1,16 @@
 import { of, throwError } from 'rxjs';
 import { PetStateService } from './pet-state.service';
-import { AuthenticatedUser, LoginResult } from './services/auth-api.service';
+import { LoginResult } from './services/auth-api.service';
 
-function authenticatedUser(overrides: Partial<AuthenticatedUser>): AuthenticatedUser {
+function authenticatedUser(overrides: Partial<LoginResult['user']>): LoginResult['user'] {
   return {
     id: 'u1',
     email: 'user@petsystem.local',
     role: 'tecnico',
     companyGroupId: null,
     branchId: null,
+    companyGroupName: null,
+    branchName: null,
     ...overrides,
   };
 }
@@ -116,5 +118,85 @@ describe('PetStateService — multi-tenancy session gating', () => {
     expect(authToken.setToken).toHaveBeenCalledWith(null);
     expect(state.canManageTeam()).toBe(false);
     expect(state.isPlatformAdmin()).toBe(false);
+  });
+
+  describe('tenantLabel', () => {
+    it('is null before any login', () => {
+      const { state } = createState({ accessToken: 't', user: authenticatedUser({}) });
+      expect(state.tenantLabel()).toBeNull();
+    });
+
+    it('is just the group name for a group-wide session (no branch)', async () => {
+      const { state } = createState({
+        accessToken: 't',
+        user: authenticatedUser({
+          role: 'gestor',
+          companyGroupId: 'group-1',
+          companyGroupName: 'Lar Cooperativa Agroindustrial',
+          branchName: null,
+        }),
+      });
+      state.setLoginEmail('gestor@petsystem.local');
+      state.setLoginPassword('senha123');
+
+      await state.loginWithPassword();
+
+      expect(state.tenantLabel()).toBe('Lar Cooperativa Agroindustrial');
+    });
+
+    it('is "group · branch" for a branch-restricted session', async () => {
+      const { state } = createState({
+        accessToken: 't',
+        user: authenticatedUser({
+          role: 'tecnico',
+          companyGroupId: 'group-1',
+          branchId: 'branch-1',
+          companyGroupName: 'Lar Cooperativa Agroindustrial',
+          branchName: 'Matelândia',
+        }),
+      });
+      state.setLoginEmail('tecnico@petsystem.local');
+      state.setLoginPassword('senha123');
+
+      await state.loginWithPassword();
+
+      expect(state.tenantLabel()).toBe('Lar Cooperativa Agroindustrial · Matelândia');
+    });
+
+    it('is null for platform-admin (no group of their own)', async () => {
+      const { state } = createState({
+        accessToken: 't',
+        user: authenticatedUser({
+          role: 'platform-admin',
+          companyGroupId: null,
+          companyGroupName: null,
+        }),
+      });
+      state.setLoginEmail('platform-admin@petsystem.local');
+      state.setLoginPassword('senha123');
+
+      await state.loginWithPassword();
+
+      expect(state.tenantLabel()).toBeNull();
+    });
+
+    it('goes back to null on logout', async () => {
+      const { state } = createState({
+        accessToken: 't',
+        user: authenticatedUser({
+          role: 'gestor',
+          companyGroupId: 'group-1',
+          companyGroupName: 'Lar Cooperativa Agroindustrial',
+        }),
+      });
+      state.setLoginEmail('gestor@petsystem.local');
+      state.setLoginPassword('senha123');
+      await state.loginWithPassword();
+      expect(state.tenantLabel()).not.toBeNull();
+
+      state.logout();
+
+      expect(state.tenantLabel()).toBeNull();
+    });
   });
 });

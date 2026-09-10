@@ -659,4 +659,195 @@ describe('Multi-tenancy (integration)', () => {
       await request(app.getHttpServer()).post('/api/pet-analysis').expect(401);
     });
   });
+
+  describe('login devolve os nomes de exibição do tenant', () => {
+    it('includes companyGroupName and branchName for a branch-restricted session', async () => {
+      const groupRes = await request(app.getHttpServer())
+        .post('/api/company-groups')
+        .set('Authorization', `Bearer ${platformAdminToken}`)
+        .send({ name: `Login Names Group ${uniqueSuffix}` })
+        .expect(201);
+      const branchRes = await request(app.getHttpServer())
+        .post(`/api/company-groups/${groupRes.body.id}/branches`)
+        .set('Authorization', `Bearer ${platformAdminToken}`)
+        .send({ name: 'Sede Login Names' })
+        .expect(201);
+
+      await request(app.getHttpServer())
+        .post('/api/users')
+        .set('Authorization', `Bearer ${platformAdminToken}`)
+        .send({
+          name: 'Login Names User',
+          email: email('login-names'),
+          password: 'senha123',
+          role: 'tecnico',
+          companyGroupId: groupRes.body.id,
+          branchId: branchRes.body.id,
+        })
+        .expect(201);
+
+      const result = await login(email('login-names'));
+
+      expect(result.user.companyGroupName).toBe(groupRes.body.name);
+      expect(result.user.branchName).toBe('Sede Login Names');
+    });
+
+    it('resolves both names to null for platform-admin', async () => {
+      const result = await login(email('platform-admin'));
+
+      expect(result.user.companyGroupName).toBeNull();
+      expect(result.user.branchName).toBeNull();
+    });
+  });
+
+  describe('gerenciar grupos e filiais — renomear e excluir', () => {
+    let managedGroup: { id: string; name: string };
+    let managedBranch: { id: string; name: string };
+    let managedAdminToken: string;
+
+    beforeAll(async () => {
+      const groupRes = await request(app.getHttpServer())
+        .post('/api/company-groups')
+        .set('Authorization', `Bearer ${platformAdminToken}`)
+        .send({ name: `Managed Group ${uniqueSuffix}` })
+        .expect(201);
+      managedGroup = groupRes.body;
+
+      const branchRes = await request(app.getHttpServer())
+        .post(`/api/company-groups/${managedGroup.id}/branches`)
+        .set('Authorization', `Bearer ${platformAdminToken}`)
+        .send({ name: 'Filial Gerenciada' })
+        .expect(201);
+      managedBranch = branchRes.body;
+
+      await request(app.getHttpServer())
+        .post('/api/users')
+        .set('Authorization', `Bearer ${platformAdminToken}`)
+        .send({
+          name: 'Admin Managed',
+          email: email('managed-admin'),
+          password: 'senha123',
+          role: 'admin',
+          companyGroupId: managedGroup.id,
+        })
+        .expect(201);
+      managedAdminToken = (await login(email('managed-admin'))).accessToken;
+    });
+
+    it('lets a plain tecnico session read the branch list of their own group (relaxed access)', async () => {
+      await request(app.getHttpServer())
+        .post('/api/users')
+        .set('Authorization', `Bearer ${managedAdminToken}`)
+        .send({
+          name: 'Tecnico Managed',
+          email: email('managed-tecnico'),
+          password: 'senha123',
+          role: 'tecnico',
+        })
+        .expect(201);
+      const tecnicoToken = (await login(email('managed-tecnico'))).accessToken;
+
+      const res = await request(app.getHttpServer())
+        .get(`/api/company-groups/${managedGroup.id}/branches`)
+        .set('Authorization', `Bearer ${tecnicoToken}`)
+        .expect(200);
+
+      expect(res.body.some((b: { id: string }) => b.id === managedBranch.id)).toBe(true);
+    });
+
+    it('lets platform-admin rename the group and admin of the group rename the branch', async () => {
+      const groupRes = await request(app.getHttpServer())
+        .patch(`/api/company-groups/${managedGroup.id}`)
+        .set('Authorization', `Bearer ${platformAdminToken}`)
+        .send({ name: 'Managed Group (renomeado)' })
+        .expect(200);
+      expect(groupRes.body.name).toBe('Managed Group (renomeado)');
+
+      const branchRes = await request(app.getHttpServer())
+        .patch(`/api/company-groups/${managedGroup.id}/branches/${managedBranch.id}`)
+        .set('Authorization', `Bearer ${managedAdminToken}`)
+        .send({ name: 'Filial Gerenciada (renomeada)' })
+        .expect(200);
+      expect(branchRes.body.name).toBe('Filial Gerenciada (renomeada)');
+    });
+
+    it('blocks deleting the branch while it still has a user linked to it', async () => {
+      await request(app.getHttpServer())
+        .post('/api/users')
+        .set('Authorization', `Bearer ${managedAdminToken}`)
+        .send({
+          name: 'Usuário Vinculado',
+          email: email('branch-blocker'),
+          password: 'senha123',
+          role: 'tecnico',
+          branchId: managedBranch.id,
+        })
+        .expect(201);
+
+      await request(app.getHttpServer())
+        .delete(`/api/company-groups/${managedGroup.id}/branches/${managedBranch.id}`)
+        .set('Authorization', `Bearer ${platformAdminToken}`)
+        .expect(409);
+    });
+
+    it('blocks deleting the group while it still has a branch', async () => {
+      await request(app.getHttpServer())
+        .delete(`/api/company-groups/${managedGroup.id}`)
+        .set('Authorization', `Bearer ${platformAdminToken}`)
+        .expect(409);
+    });
+
+    it('rejects a gestor trying to rename or delete a branch (needs admin)', async () => {
+      await request(app.getHttpServer())
+        .post('/api/users')
+        .set('Authorization', `Bearer ${managedAdminToken}`)
+        .send({
+          name: 'Gestor Managed',
+          email: email('managed-gestor'),
+          password: 'senha123',
+          role: 'gestor',
+        })
+        .expect(201);
+      const gestorToken = (await login(email('managed-gestor'))).accessToken;
+
+      await request(app.getHttpServer())
+        .patch(`/api/company-groups/${managedGroup.id}/branches/${managedBranch.id}`)
+        .set('Authorization', `Bearer ${gestorToken}`)
+        .send({ name: 'Não deveria funcionar' })
+        .expect(403);
+
+      await request(app.getHttpServer())
+        .delete(`/api/company-groups/${managedGroup.id}/branches/${managedBranch.id}`)
+        .set('Authorization', `Bearer ${gestorToken}`)
+        .expect(403);
+    });
+
+    it('deletes an empty branch and then an empty group once nothing references them', async () => {
+      const emptyGroupRes = await request(app.getHttpServer())
+        .post('/api/company-groups')
+        .set('Authorization', `Bearer ${platformAdminToken}`)
+        .send({ name: `Empty Group ${uniqueSuffix}` })
+        .expect(201);
+      const emptyBranchRes = await request(app.getHttpServer())
+        .post(`/api/company-groups/${emptyGroupRes.body.id}/branches`)
+        .set('Authorization', `Bearer ${platformAdminToken}`)
+        .send({ name: 'Filial Vazia' })
+        .expect(201);
+
+      await request(app.getHttpServer())
+        .delete(`/api/company-groups/${emptyGroupRes.body.id}/branches/${emptyBranchRes.body.id}`)
+        .set('Authorization', `Bearer ${platformAdminToken}`)
+        .expect(204);
+
+      await request(app.getHttpServer())
+        .delete(`/api/company-groups/${emptyGroupRes.body.id}`)
+        .set('Authorization', `Bearer ${platformAdminToken}`)
+        .expect(204);
+
+      await request(app.getHttpServer())
+        .get(`/api/company-groups/${emptyGroupRes.body.id}/branches`)
+        .set('Authorization', `Bearer ${platformAdminToken}`)
+        .expect(404);
+    });
+  });
 });
