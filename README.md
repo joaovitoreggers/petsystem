@@ -279,9 +279,11 @@ contar como uma leitura distinta.
 
 ## CRUD de usuários (API)
 
-Contas de login (porteiro/operador) — `name`, `email`, `password`, `role`.
-Todas as rotas abaixo exigem o JWT (`Authorization: Bearer <token>`); a tela
-`/users` no front-end (mesmo estilo simples do login/crachás, provisório) usa
+Contas de login — `name`, `email`, `password`, `role`. Todas as rotas exigem
+o JWT (`Authorization: Bearer <token>`); criar/editar/excluir exigem além
+disso o papel `admin`/`gestor` (`RolesGuard`) — só listar/buscar (`GET`) fica
+liberado para qualquer conta autenticada. A aba **Usuários** dentro do
+`/pet` (visível só com sessão admin/gestor — ver a seção seguinte) usa
 exatamente essa API.
 
 | Rota | Descrição |
@@ -338,12 +340,14 @@ como mock no front-end.
 | `PATCH /api/team-members/:registration` | Atualiza NRs, vínculo, cargo, empresa ou unidade — **exige** `JwtAuthGuard` + papel `admin`/`gestor` (`RolesGuard`); `404` se a matrícula não existir |
 | `DELETE /api/team-members/:registration` | Remove o cadastro — mesma exigência de papel; `404` se não existir |
 
-Editar/excluir são as únicas rotas de `/pet` que exigem login de verdade: dão
-acesso a dado crítico (validade de NR, vínculo do funcionário), então o
-front-end só mostra os botões de editar/excluir na tela **Funcionários**
-quando a sessão atual (`PetStateService.session()`) tem papel `admin` ou
-`gestor` — a checagem de verdade, porém, é o `RolesGuard` no back-end; a UI
-só evita oferecer um botão que a API recusaria.
+Editar/excluir são as únicas rotas de PET/funcionário que exigem login de
+verdade: dão acesso a dado crítico (validade de NR, vínculo do funcionário),
+então o front-end só mostra os botões de editar/excluir na tela
+**Funcionários** quando a sessão atual (`PetStateService.session()`) tem
+papel `admin` ou `gestor` — a checagem de verdade, porém, é o `RolesGuard`
+no back-end; a UI só evita oferecer um botão que a API recusaria. A mesma
+sessão libera a aba **Usuários** (cadastro de contas de login — ver "CRUD de
+usuários" acima), que fica fora da navegação para quem não tem esse papel.
 
 Áreas de risco, checklist, limites de gás, os crachás simulados no passo de
 QR do assistente e o histórico de 30 dias do painel do gestor continuam como
@@ -373,7 +377,8 @@ relatório — o resto do app funciona normalmente sem essa chave.
   protegida) — `apps/backend/src/app/auth/strategies`
 - **Guard**: `JwtAuthGuard` protegendo as rotas de `QrValidationController`;
   `RolesGuard` (com o decorator `@Roles(...)`, lido via `Reflector`)
-  protegendo `PATCH`/`DELETE /api/team-members/:registration` por papel
+  protegendo `PATCH`/`DELETE /api/team-members/:registration` e
+  `POST`/`PATCH`/`DELETE /api/users` por papel (`admin`/`gestor`)
 - **Repository**: `IUserRepository`, `IEmployeeRepository` e
   `IAccessEventRepository`, com implementações TypeORM injetadas por token —
   desacopla o domínio do ORM

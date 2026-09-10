@@ -30,7 +30,7 @@ import { TeamMembersApiService, UpdateTeamMemberPayload } from './services/team-
 import { AuthApiService, AuthenticatedUser } from './services/auth-api.service';
 import { AuthTokenService } from './services/auth-token.service';
 
-export type PortalRole = 'tecnico' | 'gestor' | 'equipe';
+export type PortalRole = 'tecnico' | 'gestor' | 'equipe' | 'usuarios';
 export type TechnicianScreen =
   'login' | 'home' | 'nova' | 'emitida' | 'detalhe';
 export type HomeTab = 'abertas' | 'fechadas';
@@ -355,10 +355,11 @@ export class PetStateService {
       !this.loginLoading(),
   );
 
-  // Edição/exclusão de funcionários mexe em NRs e vínculo — exige login de
-  // verdade (não o facial, que é simulação) com papel de admin ou gestor.
-  // O back-end aplica a mesma regra (RolesGuard); isto é só para a UI não
-  // oferecer um botão que a API vai recusar.
+  // Edição/exclusão de funcionários (NRs, vínculo) e o módulo inteiro de
+  // Usuários (login, papel de acesso) exigem login de verdade (não o
+  // facial, que é simulação) com papel de admin ou gestor. O back-end
+  // aplica a mesma regra (RolesGuard em cada rota); isto é só para a UI
+  // não oferecer um botão/aba que a API vai recusar.
   readonly canManageTeam = computed(() => {
     const role = this.session()?.user.role;
     return role === 'admin' || role === 'gestor';

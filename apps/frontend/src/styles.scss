@@ -438,6 +438,34 @@ img {
   border-color: #a52a2a;
 }
 
+/* Ícone de ação de linha de tabela (editar/excluir) — usado em Funcionários
+   e Usuários. */
+.btn-icon-ghost {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md, 6px);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.btn-icon-ghost:hover:not(:disabled) {
+  background: var(--surface-2);
+  color: var(--text-strong, var(--text-muted));
+}
+.btn-icon-ghost:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.btn-icon-ghost--danger:hover:not(:disabled) {
+  background: var(--status-bad-bg);
+  color: var(--status-bad);
+  border-color: var(--status-bad);
+}
+
 .btn-icon {
   width: 38px;
   min-width: 38px;
