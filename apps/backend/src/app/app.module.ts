@@ -14,6 +14,9 @@ import { WorkPermitsModule } from './work-permits/work-permits.module';
 import { TeamMember } from './team-members/entities/team-member.entity';
 import { TeamMembersModule } from './team-members/team-members.module';
 import { PetAnalysisModule } from './pet-analysis/pet-analysis.module';
+import { CompanyGroup } from './tenancy/entities/company-group.entity';
+import { Branch } from './tenancy/entities/branch.entity';
+import { TenancyModule } from './tenancy/tenancy.module';
 
 @Module({
   imports: [
@@ -28,7 +31,7 @@ import { PetAnalysisModule } from './pet-analysis/pet-analysis.module';
         username: configService.get<string>('DB_USERNAME', 'petsystem'),
         password: configService.get<string>('DB_PASSWORD', 'petsystem'),
         database: configService.get<string>('DB_NAME', 'petsystem'),
-        entities: [User, Employee, AccessEvent, WorkPermit, TeamMember],
+        entities: [User, Employee, AccessEvent, WorkPermit, TeamMember, CompanyGroup, Branch],
         synchronize: true,
       }),
     }),
@@ -39,6 +42,7 @@ import { PetAnalysisModule } from './pet-analysis/pet-analysis.module';
     WorkPermitsModule,
     TeamMembersModule,
     PetAnalysisModule,
+    TenancyModule,
   ],
   controllers: [AppController],
 })
