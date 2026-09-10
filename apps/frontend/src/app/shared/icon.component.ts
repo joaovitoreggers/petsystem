@@ -27,7 +27,9 @@ export type IconName =
   | 'camera'
   | 'qr'
   | 'logout'
-  | 'search';
+  | 'search'
+  | 'pencil'
+  | 'trash';
 
 @Component({
   selector: 'app-icon',
@@ -145,6 +147,15 @@ export type IconName =
         @case ('search') {
           <circle cx="11" cy="11" r="6.4" />
           <path d="m20 20-4.4-4.4" />
+        }
+        @case ('pencil') {
+          <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+        }
+        @case ('trash') {
+          <path d="M3.5 6h17" />
+          <path d="M18.5 6v14a2 2 0 0 1-2 2h-9a2 2 0 0 1-2-2V6" />
+          <path d="M8.5 6V4a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v2" />
+          <path d="M10.2 11v6M13.8 11v6" />
         }
       }
     </svg>

@@ -26,8 +26,9 @@ import {
   stepsFor,
 } from './pet-mock-data';
 import { WorkPermitsApiService } from './services/work-permits-api.service';
-import { TeamMembersApiService } from './services/team-members-api.service';
+import { TeamMembersApiService, UpdateTeamMemberPayload } from './services/team-members-api.service';
 import { AuthApiService, AuthenticatedUser } from './services/auth-api.service';
+import { AuthTokenService } from './services/auth-token.service';
 
 export type PortalRole = 'tecnico' | 'gestor' | 'equipe';
 export type TechnicianScreen =
@@ -164,6 +165,7 @@ export class PetStateService {
     private readonly workPermitsApi: WorkPermitsApiService,
     private readonly teamMembersApi: TeamMembersApiService,
     private readonly authApi: AuthApiService,
+    private readonly authToken: AuthTokenService,
   ) {
     this.loadFromBackend();
   }
@@ -190,6 +192,24 @@ export class PetStateService {
     } catch {
       this.teamMembers.update((list) => [...list, member]);
     }
+  }
+
+  /**
+   * Exige sessão real (ver canManageTeam) — o back-end recusa com 401/403
+   * sem o JWT de admin/gestor. Erros ficam para o chamador tratar; ao
+   * contrário de registerTeamMember(), não há fallback local aqui, porque
+   * "editar sem persistir" esconderia do usuário que a mudança não pegou.
+   */
+  async updateTeamMember(registration: string, patch: UpdateTeamMemberPayload): Promise<void> {
+    const updated = await firstValueFrom(this.teamMembersApi.update(registration, patch));
+    this.teamMembers.update((list) =>
+      list.map((m) => (m.registration === registration ? updated : m)),
+    );
+  }
+
+  async deleteTeamMember(registration: string): Promise<void> {
+    await firstValueFrom(this.teamMembersApi.remove(registration));
+    this.teamMembers.update((list) => list.filter((m) => m.registration !== registration));
   }
 
   // ── Técnico: navegação e autenticação ──────────────────────────────
@@ -335,6 +355,15 @@ export class PetStateService {
       !this.loginLoading(),
   );
 
+  // Edição/exclusão de funcionários mexe em NRs e vínculo — exige login de
+  // verdade (não o facial, que é simulação) com papel de admin ou gestor.
+  // O back-end aplica a mesma regra (RolesGuard); isto é só para a UI não
+  // oferecer um botão que a API vai recusar.
+  readonly canManageTeam = computed(() => {
+    const role = this.session()?.user.role;
+    return role === 'admin' || role === 'gestor';
+  });
+
   setAuthMethod(method: AuthMethod): void {
     this.authMethod.set(method);
     this.loginError.set(null);
@@ -357,6 +386,7 @@ export class PetStateService {
         this.authApi.login(this.loginEmail().trim(), this.loginPassword()),
       );
       this.session.set(result);
+      this.authToken.setToken(result.accessToken);
       this.loginPassword.set('');
       this.screen.set('home');
     } catch (err) {
@@ -373,6 +403,7 @@ export class PetStateService {
     this.screen.set('login');
     this.authPhase.set('idle');
     this.session.set(null);
+    this.authToken.setToken(null);
     this.loginEmail.set('');
     this.loginPassword.set('');
     this.loginError.set(null);

@@ -148,6 +148,33 @@
   color: var(--text-muted);
 }
 
+.team__actions {
+  display: flex;
+  gap: var(--space-2);
+  white-space: nowrap;
+}
+.btn-icon-ghost {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md, 6px);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.btn-icon-ghost:hover {
+  background: var(--surface-2);
+  color: var(--text-strong, var(--text-muted));
+}
+.btn-icon-ghost--danger:hover {
+  background: var(--status-bad-bg);
+  color: var(--status-bad);
+  border-color: var(--status-bad);
+}
+
 .team__docs {
   display: flex;
   flex-direction: column;
@@ -189,9 +216,19 @@
   margin-top: var(--space-2);
 }
 
-/* ── Diálogo de cadastro ───────────────────────────────────────────── */
+/* ── Diálogo de cadastro/edição ───────────────────────────────────── */
 .team__dialog {
   width: min(720px, 100%);
+}
+.team__delete-dialog {
+  width: min(420px, 100%);
+}
+.team__form-error {
+  font-size: var(--text-sm);
+  color: var(--status-bad);
+  background: var(--status-bad-bg);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md, 6px);
 }
 .team__form-row {
   display: flex;

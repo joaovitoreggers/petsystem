@@ -6,6 +6,10 @@ import { TeamMember } from '../pet-mock-data';
 
 export type CreateTeamMemberPayload = TeamMember;
 
+export type UpdateTeamMemberPayload = Partial<
+  Pick<TeamMember, 'name' | 'role' | 'company' | 'unit' | 'isThirdParty' | 'documents'>
+>;
+
 @Injectable({ providedIn: 'root' })
 export class TeamMembersApiService {
   private readonly baseUrl = `${environment.apiUrl}/team-members`;
@@ -18,5 +22,13 @@ export class TeamMembersApiService {
 
   create(payload: CreateTeamMemberPayload): Observable<TeamMember> {
     return this.http.post<TeamMember>(this.baseUrl, payload);
+  }
+
+  update(registration: string, payload: UpdateTeamMemberPayload): Observable<TeamMember> {
+    return this.http.patch<TeamMember>(`${this.baseUrl}/${registration}`, payload);
+  }
+
+  remove(registration: string): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/${registration}`);
   }
 }

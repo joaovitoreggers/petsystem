@@ -74,12 +74,15 @@
     <table class="table table--cards-wide">
       <thead>
         <tr>
-          <th style="width: 26%">Funcionário</th>
+          <th style="width: 24%">Funcionário</th>
           <th>Vínculo</th>
           <th>Unidade</th>
-          <th style="width: 34%">Normas e vencimentos</th>
+          <th style="width: 30%">Normas e vencimentos</th>
           <th>Próximo vencimento</th>
           <th>Situação</th>
+          @if (state.canManageTeam()) {
+            <th style="width: 90px">Ações</th>
+          }
         </tr>
       </thead>
       <tbody>
@@ -137,6 +140,26 @@
                 {{ row.situationLabel }}
               </span>
             </td>
+            @if (state.canManageTeam()) {
+              <td data-label="Ações" class="team__actions">
+                <button
+                  type="button"
+                  class="btn-icon-ghost"
+                  title="Editar funcionário"
+                  (click)="openEditModal(row.member)"
+                >
+                  <app-icon name="pencil" [size]="16" />
+                </button>
+                <button
+                  type="button"
+                  class="btn-icon-ghost btn-icon-ghost--danger"
+                  title="Excluir funcionário"
+                  (click)="openDeleteDialog(row.member)"
+                >
+                  <app-icon name="trash" [size]="16" />
+                </button>
+              </td>
+            }
           </tr>
         }
       </tbody>
@@ -162,10 +185,13 @@
 @if (modalOpen()) {
   <div class="dialog-backdrop" (click)="closeModal()">
     <div class="dialog team__dialog" (click)="$event.stopPropagation()">
-      <div class="dialog-title">Cadastrar funcionário</div>
+      <div class="dialog-title">{{ dialogTitle() }}</div>
       <div class="dialog-body">
-        O cadastro gera o QR do crachá e passa a valer na validação de entrada
-        em campo.
+        @if (dialogMode() === 'edit') {
+          Atualize os dados, o vínculo e a validade das normas — a matrícula não muda.
+        } @else {
+          O cadastro gera o QR do crachá e passa a valer na validação de entrada em campo.
+        }
       </div>
 
       <div class="team__form-row">
@@ -184,6 +210,7 @@
             class="input"
             placeholder="05xxx"
             [value]="cadRegistration()"
+            [disabled]="dialogMode() === 'edit'"
             (input)="cadRegistration.set($any($event.target).value)"
           />
         </div>
@@ -266,6 +293,9 @@
       </div>
 
       <div class="team__summary">{{ cadSummary() }}</div>
+      @if (saveError()) {
+        <div class="team__form-error">{{ saveError() }}</div>
+      }
       <div class="dialog-actions">
         <button type="button" class="btn btn-secondary" (click)="closeModal()">
           Cancelar
@@ -276,7 +306,40 @@
           [disabled]="cadDisabled()"
           (click)="save()"
         >
-          Cadastrar e gerar QR
+          {{ dialogActionLabel() }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (deleteTarget(); as target) {
+  <div class="dialog-backdrop" (click)="closeDeleteDialog()">
+    <div class="dialog team__delete-dialog" (click)="$event.stopPropagation()">
+      <div class="dialog-title">Excluir funcionário</div>
+      <div class="dialog-body">
+        Tem certeza que quer excluir <strong>{{ target.name }}</strong> (mat.
+        {{ target.registration }})? O crachá dele deixa de validar entrada em
+        campo imediatamente. Essa ação não pode ser desfeita.
+      </div>
+      @if (deleteError()) {
+        <div class="team__form-error">{{ deleteError() }}</div>
+      }
+      <div class="dialog-actions">
+        <button
+          type="button"
+          class="btn btn-secondary"
+          (click)="closeDeleteDialog()"
+        >
+          Cancelar
+        </button>
+        <button
+          type="button"
+          class="btn btn-danger"
+          [disabled]="deleting()"
+          (click)="confirmDelete()"
+        >
+          {{ deleting() ? 'Excluindo…' : 'Excluir definitivamente' }}
         </button>
       </div>
     </div>
