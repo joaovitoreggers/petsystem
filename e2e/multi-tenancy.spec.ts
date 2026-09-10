@@ -15,6 +15,12 @@ async function loginAs(page: Page, email: string): Promise<void> {
   await page.getByPlaceholder('nome@petsystem.local').fill(email);
   await page.getByPlaceholder('Sua senha').fill(PASSWORD);
   await page.getByRole('button', { name: 'Entrar' }).click();
+  // Todo primeiro login por senha num aparelho novo (sem rosto cadastrado
+  // ainda, como é o caso de todo contexto novo do Playwright) oferece
+  // habilitar o reconhecimento facial antes de seguir — ver
+  // e2e/reconhecimento-facial.spec.ts. Este arquivo não testa esse fluxo,
+  // então só dispensa o convite pra continuar como antes.
+  await page.getByRole('button', { name: 'Agora não' }).click();
   await expect(page.getByRole('button', { name: 'Sair' })).toBeVisible();
 }
 
