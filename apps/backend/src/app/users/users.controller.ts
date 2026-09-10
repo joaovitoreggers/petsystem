@@ -55,8 +55,11 @@ export class UsersController {
   }
 
   @Get(':id')
-  async findOne(@Param('id') id: string): Promise<UserSummaryDto> {
-    const user = await this.usersService.findById(id);
+  async findOne(
+    @Param('id') id: string,
+    @CurrentUser() currentUser: AuthenticatedUser,
+  ): Promise<UserSummaryDto> {
+    const user = await this.usersService.findById(id, scopeFromUser(currentUser));
     if (!user) {
       throw new NotFoundException('Usuário não encontrado');
     }
@@ -71,9 +74,7 @@ export class UsersController {
     @Body() dto: CreateUserDto,
     @CurrentUser() currentUser: AuthenticatedUser,
   ): Promise<UserSummaryDto> {
-    const user = await this.usersService.create(dto, {
-      companyGroupId: currentUser.companyGroupId,
-    });
+    const user = await this.usersService.create(dto, scopeFromUser(currentUser));
     return toSummary(user);
   }
 
@@ -85,9 +86,7 @@ export class UsersController {
     @Body() dto: UpdateUserDto,
     @CurrentUser() currentUser: AuthenticatedUser,
   ): Promise<UserSummaryDto> {
-    const user = await this.usersService.update(id, dto, {
-      companyGroupId: currentUser.companyGroupId,
-    });
+    const user = await this.usersService.update(id, dto, scopeFromUser(currentUser));
     return toSummary(user);
   }
 
@@ -102,6 +101,6 @@ export class UsersController {
     if (id === currentUser.id) {
       throw new ConflictException('Você não pode excluir seu próprio usuário');
     }
-    await this.usersService.delete(id);
+    await this.usersService.delete(id, scopeFromUser(currentUser));
   }
 }
