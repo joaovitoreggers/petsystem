@@ -219,9 +219,8 @@ export class PetStateService {
   readonly badgeCycleIndex = signal(0);
   // Alternativa à leitura de crachá: buscar o funcionário já cadastrado
   // pelo nome ou matrícula e selecioná-lo — cai no mesmo `currentBadge`
-  // (convertido pelo mesmo formato), então o preview e os botões "+
-  // Equipe/Vigia/Resgatista" continuam funcionando iguais para as duas
-  // origens.
+  // (convertido pelo mesmo formato), então o preview e o botão de confirmar
+  // continuam funcionando iguais para as duas origens.
   readonly employeeSearchQuery = signal('');
   readonly employeeSearchResults = computed(() => {
     const q = this.employeeSearchQuery().trim().toLowerCase();
@@ -236,6 +235,10 @@ export class PetStateService {
   // pela mesma leitura de crachá usada para a equipe.
   readonly vigiaTeam = signal<Badge[]>([]);
   readonly resgateTeam = signal<Badge[]>([]);
+  // Qual dos 3 campos (técnico/vigia/socorrista) está com o painel de
+  // adicionar aberto — nunca mais de um por vez, então basta um único
+  // `currentBadge`/busca compartilhados entre eles.
+  readonly addingRole = signal<PetTeamRole | null>(null);
   readonly fireWatchRounds = signal<FireWatchRound[]>(emptyFireWatchRounds());
   readonly technicianSigned = signal(false);
   readonly executorSigned = signal(false);
@@ -395,6 +398,7 @@ export class PetStateService {
     this.currentBadge.set(null);
     this.badgeCycleIndex.set(0);
     this.employeeSearchQuery.set('');
+    this.addingRole.set(null);
     this.authorizedTeam.set([]);
     this.vigiaTeam.set([]);
     this.resgateTeam.set([]);
@@ -473,16 +477,30 @@ export class PetStateService {
     this.employeeSearchQuery.set('');
   }
 
-  addBadgeToTeam(): void {
-    this.addBadgeTo(this.authorizedTeam, 'na equipe autorizada');
+  teamForRole(role: PetTeamRole): Badge[] {
+    if (role === 'equipe') return this.authorizedTeam();
+    if (role === 'vigia') return this.vigiaTeam();
+    return this.resgateTeam();
   }
 
-  addBadgeToVigia(): void {
-    this.addBadgeTo(this.vigiaTeam, 'como vigia');
+  private targetForRole(role: PetTeamRole): WritableSignal<Badge[]> {
+    if (role === 'equipe') return this.authorizedTeam;
+    if (role === 'vigia') return this.vigiaTeam;
+    return this.resgateTeam;
   }
 
-  addBadgeToResgate(): void {
-    this.addBadgeTo(this.resgateTeam, 'como resgatista');
+  toggleAddPanel(role: PetTeamRole): void {
+    this.addingRole.set(this.addingRole() === role ? null : role);
+    this.currentBadge.set(null);
+    this.employeeSearchQuery.set('');
+  }
+
+  confirmAddCurrentBadge(): void {
+    const role = this.addingRole();
+    if (!role) return;
+    const roleLabel = role === 'equipe' ? 'na equipe autorizada' : role === 'vigia' ? 'como vigia' : 'como resgatista';
+    this.addBadgeTo(this.targetForRole(role), roleLabel);
+    this.addingRole.set(null);
   }
 
   private addBadgeTo(target: WritableSignal<Badge[]>, roleLabel: string): void {

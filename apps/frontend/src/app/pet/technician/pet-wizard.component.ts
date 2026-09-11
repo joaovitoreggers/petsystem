@@ -8,6 +8,7 @@ import {
   GAS_LIMITS,
   GasKey,
   MOCK_BADGES,
+  PetTeamRole,
   RISK_AREAS,
   RiskAreaId,
   STEP_NAME,
@@ -24,6 +25,18 @@ interface GaugeView {
   color: string;
   limitText: string;
 }
+
+interface TeamRoleField {
+  id: PetTeamRole;
+  label: string;
+  emptyLabel: string;
+}
+
+const TEAM_ROLE_FIELDS: TeamRoleField[] = [
+  { id: 'equipe', label: 'Técnico', emptyLabel: 'Nenhum técnico adicionado ainda.' },
+  { id: 'vigia', label: 'Vigia', emptyLabel: 'Nenhum vigia identificado ainda.' },
+  { id: 'resgate', label: 'Socorrista', emptyLabel: 'Nenhum socorrista identificado ainda.' },
+];
 
 type WizardFieldName = 'descricao' | 'tipo' | 'empresa' | 'telefone' | 'inicio' | 'fim' | 'local' | 'unidade';
 
@@ -192,6 +205,7 @@ export class PetWizardComponent {
     status === 'ok' ? 'var(--status-ok)' : status === 'prox' ? 'var(--status-warn)' : 'var(--status-bad)';
 
   readonly hasMoreBadgesToScan = computed(() => this.state.badgeCycleIndex() < MOCK_BADGES.length * 2);
+  readonly teamRoleFields = TEAM_ROLE_FIELDS;
 
   onEmployeeSearchChange(event: Event): void {
     this.state.setEmployeeSearchQuery((event.target as HTMLInputElement).value);
@@ -201,14 +215,12 @@ export class PetWizardComponent {
     this.state.selectEmployeeFromSearch(member);
   }
 
-  addToTeam(): void {
-    this.state.addBadgeToTeam();
+  toggleAddPanel(role: PetTeamRole): void {
+    this.state.toggleAddPanel(role);
   }
-  addToVigia(): void {
-    this.state.addBadgeToVigia();
-  }
-  addToResgate(): void {
-    this.state.addBadgeToResgate();
+
+  confirmAdd(): void {
+    this.state.confirmAddCurrentBadge();
   }
 
   toggleArea(id: RiskAreaId): void {

@@ -221,127 +221,110 @@
 
       @case ('qr') {
         <div class="step step--qr">
-          <input
-            class="input"
-            type="text"
-            placeholder="Buscar funcionário por nome ou matrícula…"
-            [value]="state.employeeSearchQuery()"
-            (input)="onEmployeeSearchChange($event)"
-          />
-          @if (state.employeeSearchResults().length > 0) {
-            <div class="employee-search__results">
-              @for (m of state.employeeSearchResults(); track m.registration) {
-                <button type="button" class="employee-search__result" (click)="selectEmployee(m)">
-                  <span>{{ m.name }}</span>
-                  <span class="employee-search__result-meta">mat. {{ m.registration }} · {{ m.role }}</span>
+          @for (field of teamRoleFields; track field.id) {
+            <div class="role-field">
+              <div class="role-field__head">
+                <span class="role-field__label">{{ field.label }} · {{ state.teamForRole(field.id).length }}</span>
+                <button
+                  type="button"
+                  class="btn wizard__back"
+                  [class.btn-primary]="state.addingRole() === field.id"
+                  (click)="toggleAddPanel(field.id)"
+                >
+                  {{ state.addingRole() === field.id ? '×' : '+' }}
                 </button>
+              </div>
+
+              @for (member of state.teamForRole(field.id); track member.registration) {
+                <div class="team-row">
+                  <span class="team-row__initials">{{ member.name.charAt(0) }}{{ member.name.split(' ')[1]?.charAt(0) }}</span>
+                  <span>{{ member.name }}</span>
+                  @if (state.badgeExpiredDocs(member).length > 0) {
+                    <span class="team-row__status team-row__status--critical">liberado com ressalva</span>
+                  } @else {
+                    <span class="team-row__status">liberado</span>
+                  }
+                </div>
+              } @empty {
+                <div class="team-row__empty">{{ field.emptyLabel }}</div>
               }
-            </div>
-          } @else if (state.employeeSearchQuery().trim().length > 0) {
-            <div class="team-row__empty">Nenhum funcionário encontrado.</div>
-          }
 
-          <div class="step-hint step-hint--center">ou leia o crachá</div>
+              @if (state.addingRole() === field.id) {
+                <div class="role-field__panel">
+                  <input
+                    class="input"
+                    type="text"
+                    placeholder="Buscar funcionário por nome ou matrícula…"
+                    [value]="state.employeeSearchQuery()"
+                    (input)="onEmployeeSearchChange($event)"
+                  />
+                  @if (state.employeeSearchResults().length > 0) {
+                    <div class="employee-search__results">
+                      @for (m of state.employeeSearchResults(); track m.registration) {
+                        <button type="button" class="team-row employee-search__result" (click)="selectEmployee(m)">
+                          <span>{{ m.name }}</span>
+                          <span class="employee-search__result-meta">mat. {{ m.registration }} · {{ m.role }}</span>
+                        </button>
+                      }
+                    </div>
+                  } @else if (state.employeeSearchQuery().trim().length > 0) {
+                    <div class="team-row__empty">Nenhum funcionário encontrado.</div>
+                  }
 
-          <div class="qr-scan blueprint">
-            <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-            <div class="qr-scan__frame"></div>
-            <div class="qr-scan__sweep"></div>
-            <div class="qr-scan__caption">aponte para o QR do crachá</div>
-          </div>
-          <button type="button" class="btn btn-primary btn-block qr-scan__btn" (click)="state.scanBadge()">
-            Simular leitura do crachá
-          </button>
+                  <div class="step-hint step-hint--center">ou leia o crachá</div>
 
-          @if (state.currentBadge(); as badge) {
-            <div class="badge-card blueprint">
-              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-              <div class="badge-card__head">
-                <div class="badge-card__name">{{ badge.name }}</div>
-                <div class="badge-card__mat">mat. {{ badge.registration }}</div>
-              </div>
-              <div class="badge-card__role">{{ badge.role }} · {{ badge.company }}</div>
-              <div class="badge-card__items">
-                @for (item of badge.items; track item.name) {
-                  <div class="badge-card__item">
-                    <span [style.color]="badgeStatusColor(item.status)">{{ badgeStatusLabel(item.status) }}</span>
-                    <span>{{ item.name }}</span>
-                    <span class="badge-card__item-val" [style.color]="badgeStatusColor(item.status)">{{ item.value }}</span>
+                  <div class="qr-scan blueprint">
+                    <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                    <div class="qr-scan__frame"></div>
+                    <div class="qr-scan__sweep"></div>
+                    <div class="qr-scan__caption">aponte para o QR do crachá</div>
                   </div>
-                }
-              </div>
-              <div
-                class="badge-card__verdict"
-                [class.badge-card__verdict--bad]="!state.badgeIsCleared(badge)"
-              >
-                {{ state.badgeIsCleared(badge) ? 'LIBERADO PARA A ATIVIDADE' : 'ALERTA CRÍTICO · DOCUMENTAÇÃO VENCIDA' }}
-              </div>
-              @if (!state.badgeIsCleared(badge)) {
-                <div class="badge-card__warning">
-                  <span class="badge-card__warning-icon">⚠</span>
-                  <span>
-                    Entrada permitida mediante ciência do técnico responsável, mesmo com
-                    {{ state.badgeExpiredDocs(badge).length > 1 ? 'os documentos' : 'o documento' }}
-                    vencid{{ state.badgeExpiredDocs(badge).length > 1 ? 'os' : 'o' }} listad{{ state.badgeExpiredDocs(badge).length > 1 ? 'os' : 'o' }} acima. Este evento será registrado no histórico da PET.
-                  </span>
+                  <button type="button" class="btn btn-primary btn-block qr-scan__btn" (click)="state.scanBadge()">
+                    Simular leitura do crachá
+                  </button>
+
+                  @if (state.currentBadge(); as badge) {
+                    <div class="badge-card blueprint">
+                      <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                      <div class="badge-card__head">
+                        <div class="badge-card__name">{{ badge.name }}</div>
+                        <div class="badge-card__mat">mat. {{ badge.registration }}</div>
+                      </div>
+                      <div class="badge-card__role">{{ badge.role }} · {{ badge.company }}</div>
+                      <div class="badge-card__items">
+                        @for (item of badge.items; track item.name) {
+                          <div class="badge-card__item">
+                            <span [style.color]="badgeStatusColor(item.status)">{{ badgeStatusLabel(item.status) }}</span>
+                            <span>{{ item.name }}</span>
+                            <span class="badge-card__item-val" [style.color]="badgeStatusColor(item.status)">{{ item.value }}</span>
+                          </div>
+                        }
+                      </div>
+                      <div
+                        class="badge-card__verdict"
+                        [class.badge-card__verdict--bad]="!state.badgeIsCleared(badge)"
+                      >
+                        {{ state.badgeIsCleared(badge) ? 'LIBERADO PARA A ATIVIDADE' : 'ALERTA CRÍTICO · DOCUMENTAÇÃO VENCIDA' }}
+                      </div>
+                      @if (!state.badgeIsCleared(badge)) {
+                        <div class="badge-card__warning">
+                          <span class="badge-card__warning-icon">⚠</span>
+                          <span>
+                            Entrada permitida mediante ciência do técnico responsável, mesmo com
+                            {{ state.badgeExpiredDocs(badge).length > 1 ? 'os documentos' : 'o documento' }}
+                            vencid{{ state.badgeExpiredDocs(badge).length > 1 ? 'os' : 'o' }} listad{{ state.badgeExpiredDocs(badge).length > 1 ? 'os' : 'o' }} acima. Este evento será registrado no histórico da PET.
+                          </span>
+                        </div>
+                      }
+                      <button type="button" class="btn btn-primary btn-block" (click)="confirmAdd()">
+                        Adicionar como {{ field.label.toLowerCase() }}
+                      </button>
+                    </div>
+                  }
                 </div>
               }
-              <div class="badge-card__actions">
-                <button type="button" class="btn btn-secondary" (click)="addToTeam()">+ Equipe</button>
-                <button type="button" class="btn btn-secondary" (click)="addToVigia()">+ Vigia</button>
-                <button type="button" class="btn btn-secondary" (click)="addToResgate()">+ Resgatista</button>
-              </div>
             </div>
           }
-
-          <div>
-            <div class="section-kicker">Equipe autorizada · {{ state.authorizedTeam().length }}</div>
-            @for (member of state.authorizedTeam(); track member.registration) {
-              <div class="team-row">
-                <span class="team-row__initials">{{ member.name.charAt(0) }}{{ member.name.split(' ')[1]?.charAt(0) }}</span>
-                <span>{{ member.name }}</span>
-                @if (state.badgeExpiredDocs(member).length > 0) {
-                  <span class="team-row__status team-row__status--critical">liberado com ressalva</span>
-                } @else {
-                  <span class="team-row__status">liberado</span>
-                }
-              </div>
-            }
-          </div>
-
-          <div>
-            <div class="section-kicker">Identificação vigia · {{ state.vigiaTeam().length }}</div>
-            @for (member of state.vigiaTeam(); track member.registration) {
-              <div class="team-row">
-                <span class="team-row__initials">{{ member.name.charAt(0) }}{{ member.name.split(' ')[1]?.charAt(0) }}</span>
-                <span>{{ member.name }}</span>
-                @if (state.badgeExpiredDocs(member).length > 0) {
-                  <span class="team-row__status team-row__status--critical">liberado com ressalva</span>
-                } @else {
-                  <span class="team-row__status">liberado</span>
-                }
-              </div>
-            } @empty {
-              <div class="team-row__empty">Nenhum vigia identificado ainda.</div>
-            }
-          </div>
-
-          <div>
-            <div class="section-kicker">Identificação resgatistas · {{ state.resgateTeam().length }}</div>
-            @for (member of state.resgateTeam(); track member.registration) {
-              <div class="team-row">
-                <span class="team-row__initials">{{ member.name.charAt(0) }}{{ member.name.split(' ')[1]?.charAt(0) }}</span>
-                <span>{{ member.name }}</span>
-                @if (state.badgeExpiredDocs(member).length > 0) {
-                  <span class="team-row__status team-row__status--critical">liberado com ressalva</span>
-                } @else {
-                  <span class="team-row__status">liberado</span>
-                }
-              </div>
-            } @empty {
-              <div class="team-row__empty">Nenhum resgatista identificado ainda.</div>
-            }
-          </div>
 
           @if (state.criticalAlerts().length > 0) {
             <div class="critical-alerts">
