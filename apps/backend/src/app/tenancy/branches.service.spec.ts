@@ -1,7 +1,8 @@
-import { NotFoundException } from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Branch } from './entities/branch.entity';
 import { IBranchRepository } from './repositories/branch-repository.interface';
 import { BranchesService } from './branches.service';
+import { TenancyReferenceGuardService } from './tenancy-reference-guard.service';
 
 function branch(overrides: Partial<Branch>): Branch {
   return { id: 'b1', companyGroupId: 'g1', name: 'Matelândia', createdAt: new Date(), ...overrides };
@@ -10,6 +11,7 @@ function branch(overrides: Partial<Branch>): Branch {
 describe('BranchesService', () => {
   let service: BranchesService;
   let repository: jest.Mocked<IBranchRepository>;
+  let referenceGuard: jest.Mocked<Pick<TenancyReferenceGuardService, 'branchHasReferences'>>;
 
   beforeEach(() => {
     repository = {
@@ -17,8 +19,11 @@ describe('BranchesService', () => {
       findById: jest.fn(),
       findByCompanyGroup: jest.fn(),
       create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
     };
-    service = new BranchesService(repository);
+    referenceGuard = { branchHasReferences: jest.fn().mockResolvedValue(false) };
+    service = new BranchesService(repository, referenceGuard as unknown as TenancyReferenceGuardService);
   });
 
   describe('getByIdOrFail', () => {
@@ -70,5 +75,48 @@ describe('BranchesService', () => {
 
     expect(result).toBe(created);
     expect(repository.create).toHaveBeenCalledWith({ companyGroupId: 'g1', name: 'Matelândia' });
+  });
+
+  describe('update', () => {
+    it('renames the branch', async () => {
+      repository.update.mockResolvedValue(branch({ name: 'Novo Nome' }));
+
+      await expect(service.update('b1', { name: 'Novo Nome' })).resolves.toMatchObject({
+        name: 'Novo Nome',
+      });
+    });
+
+    it('throws NotFoundException when the branch does not exist', async () => {
+      repository.update.mockResolvedValue(null);
+
+      await expect(service.update('missing', { name: 'X' })).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('delete', () => {
+    it('throws NotFoundException when the branch does not exist', async () => {
+      repository.findById.mockResolvedValue(null);
+
+      await expect(service.delete('missing')).rejects.toThrow(NotFoundException);
+      expect(repository.delete).not.toHaveBeenCalled();
+    });
+
+    it('rejects deletion when the branch still has references (user, PET, or employee)', async () => {
+      repository.findById.mockResolvedValue(branch({}));
+      referenceGuard.branchHasReferences.mockResolvedValue(true);
+
+      await expect(service.delete('b1')).rejects.toThrow(ConflictException);
+      expect(repository.delete).not.toHaveBeenCalled();
+    });
+
+    it('deletes the branch when nothing references it', async () => {
+      repository.findById.mockResolvedValue(branch({}));
+      referenceGuard.branchHasReferences.mockResolvedValue(false);
+      repository.delete.mockResolvedValue(true);
+
+      await service.delete('b1');
+
+      expect(repository.delete).toHaveBeenCalledWith('b1');
+    });
   });
 });

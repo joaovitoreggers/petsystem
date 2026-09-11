@@ -433,13 +433,19 @@ usuários e determina o quanto cada um enxerga:
 - Papel com `companyGroupId` **e** `branchId` — só enxerga a própria filial.
 
 Essa mesma regra filtra `GET /api/users`, `GET /api/work-permits`,
-`GET /api/team-members` e `GET /api/employees`. PETs e funcionários ainda
-usam o campo texto livre `unit` (sem seletor de filial na tela de
-PET/funcionário nesta fase) — ao criar, o back-end tenta casar `unit` com o
-nome de uma filial do grupo de quem está autenticado e preenche `branchId`
-automaticamente; sem match, o registro fica sem filial mesmo assim
-pertencendo ao grupo (funcionário de crachá, sem `unit`, sempre fica sem
-filial a menos que quem cadastrou já estivesse restrito a uma).
+`GET /api/team-members` e `GET /api/employees`. PETs e funcionários
+continuam gravando o campo texto livre `unit` — mas o seletor "Unidade" no
+assistente "Nova PET" e no cadastro de funcionário (`PetWizardComponent`/
+`PetTeamComponent`) já não é mais uma lista fixa: carrega as filiais de
+verdade do grupo da sessão via `GET /api/company-groups/:groupId/branches`
+assim que o componente monta, e só cai na lista mockada de antes
+(Matelândia/Medianeira/Céu Azul/Itaipulândia/Missal) sem sessão (caminho de
+reconhecimento facial) ou se a chamada falhar. O back-end tenta casar o
+`unit` recebido com o nome de uma filial do grupo de quem está autenticado
+e preenche `branchId` automaticamente; sem match, o registro fica sem
+filial mesmo assim pertencendo ao grupo (funcionário de crachá, sem `unit`,
+sempre fica sem filial a menos que quem cadastrou já estivesse restrito a
+uma).
 
 **Toda escrita num registro específico** — `PATCH`/`DELETE` de
 usuário/funcionário/PET, `PATCH .../close` e `.../reading` de PET — passa
@@ -461,28 +467,42 @@ tenant vira `INVALID_QR` (não autoriza nem nega — como se não existisse) e
 o relatório de IA só usa as PETs do tenant de quem pediu.
 
 Gestão de tenants tem tela própria, na aba **Empresas** (só aparece com
-sessão `platform-admin` — ver `PetCompaniesComponent`): lista grupos, cria
-grupo, lista as filiais do grupo selecionado, cria filial. A aba
-**Usuários** também ganhou os campos de tenant no formulário de
-cadastro/edição — `admin`/`gestor` só escolhem a filial (o grupo é implícito,
-o próprio); `platform-admin` escolhe grupo e filial, já que não tem grupo
-próprio. Rotas por trás dessas telas:
+sessão `platform-admin` — ver `PetCompaniesComponent`): lista grupos, cria,
+renomeia e exclui grupo; lista, cria, renomeia e exclui as filiais do grupo
+selecionado. A aba **Usuários** também ganhou os campos de tenant no
+formulário de cadastro/edição — `admin`/`gestor` só escolhem a filial (o
+grupo é implícito, o próprio); `platform-admin` escolhe grupo e filial, já
+que não tem grupo próprio. E a sidebar do `/pet` mostra o nome de verdade
+do tenant da sessão (grupo, ou "grupo · filial" quando restrita a uma) em
+vez do texto fixo "Lar Cooperativa · SESMT" — resolvido pelo back-end só na
+resposta de `POST /api/auth/login` (`companyGroupName`/`branchName`; nunca
+entram no JWT, pra não ficarem desatualizados se o tenant for renomeado
+depois, nem custarem uma consulta a mais em toda requisição autenticada).
+Rotas por trás dessas telas:
 
 | Rota | Descrição |
 |------|-----------|
 | `GET /api/company-groups` | Lista os grupos — só `platform-admin` |
 | `POST /api/company-groups` | Cria um grupo — só `platform-admin` |
-| `GET /api/company-groups/:groupId/branches` | Lista as filiais de um grupo — `platform-admin`, `admin` ou `gestor` daquele grupo |
+| `PATCH /api/company-groups/:id` | Renomeia um grupo — só `platform-admin` |
+| `DELETE /api/company-groups/:id` | Exclui um grupo — só `platform-admin`; `409` se ainda houver filial, usuário, PET ou funcionário vinculado |
+| `GET /api/company-groups/:groupId/branches` | Lista as filiais de um grupo — qualquer sessão autenticada do próprio grupo (até um técnico precisa da lista pra escolher uma unidade) |
 | `POST /api/company-groups/:groupId/branches` | Cria uma filial — só `platform-admin` ou `admin` daquele grupo |
+| `PATCH /api/company-groups/:groupId/branches/:branchId` | Renomeia uma filial — mesma exigência de `POST` |
+| `DELETE /api/company-groups/:groupId/branches/:branchId` | Exclui uma filial — mesma exigência; `409` se ainda houver usuário, PET ou funcionário vinculado |
 
-Sem exclusão nesta fase (nem na API, nem na tela): um grupo ou filial, uma
-vez criado, não some — só se cadastra mais.
+A checagem de "ainda vinculado" (`TenancyReferenceGuardService`) registra
+`User`/`TeamMember`/`WorkPermit`/`Employee`/`Branch` direto no
+`TenancyModule` (mesma tabela que os módulos deles próprios registram, via
+`TypeOrmModule.forFeature` de novo) em vez de importar esses módulos —
+evitaria um ciclo, já que `TeamMembersModule`/`WorkPermitsModule`/
+`AuthModule` é que importam `TenancyModule`, nunca o contrário.
 
 `npm run backend:seed` é idempotente também para a migração: além de criar
 "Lar Cooperativa Agroindustrial" e suas 5 filiais na primeira vez, ele
-preenche `companyGroupId`/`branchId` em usuários/PETs/funcionários que já
-existiam no banco antes dessas colunas existirem (rode de novo com segurança
-depois de atualizar).
+preenche `companyGroupId`/`branchId` em usuários/PETs/funcionários/
+funcionários-de-crachá que já existiam no banco antes dessas colunas
+existirem (rode de novo com segurança depois de atualizar).
 
 ## Análise de causas por IA (OpenAI)
 

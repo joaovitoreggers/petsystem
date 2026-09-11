@@ -160,7 +160,7 @@
                 [value]="fieldValue('unidade')"
                 (change)="onFieldChange('unidade', $event)"
               >
-                @for (u of unitOptions; track u) {
+                @for (u of unitOptions(); track u) {
                   <option>{{ u }}</option>
                 }
               </select>

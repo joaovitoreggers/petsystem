@@ -3,7 +3,11 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Branch } from '../entities/branch.entity';
-import { CreateBranchData, IBranchRepository } from './branch-repository.interface';
+import {
+  CreateBranchData,
+  IBranchRepository,
+  UpdateBranchData,
+} from './branch-repository.interface';
 
 @Injectable()
 export class BranchRepository implements IBranchRepository {
@@ -34,5 +38,19 @@ export class BranchRepository implements IBranchRepository {
       name: data.name,
     });
     return this.repository.save(branch);
+  }
+
+  async update(id: string, data: UpdateBranchData): Promise<Branch | null> {
+    const branch = await this.repository.findOneBy({ id });
+    if (!branch) {
+      return null;
+    }
+    if (data.name !== undefined) branch.name = data.name;
+    return this.repository.save(branch);
+  }
+
+  async delete(id: string): Promise<boolean> {
+    const result = await this.repository.delete({ id });
+    return (result.affected ?? 0) > 0;
   }
 }

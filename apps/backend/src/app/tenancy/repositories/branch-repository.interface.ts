@@ -5,6 +5,10 @@ export interface CreateBranchData {
   name: string;
 }
 
+export interface UpdateBranchData {
+  name?: string;
+}
+
 /**
  * Repository pattern: isolates data access for Branch from the ORM choice.
  * Only TenancyModule may depend on this token; other modules go through
@@ -15,6 +19,8 @@ export interface IBranchRepository {
   findById(id: string): Promise<Branch | null>;
   findByCompanyGroup(companyGroupId: string): Promise<Branch[]>;
   create(data: CreateBranchData): Promise<Branch>;
+  update(id: string, data: UpdateBranchData): Promise<Branch | null>;
+  delete(id: string): Promise<boolean>;
 }
 
 export const BRANCH_REPOSITORY = Symbol('BRANCH_REPOSITORY');

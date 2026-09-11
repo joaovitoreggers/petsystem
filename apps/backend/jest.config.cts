@@ -22,9 +22,15 @@ module.exports = {
   // jest.integration.config.cts — e não devem rodar aqui: este alvo (`nx
   // run backend:test`) precisa continuar funcionando sem banco nenhum.
   testPathIgnorePatterns: ['/node_modules/', '<rootDir>/src/integration/'],
-  // @nestjs/jwt and @nestjs/config ship ESM-only builds; transform them too
-  // instead of leaving them out of Jest's default node_modules exclusion.
+  // @nestjs/jwt, @nestjs/config, @nestjs/passport and @nestjs/typeorm ship
+  // ESM-only builds; transform them too instead of leaving them out of
+  // Jest's default node_modules exclusion. @nestjs/typeorm only started
+  // getting pulled into unit-test specs once TenancyReferenceGuardService
+  // (tenancy-reference-guard.service.ts) started using @InjectRepository
+  // directly — every other service in this codebase sits behind a
+  // repository-interface a unit test can mock without ever importing the
+  // real ORM decorators.
   transformIgnorePatterns: [
-    'node_modules/(?!(@nestjs/jwt|@nestjs/config|@nestjs/passport)/)',
+    'node_modules/(?!(@nestjs/jwt|@nestjs/config|@nestjs/passport|@nestjs/typeorm)/)',
   ],
 };

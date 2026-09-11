@@ -1,13 +1,18 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { Branch } from './entities/branch.entity';
 import {
   BRANCH_REPOSITORY,
   IBranchRepository,
 } from './repositories/branch-repository.interface';
+import { TenancyReferenceGuardService } from './tenancy-reference-guard.service';
 
 export interface CreateBranchInput {
   companyGroupId: string;
   name: string;
+}
+
+export interface UpdateBranchInput {
+  name?: string;
 }
 
 /**
@@ -20,6 +25,7 @@ export class BranchesService {
   constructor(
     @Inject(BRANCH_REPOSITORY)
     private readonly branchRepository: IBranchRepository,
+    private readonly referenceGuard: TenancyReferenceGuardService,
   ) {}
 
   findAll(): Promise<Branch[]> {
@@ -58,5 +64,26 @@ export class BranchesService {
 
   create(data: CreateBranchInput): Promise<Branch> {
     return this.branchRepository.create(data);
+  }
+
+  async update(id: string, data: UpdateBranchInput): Promise<Branch> {
+    const updated = await this.branchRepository.update(id, data);
+    if (!updated) {
+      throw new NotFoundException('Filial não encontrada');
+    }
+    return updated;
+  }
+
+  // Bloqueia em vez de deixar órfão: uma filial com usuários, PETs ou
+  // funcionários ainda vinculados não pode sumir de baixo deles.
+  async delete(id: string): Promise<void> {
+    await this.getByIdOrFail(id);
+    const hasReferences = await this.referenceGuard.branchHasReferences(id);
+    if (hasReferences) {
+      throw new ConflictException(
+        'Não é possível excluir: ainda há usuários, PETs ou funcionários vinculados a esta filial',
+      );
+    }
+    await this.branchRepository.delete(id);
   }
 }

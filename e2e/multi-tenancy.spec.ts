@@ -66,6 +66,51 @@ test.describe('Empresas — grupos e filiais (platform-admin)', () => {
     await page.getByRole('button', { name: 'Criar filial' }).click();
     await expect(page.getByText(branchName, { exact: true })).toBeVisible();
   });
+
+  test('renames a group and a branch, then deletes both once empty', async ({ page }) => {
+    const suffix = Date.now();
+    const groupName = `E2E Rename Group ${suffix}`;
+    const renamedGroupName = `${groupName} (renomeado)`;
+    const branchName = `E2E Rename Branch ${suffix}`;
+    const renamedBranchName = `${branchName} (renomeada)`;
+
+    await loginAs(page, 'platform-admin@petsystem.local');
+    await navButton(page, 'Empresas').click();
+
+    await page.getByPlaceholder('Nome do novo grupo').fill(groupName);
+    await page.getByRole('button', { name: 'Criar grupo' }).click();
+    const groupRow = page.locator('.companies__list-row', { hasText: groupName });
+    await expect(groupRow).toBeVisible();
+
+    await page.getByPlaceholder('Nome da nova filial').fill(branchName);
+    await page.getByRole('button', { name: 'Criar filial' }).click();
+    const branchRow = page.locator('.companies__branch', { hasText: branchName });
+    await expect(branchRow).toBeVisible();
+
+    // Renomeia o grupo.
+    await groupRow.getByTitle('Renomear grupo').click();
+    const renameDialog = page.locator('.dialog');
+    await renameDialog.locator('input').fill(renamedGroupName);
+    await renameDialog.getByRole('button', { name: 'Salvar' }).click();
+    await expect(page.locator('.companies__list-row', { hasText: renamedGroupName })).toBeVisible();
+
+    // Renomeia a filial.
+    await branchRow.getByTitle('Renomear filial').click();
+    await renameDialog.locator('input').fill(renamedBranchName);
+    await renameDialog.getByRole('button', { name: 'Salvar' }).click();
+    const renamedBranchRow = page.locator('.companies__branch', { hasText: renamedBranchName });
+    await expect(renamedBranchRow).toBeVisible();
+
+    // Exclui a filial (vazia, sem nada vinculado) e depois o grupo.
+    await renamedBranchRow.getByTitle('Excluir filial').click();
+    await page.getByRole('button', { name: 'Excluir definitivamente' }).click();
+    await expect(renamedBranchRow).toHaveCount(0);
+
+    const renamedGroupRow = page.locator('.companies__list-row', { hasText: renamedGroupName });
+    await renamedGroupRow.getByTitle('Excluir grupo').click();
+    await page.getByRole('button', { name: 'Excluir definitivamente' }).click();
+    await expect(renamedGroupRow).toHaveCount(0);
+  });
 });
 
 test.describe('Usuários — tenant no cadastro (platform-admin)', () => {
@@ -101,6 +146,66 @@ test.describe('Usuários — tenant no cadastro (platform-admin)', () => {
     await row.getByTitle('Excluir usuário').click();
     await page.getByRole('button', { name: 'Excluir definitivamente' }).click();
     await expect(row).toHaveCount(0);
+  });
+});
+
+test.describe('Sidebar mostra o tenant da sessão', () => {
+  test('shows the real company group name after logging in as gestor', async ({ page }) => {
+    await loginAs(page, 'gestor@petsystem.local');
+
+    await expect(page.locator('.shell__brand-unit').first()).toContainText(
+      'Lar Cooperativa Agroindustrial',
+    );
+  });
+
+  test('falls back to the static text before any login', async ({ page }) => {
+    await page.goto('/');
+
+    await expect(page.locator('.shell__brand-unit').first()).toContainText('Lar Cooperativa · SESMT');
+  });
+});
+
+test.describe('Filial real no formulário de funcionário (não mockada)', () => {
+  test('the "Unidade" dropdown reflects the branches of the logged-in tenant, not the hardcoded mock', async ({
+    page,
+  }) => {
+    const suffix = Date.now();
+    const groupName = `E2E Branch Dropdown Group ${suffix}`;
+    const branchName = `E2E Filial Exclusiva ${suffix}`;
+    const userEmail = `e2e-branch-dropdown-${suffix}@petsystem.local`;
+
+    // Prepara um tenant novo com uma filial de nome que nunca aparece no
+    // fallback mockado (Matelândia/Medianeira/Céu Azul/Itaipulândia/Missal).
+    await loginAs(page, 'platform-admin@petsystem.local');
+    await navButton(page, 'Empresas').click();
+    await page.getByPlaceholder('Nome do novo grupo').fill(groupName);
+    await page.getByRole('button', { name: 'Criar grupo' }).click();
+    await expect(page.getByRole('button', { name: groupName })).toBeVisible();
+    await page.getByPlaceholder('Nome da nova filial').fill(branchName);
+    await page.getByRole('button', { name: 'Criar filial' }).click();
+    await expect(page.getByText(branchName, { exact: true })).toBeVisible();
+
+    await navButton(page, 'Usuários').click();
+    await page.getByRole('button', { name: 'Cadastrar usuário' }).click();
+    const userDialog = page.locator('.dialog');
+    await userDialog.getByPlaceholder('ex. Bárbara M. Garlini').fill('E2E Branch Dropdown User');
+    await userDialog.getByPlaceholder('nome@petsystem.local').fill(userEmail);
+    await userDialog.getByPlaceholder('mínimo 6 caracteres').fill('senha123');
+    await userDialog.locator('select').nth(0).selectOption({ label: 'Administrador' });
+    await userDialog.locator('select').nth(1).selectOption({ label: groupName });
+    await userDialog.getByRole('button', { name: 'Cadastrar usuário' }).click();
+    await expect(page.locator('tr', { hasText: userEmail })).toBeVisible();
+
+    // Loga como o admin desse tenant novo e confere o seletor de unidade
+    // no cadastro de funcionário — loginAs já navega pra "/" de novo,
+    // descartando a sessão anterior em memória.
+    await loginAs(page, userEmail);
+    await navButton(page, 'Funcionários').click();
+    await page.getByRole('button', { name: 'Cadastrar funcionário' }).first().click();
+
+    const teamDialog = page.locator('.dialog');
+    await expect(teamDialog.locator('option', { hasText: branchName })).toHaveCount(1);
+    await expect(teamDialog.locator('option', { hasText: 'Matelândia' })).toHaveCount(0);
   });
 });
 
