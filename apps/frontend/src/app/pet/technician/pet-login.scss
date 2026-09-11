@@ -169,9 +169,17 @@
 .login__reveal {
   position: absolute;
   right: 4px;
-  top: 50%;
-  transform: translateY(-50%);
-  min-height: 30px;
+  /* Centralizado por deslocamento (top/bottom), não por `transform`.
+     O `.btn:active:not(:disabled)` global aplica `translateY(1px)` e tem
+     especificidade maior que esta regra: no mousedown ele substituía o
+     `translateY(-50%)` e o botão descia 20px: o cursor saía de cima dele
+     antes do mouseup e o clique nunca era disparado. Era esse o motivo de
+     "mostrar" não revelar a senha. */
+  top: 4px;
+  bottom: 4px;
+  /* Zera o mínimo do .btn para o par top/bottom definir a altura sem
+     conflito (do contrário a caixa fica superdeterminada). */
+  min-height: 0;
   font-size: var(--text-xs);
   font-weight: 600;
   letter-spacing: 0.04em;
@@ -319,9 +327,6 @@
 @media (pointer: coarse) {
   .login__method {
     min-height: 44px;
-  }
-  .login__reveal {
-    min-height: 38px;
   }
 }
 
