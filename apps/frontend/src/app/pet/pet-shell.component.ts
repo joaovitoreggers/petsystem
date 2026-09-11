@@ -147,11 +147,13 @@ export class PetShellComponent {
 
   /**
    * O que a brigada precisa ler na tela de emergência, em ordem de urgência.
-   * Quando há uma PET em alarme, os dados são os dela; num acionamento
-   * manual (sem alarme atmosférico), mostra o retrato das frentes ativas.
+   * Segue a mesma PET que state.evacText() usa: a escolhida explicitamente
+   * no seletor do painel de gestão, com fallback para a primeira em alarme;
+   * num acionamento manual sem nenhuma das duas, mostra o retrato das
+   * frentes ativas.
    */
   readonly evacFacts = computed<{ label: string; value: string }[]>(() => {
-    const pet = this.state.alarmedPets()[0];
+    const pet = this.state.evacuationPet();
     if (pet) {
       return [
         { label: 'Local', value: `${pet.location} · ${pet.unit}` },
