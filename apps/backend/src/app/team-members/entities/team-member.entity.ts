@@ -22,6 +22,13 @@ export class TeamMember {
   @Column()
   unit!: string;
 
+  // Filial relacional correspondente a `unit`, resolvida por nome dentro do
+  // grupo de quem cadastrou. `unit` (texto livre) continua sendo a fonte
+  // exibida no front-end nesta fase — este campo é só para isolamento por
+  // tenant no back-end.
+  @Column({ name: 'branch_id', type: 'uuid', nullable: true })
+  branchId!: string | null;
+
   @Column({ name: 'is_third_party', default: false })
   isThirdParty!: boolean;
 

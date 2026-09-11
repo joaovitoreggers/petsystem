@@ -1,7 +1,9 @@
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { User } from './entities/user.entity';
 import { IUserRepository } from './repositories/user-repository.interface';
 import { UsersService } from './users.service';
+
+const GROUP_ID = 'gggggggg-gggg-gggg-gggg-gggggggggggg';
 
 function user(overrides: Partial<User>): User {
   return {
@@ -10,6 +12,8 @@ function user(overrides: Partial<User>): User {
     email: 'test@petsystem.local',
     password: 'hash',
     role: 'funcionario',
+    companyGroupId: GROUP_ID,
+    branchId: null,
     createdAt: new Date(),
     ...overrides,
   };
@@ -41,6 +45,7 @@ describe('UsersService', () => {
           email: 'test@petsystem.local',
           password: 'senha123',
           role: 'funcionario',
+          companyGroupId: GROUP_ID,
         }),
       ).rejects.toThrow(ConflictException);
 
@@ -56,16 +61,67 @@ describe('UsersService', () => {
         email: 'new@petsystem.local',
         password: 'senha123',
         role: 'funcionario',
+        companyGroupId: GROUP_ID,
       });
 
       const passedData = repository.create.mock.calls[0][0];
       expect(passedData.passwordHash).toBeDefined();
       expect(passedData.passwordHash).not.toBe('senha123');
     });
+
+    it('defaults to the creator company group when none is given', async () => {
+      repository.findByEmail.mockResolvedValue(null);
+      repository.create.mockResolvedValue(user({}));
+
+      await service.create(
+        {
+          name: 'New',
+          email: 'new@petsystem.local',
+          password: 'senha123',
+          role: 'funcionario',
+        },
+        { companyGroupId: GROUP_ID },
+      );
+
+      const passedData = repository.create.mock.calls[0][0];
+      expect(passedData.companyGroupId).toBe(GROUP_ID);
+    });
+
+    it('rejects a non-platform-admin user with no resolvable company group', async () => {
+      repository.findByEmail.mockResolvedValue(null);
+
+      await expect(
+        service.create({
+          name: 'New',
+          email: 'new@petsystem.local',
+          password: 'senha123',
+          role: 'funcionario',
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(repository.create).not.toHaveBeenCalled();
+    });
+
+    it('forces platform-admin users to have no company group', async () => {
+      repository.findByEmail.mockResolvedValue(null);
+      repository.create.mockResolvedValue(user({ role: 'platform-admin', companyGroupId: null }));
+
+      await service.create({
+        name: 'Root',
+        email: 'root@petsystem.local',
+        password: 'senha123',
+        role: 'platform-admin',
+        companyGroupId: GROUP_ID,
+      });
+
+      const passedData = repository.create.mock.calls[0][0];
+      expect(passedData.companyGroupId).toBeNull();
+      expect(passedData.branchId).toBeNull();
+    });
   });
 
   describe('update', () => {
     it('rejects changing the email to one already used by another user', async () => {
+      repository.findById.mockResolvedValue(user({}));
       repository.findByEmail.mockResolvedValue(
         user({ id: 'other-id', email: 'taken@petsystem.local' }),
       );
@@ -81,6 +137,7 @@ describe('UsersService', () => {
 
     it('allows keeping your own email unchanged', async () => {
       const existing = user({});
+      repository.findById.mockResolvedValue(existing);
       repository.findByEmail.mockResolvedValue(existing);
       repository.update.mockResolvedValue(existing);
 
@@ -90,7 +147,7 @@ describe('UsersService', () => {
     });
 
     it('throws NotFoundException when the user does not exist', async () => {
-      repository.update.mockResolvedValue(null);
+      repository.findById.mockResolvedValue(null);
 
       await expect(
         service.update('unknown-id', { name: 'Novo Nome' }),
@@ -98,6 +155,7 @@ describe('UsersService', () => {
     });
 
     it('hashes the new password when one is provided', async () => {
+      repository.findById.mockResolvedValue(user({}));
       repository.update.mockResolvedValue(user({}));
 
       await service.update('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', {
@@ -110,6 +168,7 @@ describe('UsersService', () => {
     });
 
     it('leaves the password untouched when none is provided', async () => {
+      repository.findById.mockResolvedValue(user({}));
       repository.update.mockResolvedValue(user({}));
 
       await service.update('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', {
@@ -118,6 +177,19 @@ describe('UsersService', () => {
 
       const passedData = repository.update.mock.calls[0][1];
       expect(passedData.passwordHash).toBeUndefined();
+    });
+
+    it('clears the company group and branch when promoted to platform-admin', async () => {
+      repository.findById.mockResolvedValue(user({}));
+      repository.update.mockResolvedValue(user({ role: 'platform-admin', companyGroupId: null }));
+
+      await service.update('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', {
+        role: 'platform-admin',
+      });
+
+      const passedData = repository.update.mock.calls[0][1];
+      expect(passedData.companyGroupId).toBeNull();
+      expect(passedData.branchId).toBeNull();
     });
   });
 
@@ -132,6 +204,50 @@ describe('UsersService', () => {
       repository.delete.mockResolvedValue(true);
 
       await expect(service.delete('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa')).resolves.toBeUndefined();
+    });
+  });
+
+  describe('findAll (tenant scoping)', () => {
+    it('returns every user when there is no scope', async () => {
+      const users = [user({ id: '1' }), user({ id: '2', companyGroupId: 'other-group' })];
+      repository.findAll.mockResolvedValue(users);
+
+      await expect(service.findAll()).resolves.toEqual(users);
+    });
+
+    it('returns every user for platform-admin, across every group', async () => {
+      const users = [user({ id: '1' }), user({ id: '2', companyGroupId: 'other-group' })];
+      repository.findAll.mockResolvedValue(users);
+
+      await expect(
+        service.findAll({ role: 'platform-admin', companyGroupId: null, branchId: null }),
+      ).resolves.toEqual(users);
+    });
+
+    it('restricts a branch-scoped caller to users of that exact branch', async () => {
+      const users = [
+        user({ id: '1', branchId: 'b1' }),
+        user({ id: '2', branchId: 'b2' }),
+        user({ id: '3', branchId: null }),
+      ];
+      repository.findAll.mockResolvedValue(users);
+
+      const result = await service.findAll({ role: 'admin', companyGroupId: GROUP_ID, branchId: 'b1' });
+
+      expect(result.map((u: User) => u.id)).toEqual(['1']);
+    });
+
+    it('restricts a group-wide caller to users of their own company group, regardless of branch', async () => {
+      const users = [
+        user({ id: '1', companyGroupId: GROUP_ID, branchId: 'b1' }),
+        user({ id: '2', companyGroupId: GROUP_ID, branchId: null }),
+        user({ id: '3', companyGroupId: 'other-group', branchId: null }),
+      ];
+      repository.findAll.mockResolvedValue(users);
+
+      const result = await service.findAll({ role: 'gestor', companyGroupId: GROUP_ID, branchId: null });
+
+      expect(result.map((u: User) => u.id)).toEqual(['1', '2']);
     });
   });
 });

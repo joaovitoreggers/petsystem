@@ -5,6 +5,8 @@ export interface CreateUserData {
   email: string;
   passwordHash: string;
   role: string;
+  companyGroupId: string | null;
+  branchId: string | null;
 }
 
 export interface UpdateUserData {
@@ -12,6 +14,8 @@ export interface UpdateUserData {
   email?: string;
   passwordHash?: string;
   role?: string;
+  companyGroupId?: string | null;
+  branchId?: string | null;
 }
 
 /**

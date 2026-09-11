@@ -19,29 +19,29 @@ apenas este README e os comentários no código ficam em português.
 ```
 apps/
   backend/    # NestJS — AuthModule, UsersModule, EmployeesModule, QrValidationModule,
-              # WorkPermitsModule, TeamMembersModule
+              # WorkPermitsModule, TeamMembersModule, TenancyModule
   frontend/   # Angular — telas do design PET Digital (rota /pet)
 ```
 
 > **Estado atual do front-end:** o Angular renderiza o design do PET Digital
 > em um único aplicativo responsivo: sidebar + conteúdo no notebook/desktop,
-> header compacto + navegação inferior no tablet/celular. Os três módulos
-> (Campo, Painel de gestão e Funcionários) são papéis de uso, não versões
-> diferentes do sistema — não existe seletor de "desktop/celular". O visual
+> header compacto + navegação inferior no tablet/celular. Os módulos (Campo,
+> Painel de gestão, Funcionários, Usuários e Empresas) são papéis de uso, não
+> versões diferentes do sistema — não existe seletor de "desktop/celular";
+> Usuários e Empresas só aparecem para quem tem sessão com o papel
+> necessário (ver "Multi-tenancy" abaixo). O visual
 > vem do design system em `apps/frontend/src/styles.scss` (tokens de cor,
 > espaçamento, tipografia, raio, elevação e movimento + primitivas de UI
 > compartilhadas); os SCSS de componente carregam só o layout específico
-> deles. As telas
-> antigas (login, CRUD de usuários/funcionários, crachás, scanner de QR) foram
-> removidas porque não faziam parte do design entregue. PETs e Funcionários
-> (`WorkPermitsModule`/`TeamMembersModule`, abaixo) já são funcionais de
-> verdade: a lista inicial carrega da API, e emitir/encerrar uma PET ou
-> cadastrar um funcionário grava no banco. Os dois módulos ficam **sem**
-> `JwtAuthGuard` de propósito — não existe mais uma tela de login real, então
-> não há token para autenticar essas chamadas neste MVP. Se a API não
-> responder (back-end fora do ar), a tela cai de volta nos dados mockados
-> locais em vez de quebrar — é assim que o front-end continua demonstrável
-> sozinho. O restante (áreas de risco, checklist, limites de gás, crachás
+> deles. PETs e Funcionários (`WorkPermitsModule`/`TeamMembersModule`, abaixo)
+> são funcionais de verdade: a lista inicial carrega da API, e emitir/encerrar
+> uma PET ou cadastrar um funcionário grava no banco — mas exigem login real
+> (e-mail/senha, `POST /api/auth/login`) desde a introdução de multi-tenancy;
+> sem sessão não dá para saber a qual tenant um registro pertence. O caminho
+> de reconhecimento facial continua sendo uma simulação de UI (sem
+> credencial, sem token) — nesse caso a tela cai nos dados mockados locais em
+> vez de quebrar, então continua demonstrável sozinha mesmo sem back-end no
+> ar. O restante (áreas de risco, checklist, limites de gás, crachás
 > simulados no scanner de QR, histórico de 30 dias) continua com dados de
 > referência fixos no front-end — não são entidades do banco.
 
@@ -131,14 +131,16 @@ Variáveis de ambiente (mesmas da tabela acima, mais):
 
 ### Usuários de teste — contas de login (criadas por `npm run backend:seed`)
 
-| Email                        | Senha    | Role     |
-|-------------------------------|----------|----------|
-| porteiro@petsystem.local      | senha123 | porteiro |
-| operador@petsystem.local      | senha123 | operador |
-| gestor@petsystem.local        | senha123 | gestor   |
+| Email                        | Senha    | Role            | Grupo de empresas |
+|-------------------------------|----------|-----------------|--------------------|
+| platform-admin@petsystem.local | senha123 | platform-admin | nenhum (acima de todos os tenants) |
+| porteiro@petsystem.local      | senha123 | porteiro        | Lar Cooperativa Agroindustrial |
+| operador@petsystem.local      | senha123 | operador        | Lar Cooperativa Agroindustrial |
+| gestor@petsystem.local        | senha123 | gestor          | Lar Cooperativa Agroindustrial |
 
 `gestor` (e `admin`, ainda sem seed) é o papel que a tela **Funcionários** do
-PET Digital exige para editar/excluir um cadastro — ver a seção seguinte.
+PET Digital exige para editar/excluir um cadastro — ver a seção seguinte. Veja
+"Multi-tenancy" mais abaixo para o que cada papel enxerga.
 
 ### Funcionários de teste — validados no QR (criados por `npm run backend:seed`)
 
@@ -168,6 +170,10 @@ leitura de QR (uma ou várias, conforme a contagem).
 
 ## Testes
 
+Três camadas, cada uma cobrindo uma coisa que as outras não cobrem.
+
+### 1. Unitários — sem banco, mockado
+
 ```bash
 ./test.sh
 ```
@@ -178,9 +184,50 @@ dentro dela, sem precisar de Node/npm no host e sem subir banco (os testes
 usam mocks). Equivalente manual, se já tiver Node/npm instalados:
 
 ```bash
-npx nx run backend:test    # lógica de autorização, duplicidade e o Guard de JWT
-npx nx run frontend:test
+npx nx run backend:test    # services/guards/controllers com repositório mockado
+npx nx run frontend:test   # PetStateService — canManageTeam/isPlatformAdmin
 ```
+
+### 2. Integração — Postgres de verdade, sem front-end
+
+```bash
+docker compose up -d db      # só o banco
+npm run backend:test:integration
+```
+
+Sobe o `AppModule` inteiro (guards, controllers, services, repositórios) de
+verdade contra um banco de teste dedicado (`petsystem_test`, criado
+automaticamente na mesma instância Postgres do docker compose — nunca toca
+no banco `petsystem` de desenvolvimento) e bate nas rotas por HTTP via
+supertest. Cobre isolamento entre tenants, restrição por filial, os guards
+(401/403) e a regressão do bug de "limpar filial via PATCH" de ponta a
+ponta, com dado real persistido e lido de volta — o que um teste unitário
+com repositório mockado não prova sozinho. Zera as tabelas relevantes no
+início de cada execução, então pode rodar quantas vezes quiser.
+
+### 3. End-to-end — stack completa, navegador de verdade
+
+```bash
+./e2e.sh
+```
+
+Sobe o docker compose completo (front-end + back-end + Postgres), garante
+que está semeado e roda o [Playwright](https://playwright.dev) (`e2e/`)
+contra `http://localhost:58080` — login por e-mail/senha de cada papel,
+navegação condicional por papel (Usuários/Empresas), criar grupo/filial na
+aba Empresas, cadastrar um usuário com filial e depois limpar a filial na
+edição (mesma regressão do teste de integração, agora clicando na UI de
+verdade), e o fallback para dados mockados quando não há sessão. Equivalente
+manual, se a stack já estiver de pé e semeada:
+
+```bash
+npx playwright test
+```
+
+Sem rota de exclusão para grupos/filiais nesta fase (ver "Multi-tenancy"):
+os grupos e filiais que os testes de E2E criam continuam no banco depois de
+rodar — o teste do usuário já limpa a conta de teste que cria, mas grupo e
+filial ficam (facilmente reconhecíveis pelo prefixo `E2E`).
 
 ## Deploy num servidor caseiro (EasyPanel + Cloudflare Tunnel)
 
@@ -279,18 +326,20 @@ contar como uma leitura distinta.
 
 ## CRUD de usuários (API)
 
-Contas de login — `name`, `email`, `password`, `role`. Todas as rotas exigem
-o JWT (`Authorization: Bearer <token>`); criar/editar/excluir exigem além
-disso o papel `admin`/`gestor` (`RolesGuard`) — só listar/buscar (`GET`) fica
-liberado para qualquer conta autenticada. A aba **Usuários** dentro do
-`/pet` (visível só com sessão admin/gestor — ver a seção seguinte) usa
-exatamente essa API.
+Contas de login — `name`, `email`, `password`, `role`, `companyGroupId?`,
+`branchId?`. Todas as rotas exigem o JWT (`Authorization: Bearer <token>`);
+criar/editar/excluir exigem além disso o papel `admin`/`gestor` (`RolesGuard`
+— `platform-admin` passa em qualquer `@Roles(...)` automaticamente) — só
+listar/buscar (`GET`) fica liberado para qualquer conta autenticada, e mesmo
+assim filtrado pelo tenant de quem pergunta (ver "Multi-tenancy" abaixo). A
+aba **Usuários** dentro do `/pet` (visível só com sessão admin/gestor — ver a
+seção seguinte) usa exatamente essa API.
 
 | Rota | Descrição |
 |------|-----------|
-| `GET /api/users` | Lista todos os usuários |
+| `GET /api/users` | Lista os usuários visíveis no tenant de quem pergunta |
 | `GET /api/users/:id` | Busca um usuário — `404` se não existir |
-| `POST /api/users` | Cria um usuário — `409` se o email já estiver em uso |
+| `POST /api/users` | Cria um usuário — `409` se o email já estiver em uso; sem `companyGroupId` explícito, herda o grupo de quem está criando (`400` se nenhum dos dois existir e o papel não for `platform-admin`) |
 | `PATCH /api/users/:id` | Atualiza campos parcialmente (senha só é trocada se enviada; `409` se o novo email já pertencer a outro usuário) |
 | `DELETE /api/users/:id` | Remove um usuário — `409` se for o próprio usuário autenticado, `404` se não existir |
 
@@ -320,39 +369,88 @@ mas ainda não é verificada por nenhum fluxo — não existe, nesta fase, um
 
 ## PETs e Funcionários do PET Digital (API)
 
-Back-end que sustenta as telas em `/pet` (design do PET Digital). A leitura e
-a criação de PETs/funcionários seguem **sem** `JwtAuthGuard` de propósito —
-é o caminho que a simulação de reconhecimento facial usa, e essa não gera
-token nenhum. A tela também tem login real por e-mail/senha (mesmo
+Back-end que sustenta as telas em `/pet` (design do PET Digital). Toda a rota
+**exige** `JwtAuthGuard` — sem sessão não dá para saber a qual tenant o
+registro pertence. A tela tem login real por e-mail/senha (mesmo
 `POST /api/auth/login` da tabela acima) — quando autenticado assim, o token
-fica disponível e alimenta as rotas que exigem login abaixo.
+fica disponível e alimenta essas rotas; o caminho de reconhecimento facial
+(simulação, sem credencial) não gera token, então cai no fallback de dados
+mockados que o front-end já tinha antes de existir back-end nenhum (ver
+`PetStateService.loadFromBackend()`/`registerTeamMember()`) — a tela continua
+funcionando, só não persiste.
 `npm run backend:seed` popula as tabelas com o mesmo conteúdo que já existia
 como mock no front-end.
 
 | Rota | Descrição |
 |------|-----------|
-| `GET /api/work-permits` | Lista todas as PETs (permissões de entrada e trabalho) |
+| `GET /api/work-permits` | Lista as PETs visíveis no tenant de quem pergunta |
 | `GET /api/work-permits/:id` | Busca uma PET — `404` se não existir |
 | `POST /api/work-permits` | Emite uma PET — `id` é gerado no formato `PET-<ano>-<sequencial>` |
 | `PATCH /api/work-permits/:id/close` | Encerra uma PET (`end`, `durationMinutes`) — `404` se não existir |
-| `GET /api/team-members` | Lista os funcionários cadastrados no registro do SESMT |
+| `GET /api/team-members` | Lista os funcionários visíveis no tenant de quem pergunta |
 | `POST /api/team-members` | Cadastra um funcionário — `409` se a matrícula já existir |
-| `PATCH /api/team-members/:registration` | Atualiza NRs, vínculo, cargo, empresa ou unidade — **exige** `JwtAuthGuard` + papel `admin`/`gestor` (`RolesGuard`); `404` se a matrícula não existir |
+| `PATCH /api/team-members/:registration` | Atualiza NRs, vínculo, cargo, empresa ou unidade — exige além disso papel `admin`/`gestor` (`RolesGuard`); `404` se a matrícula não existir |
 | `DELETE /api/team-members/:registration` | Remove o cadastro — mesma exigência de papel; `404` se não existir |
 
-Editar/excluir são as únicas rotas de PET/funcionário que exigem login de
-verdade: dão acesso a dado crítico (validade de NR, vínculo do funcionário),
-então o front-end só mostra os botões de editar/excluir na tela
-**Funcionários** quando a sessão atual (`PetStateService.session()`) tem
-papel `admin` ou `gestor` — a checagem de verdade, porém, é o `RolesGuard`
-no back-end; a UI só evita oferecer um botão que a API recusaria. A mesma
-sessão libera a aba **Usuários** (cadastro de contas de login — ver "CRUD de
-usuários" acima), que fica fora da navegação para quem não tem esse papel.
+Editar/excluir continuam sendo as únicas rotas de PET/funcionário que exigem
+um papel específico (além do login): dão acesso a dado crítico (validade de
+NR, vínculo do funcionário), então o front-end só mostra os botões de
+editar/excluir na tela **Funcionários** quando a sessão atual
+(`PetStateService.session()`) tem papel `admin` ou `gestor` — a checagem de
+verdade, porém, é o `RolesGuard` no back-end; a UI só evita oferecer um botão
+que a API recusaria. A mesma sessão libera a aba **Usuários** (cadastro de
+contas de login — ver "CRUD de usuários" acima), que fica fora da navegação
+para quem não tem esse papel.
 
 Áreas de risco, checklist, limites de gás, os crachás simulados no passo de
 QR do assistente e o histórico de 30 dias do painel do gestor continuam como
 dados de referência fixos em `apps/frontend/src/app/pet/pet-mock-data.ts` —
 não são entidades do banco nesta fase.
+
+## Multi-tenancy
+
+Hierarquia de dois níveis: um **grupo de empresas** (`CompanyGroup` — o
+tenant, ex. "Lar Cooperativa Agroindustrial") pode ter várias **filiais**
+(`Branch`, ex. Matelândia, Medianeira, Céu Azul, Itaipulândia, Missal). Todo
+usuário, funcionário e PET pertence a um grupo; a filial é opcional em
+usuários e determina o quanto cada um enxerga:
+
+- `platform-admin` — sem grupo, enxerga e administra todos os tenants; passa
+  em qualquer checagem de `@Roles(...)` automaticamente (`RolesGuard`).
+- Papel com `companyGroupId` e **sem** `branchId` — enxerga todas as filiais
+  do próprio grupo (ex. o `gestor` do seed, que vê as 5 filiais de Lar).
+- Papel com `companyGroupId` **e** `branchId` — só enxerga a própria filial.
+
+Essa mesma regra filtra `GET /api/users`, `GET /api/work-permits` e
+`GET /api/team-members`. PETs e funcionários ainda usam o campo texto livre
+`unit` (sem seletor de filial na tela de PET/funcionário nesta fase) — ao
+criar, o back-end tenta casar `unit` com o nome de uma filial do grupo de
+quem está autenticado e preenche `branchId` automaticamente; sem match (ou
+sem sessão), o registro fica sem filial.
+
+Gestão de tenants tem tela própria, na aba **Empresas** (só aparece com
+sessão `platform-admin` — ver `PetCompaniesComponent`): lista grupos, cria
+grupo, lista as filiais do grupo selecionado, cria filial. A aba
+**Usuários** também ganhou os campos de tenant no formulário de
+cadastro/edição — `admin`/`gestor` só escolhem a filial (o grupo é implícito,
+o próprio); `platform-admin` escolhe grupo e filial, já que não tem grupo
+próprio. Rotas por trás dessas telas:
+
+| Rota | Descrição |
+|------|-----------|
+| `GET /api/company-groups` | Lista os grupos — só `platform-admin` |
+| `POST /api/company-groups` | Cria um grupo — só `platform-admin` |
+| `GET /api/company-groups/:groupId/branches` | Lista as filiais de um grupo — `platform-admin`, `admin` ou `gestor` daquele grupo |
+| `POST /api/company-groups/:groupId/branches` | Cria uma filial — só `platform-admin` ou `admin` daquele grupo |
+
+Sem exclusão nesta fase (nem na API, nem na tela): um grupo ou filial, uma
+vez criado, não some — só se cadastra mais.
+
+`npm run backend:seed` é idempotente também para a migração: além de criar
+"Lar Cooperativa Agroindustrial" e suas 5 filiais na primeira vez, ele
+preenche `companyGroupId`/`branchId` em usuários/PETs/funcionários que já
+existiam no banco antes dessas colunas existirem (rode de novo com segurança
+depois de atualizar).
 
 ## Análise de causas por IA (OpenAI)
 
@@ -375,13 +473,17 @@ relatório — o resto do app funciona normalmente sem essa chave.
 
 - **Strategy** (Passport): `LocalStrategy` (login) e `JwtStrategy` (rota
   protegida) — `apps/backend/src/app/auth/strategies`
-- **Guard**: `JwtAuthGuard` protegendo as rotas de `QrValidationController`;
-  `RolesGuard` (com o decorator `@Roles(...)`, lido via `Reflector`)
-  protegendo `PATCH`/`DELETE /api/team-members/:registration` e
-  `POST`/`PATCH`/`DELETE /api/users` por papel (`admin`/`gestor`)
-- **Repository**: `IUserRepository`, `IEmployeeRepository` e
-  `IAccessEventRepository`, com implementações TypeORM injetadas por token —
-  desacopla o domínio do ORM
+- **Guard**: `JwtAuthGuard` protegendo as rotas de `QrValidationController`,
+  `WorkPermitsController`, `TeamMembersController`, `UsersController` e
+  `TenancyModule` (`CompanyGroupsController`/`BranchesController`);
+  `RolesGuard` (com o decorator `@Roles(...)`, lido via `Reflector`, e
+  `platform-admin` liberado em qualquer checagem automaticamente) protegendo
+  `PATCH`/`DELETE /api/team-members/:registration`,
+  `POST`/`PATCH`/`DELETE /api/users` por papel (`admin`/`gestor`) e as rotas
+  de `company-groups`/`branches` por papel (`platform-admin`/`admin`)
+- **Repository**: `IUserRepository`, `IEmployeeRepository`,
+  `IAccessEventRepository`, `ICompanyGroupRepository` e `IBranchRepository`,
+  com implementações TypeORM injetadas por token — desacopla o domínio do ORM
 - **DTO + Pipes**: `class-validator` em todo corpo de requisição, com
   `ValidationPipe` global
 - **Dependency Injection**: nativa do NestJS e do Angular

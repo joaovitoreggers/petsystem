@@ -7,7 +7,8 @@ import { AuthenticatedUser } from '../jwt-payload.interface';
  * Guard pattern: exige que `request.user.role` (populado por JwtAuthGuard,
  * que deve rodar antes) esteja entre os papéis marcados com `@Roles(...)` na
  * rota. Sem `@Roles(...)`, a rota fica liberada para qualquer usuário
- * autenticado.
+ * autenticado. `platform-admin` passa em qualquer `@Roles(...)`, sem
+ * precisar ser listado — é o papel acima de todos os tenants.
  */
 @Injectable()
 export class RolesGuard implements CanActivate {
@@ -22,7 +23,7 @@ export class RolesGuard implements CanActivate {
       return true;
     }
     const { user } = context.switchToHttp().getRequest<{ user: AuthenticatedUser }>();
-    if (!user || !requiredRoles.includes(user.role)) {
+    if (!user || (user.role !== 'platform-admin' && !requiredRoles.includes(user.role))) {
       throw new ForbiddenException('Seu papel não tem permissão para esta ação');
     }
     return true;

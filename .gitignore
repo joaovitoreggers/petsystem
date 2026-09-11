@@ -57,4 +57,10 @@ Thumbs.db
 .nx/migrate-runs
 test-output
 
+# Playwright (e2e.sh / npx playwright test)
+/test-results
+/playwright-report
+/blob-report
+/playwright/.cache
+
 .angular

@@ -6,6 +6,7 @@ export interface CreateTeamMemberData {
   role: string;
   company: string;
   unit: string;
+  branchId?: string | null;
   isThirdParty?: boolean;
   documents: Record<string, string>;
 }
@@ -15,6 +16,7 @@ export interface UpdateTeamMemberData {
   role?: string;
   company?: string;
   unit?: string;
+  branchId?: string | null;
   isThirdParty?: boolean;
   documents?: Record<string, string>;
 }

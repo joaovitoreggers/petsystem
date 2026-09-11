@@ -72,6 +72,11 @@ export class WorkPermit {
   @Column()
   unit!: string;
 
+  // Filial relacional correspondente a `unit`, resolvida por nome dentro do
+  // grupo de quem emitiu a PET — mesma lógica de TeamMember.branchId.
+  @Column({ name: 'branch_id', type: 'uuid', nullable: true })
+  branchId!: string | null;
+
   @Column({ name: 'team_size' })
   teamSize!: number;
 
@@ -90,7 +95,11 @@ export class WorkPermit {
   @Column()
   technician!: string;
 
-  @Column()
+  // Tipo explícito: um union de string literais não vira metadata de tipo
+  // utilizável por reflexão em todo transpiler (o SWC usado pelo Jest, por
+  // exemplo, não resolve pra um tipo de coluna válido sem isso), diferente
+  // do `@Column()` puro nos demais campos `string`.
+  @Column({ type: 'varchar' })
   status!: WorkPermitStatus;
 
   @Column({ default: '' })
