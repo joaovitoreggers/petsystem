@@ -57,7 +57,7 @@
       <button
         type="button"
         class="btn btn-danger btn-block shell__evac-btn"
-        (click)="openEvacConfirm()"
+        (click)="state.openEvacuationPicker()"
       >
         Acionar evacuação
       </button>
@@ -86,7 +86,7 @@
       <button
         type="button"
         class="btn btn-danger btn-sm shell__topbar-evac"
-        (click)="openEvacConfirm()"
+        (click)="state.openEvacuationPicker()"
       >
         Evacuação
       </button>
@@ -135,37 +135,53 @@
     }
   </nav>
 
-  <!-- ── Confirmação de ação perigosa ───────────────────────────────── -->
-  @if (evacConfirmOpen()) {
-    <div class="dialog-backdrop" (click)="closeEvacConfirm()">
-      <div class="dialog evac-confirm" (click)="$event.stopPropagation()">
-        <div class="evac-confirm__mark">!</div>
-        <div class="dialog-title">Acionar evacuação geral?</div>
-        <p class="dialog-body">
-          A sirene local será ligada e a brigada, a portaria e as equipes das
-          frentes ativas recebem o alerta imediatamente. Use apenas em situação
-          real de risco.
-        </p>
-        @if (state.hasAlert()) {
-          <div class="evac-confirm__context">
-            <span class="evac-confirm__context-kicker">Motivo detectado</span>
-            {{ state.alertText() }}
-          </div>
-        }
+  <!-- ── Qual PET está sendo evacuada ─────────────────────────────────
+       Compartilhado com o banner de alerta do painel de gestão — ver
+       state.openEvacuationPicker(). -->
+  @if (state.evacuationPickerOpen()) {
+    <div class="dialog-backdrop" (click)="state.closeEvacuationPicker()">
+      <div class="dialog evac-picker" (click)="$event.stopPropagation()">
+        <div class="dialog-title">Qual PET está sendo evacuada?</div>
+        <div class="dialog-body">
+          Escolha a frente de trabalho atingida. A sirene local será ligada e a
+          brigada, a portaria e as equipes das frentes ativas recebem o alerta
+          imediatamente — use apenas em situação real de risco.
+        </div>
+        <div class="evac-picker__list">
+          @for (c of state.evacuationCandidates(); track c.pet.id) {
+            <label
+              class="evac-picker__row"
+              [class.evac-picker__row--selected]="state.selectedEvacuationPetId() === c.pet.id"
+            >
+              <input
+                type="radio"
+                name="evacuation-pet"
+                [checked]="state.selectedEvacuationPetId() === c.pet.id"
+                (change)="state.selectEvacuationPet(c.pet.id)"
+              />
+              <div class="evac-picker__row-main">
+                <span class="mono">{{ c.pet.id }}</span>
+                <span>{{ c.pet.location }}</span>
+              </div>
+              <span class="status-pill" [style.color]="c.status.fg" [style.background]="c.status.bg">
+                {{ c.status.label }}
+              </span>
+            </label>
+          } @empty {
+            <div class="evac-picker__empty">Nenhuma PET ativa no momento.</div>
+          }
+        </div>
         <div class="dialog-actions">
-          <button
-            type="button"
-            class="btn btn-secondary"
-            (click)="closeEvacConfirm()"
-          >
+          <button type="button" class="btn btn-secondary" (click)="state.closeEvacuationPicker()">
             Cancelar
           </button>
           <button
             type="button"
             class="btn btn-danger"
-            (click)="confirmEvacuation()"
+            [disabled]="!state.selectedEvacuationPetId()"
+            (click)="state.confirmEvacuationPet()"
           >
-            Confirmar evacuação
+            Confirmar e acionar evacuação
           </button>
         </div>
       </div>

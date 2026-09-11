@@ -95,9 +95,6 @@ export class PetShellComponent {
       this.navItems()[0],
   );
 
-  // Confirmação antes de acionar a evacuação: ação irreversível na operação
-  // (liga sirene e notifica brigada/portaria), então nunca em um clique só.
-  readonly evacConfirmOpen = signal(false);
   readonly evacStartedAt = signal('');
 
   constructor(readonly state: PetStateService) {
@@ -130,19 +127,6 @@ export class PetShellComponent {
         this.evacStartedAt.set('');
       }
     });
-  }
-
-  openEvacConfirm(): void {
-    this.evacConfirmOpen.set(true);
-  }
-
-  closeEvacConfirm(): void {
-    this.evacConfirmOpen.set(false);
-  }
-
-  confirmEvacuation(): void {
-    this.evacConfirmOpen.set(false);
-    this.state.triggerEvacuation();
   }
 
   /**
