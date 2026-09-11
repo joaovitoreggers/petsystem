@@ -221,6 +221,28 @@
 
       @case ('qr') {
         <div class="step step--qr">
+          <input
+            class="input"
+            type="text"
+            placeholder="Buscar funcionário por nome ou matrícula…"
+            [value]="state.employeeSearchQuery()"
+            (input)="onEmployeeSearchChange($event)"
+          />
+          @if (state.employeeSearchResults().length > 0) {
+            <div class="employee-search__results">
+              @for (m of state.employeeSearchResults(); track m.registration) {
+                <button type="button" class="employee-search__result" (click)="selectEmployee(m)">
+                  <span>{{ m.name }}</span>
+                  <span class="employee-search__result-meta">mat. {{ m.registration }} · {{ m.role }}</span>
+                </button>
+              }
+            </div>
+          } @else if (state.employeeSearchQuery().trim().length > 0) {
+            <div class="team-row__empty">Nenhum funcionário encontrado.</div>
+          }
+
+          <div class="step-hint step-hint--center">ou leia o crachá</div>
+
           <div class="qr-scan blueprint">
             <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
             <div class="qr-scan__frame"></div>

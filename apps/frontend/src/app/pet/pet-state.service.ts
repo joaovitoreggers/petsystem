@@ -24,6 +24,7 @@ import {
   requiresGasMonitoring,
   riskAreaNrs,
   stepsFor,
+  teamMemberToBadge,
 } from './pet-mock-data';
 import { WorkPermitsApiService } from './services/work-permits-api.service';
 import { TeamMembersApiService } from './services/team-members-api.service';
@@ -216,6 +217,19 @@ export class PetStateService {
   readonly gasReadingsLog = signal<{ time: string; text: string }[]>([]);
   readonly currentBadge = signal<Badge | null>(null);
   readonly badgeCycleIndex = signal(0);
+  // Alternativa à leitura de crachá: buscar o funcionário já cadastrado
+  // pelo nome ou matrícula e selecioná-lo — cai no mesmo `currentBadge`
+  // (convertido pelo mesmo formato), então o preview e os botões "+
+  // Equipe/Vigia/Resgatista" continuam funcionando iguais para as duas
+  // origens.
+  readonly employeeSearchQuery = signal('');
+  readonly employeeSearchResults = computed(() => {
+    const q = this.employeeSearchQuery().trim().toLowerCase();
+    if (!q) return [];
+    return TEAM_MEMBERS.filter(
+      (m) => m.name.toLowerCase().includes(q) || m.registration.includes(q),
+    ).slice(0, 6);
+  });
   readonly authorizedTeam = signal<Badge[]>([]);
   // Vigia e resgatistas: papéis próprios na PET física (blocos de
   // identificação separados da equipe que executa o serviço), preenchidos
@@ -380,6 +394,7 @@ export class PetStateService {
     this.gasReadingsLog.set([]);
     this.currentBadge.set(null);
     this.badgeCycleIndex.set(0);
+    this.employeeSearchQuery.set('');
     this.authorizedTeam.set([]);
     this.vigiaTeam.set([]);
     this.resgateTeam.set([]);
@@ -447,6 +462,15 @@ export class PetStateService {
     const idx = this.badgeCycleIndex() % MOCK_BADGES.length;
     this.currentBadge.set(MOCK_BADGES[idx]);
     this.badgeCycleIndex.update((i) => i + 1);
+  }
+
+  setEmployeeSearchQuery(value: string): void {
+    this.employeeSearchQuery.set(value);
+  }
+
+  selectEmployeeFromSearch(member: TeamMember): void {
+    this.currentBadge.set(teamMemberToBadge(member));
+    this.employeeSearchQuery.set('');
   }
 
   addBadgeToTeam(): void {

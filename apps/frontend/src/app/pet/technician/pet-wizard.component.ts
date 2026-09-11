@@ -11,6 +11,7 @@ import {
   RISK_AREAS,
   RiskAreaId,
   STEP_NAME,
+  TeamMember,
   isGasWithinLimit,
   riskAreaNrs,
 } from '../pet-mock-data';
@@ -191,6 +192,14 @@ export class PetWizardComponent {
     status === 'ok' ? 'var(--status-ok)' : status === 'prox' ? 'var(--status-warn)' : 'var(--status-bad)';
 
   readonly hasMoreBadgesToScan = computed(() => this.state.badgeCycleIndex() < MOCK_BADGES.length * 2);
+
+  onEmployeeSearchChange(event: Event): void {
+    this.state.setEmployeeSearchQuery((event.target as HTMLInputElement).value);
+  }
+
+  selectEmployee(member: TeamMember): void {
+    this.state.selectEmployeeFromSearch(member);
+  }
 
   addToTeam(): void {
     this.state.addBadgeToTeam();
