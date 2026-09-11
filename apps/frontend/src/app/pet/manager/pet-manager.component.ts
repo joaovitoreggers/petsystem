@@ -113,7 +113,7 @@ export class PetManagerComponent {
   readonly evacuationCandidates = computed(() =>
     [...this.activePets()]
       .sort((a, b) => Number(!!b.alarm) - Number(!!a.alarm))
-      .map((pet) => ({ pet, status: PET_STATUS[pet.alarm ? 'alarme' : pet.status] })),
+      .map((pet) => ({ pet, status: petStatusView(pet) })),
   );
 
   openEvacuationPicker(): void {
