@@ -466,6 +466,10 @@ export class PetStateService {
     const idx = this.badgeCycleIndex() % MOCK_BADGES.length;
     this.currentBadge.set(MOCK_BADGES[idx]);
     this.badgeCycleIndex.update((i) => i + 1);
+    // Sem isso, um texto ainda digitado na busca (sem resultado escolhido)
+    // ficava preso na tela junto do crachá recém-lido, sugerindo uma pessoa
+    // que não é a que será realmente adicionada.
+    this.employeeSearchQuery.set('');
   }
 
   setEmployeeSearchQuery(value: string): void {
