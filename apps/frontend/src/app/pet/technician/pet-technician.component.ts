@@ -58,6 +58,13 @@ export class PetTechnicianComponent implements OnDestroy {
   // sem imagem, e sem nova tentativa depois.
   @ViewChild('faceVideo')
   private readonly faceVideoRef?: ElementRef<HTMLVideoElement>;
+  // Vídeo próprio do diálogo de cadastro de reconhecimento facial: ele
+  // pode aparecer depois de um login pela aba "E-mail e senha", onde o
+  // #faceVideo acima nunca chegou a existir no DOM (só renderiza dentro
+  // da aba "Reconhecimento facial"). Os dois compartilham o mesmo
+  // MediaStream — startCamera() atribui a ambos quando existirem.
+  @ViewChild('enrollVideo')
+  private readonly enrollVideoRef?: ElementRef<HTMLVideoElement>;
 
   readonly cameraActive = signal(false);
   readonly cameraError = signal(false);
@@ -74,10 +81,42 @@ export class PetTechnicianComponent implements OnDestroy {
         this.stopCamera();
       }
     });
+    // O diálogo de cadastro (#enrollVideo) só existe no DOM quando
+    // enrollPromptOpen vira true, o que costuma acontecer bem depois da
+    // câmera já ter ligado — precisa da própria atribuição de srcObject,
+    // não só a que startCamera() já fez pro #faceVideo.
+    effect(() => {
+      if (this.state.enrollPromptOpen() && this.cameraStream) {
+        this.attachStreamToVideo(() => this.enrollVideoRef, this.cameraStream);
+      }
+    });
   }
 
   ngOnDestroy(): void {
     this.stopCamera();
+  }
+
+  // Recebe uma função que LÊ o ViewChild, não o ViewChild já resolvido: no
+  // primeiro ciclo em que o @if que monta o <video> vira verdadeiro, a
+  // propriedade ainda está undefined nesse exato instante (Angular só a
+  // preenche durante a checagem de view que roda depois). Capturar o valor
+  // na hora da chamada prendia esse undefined pra sempre no closure, mesmo
+  // o afterNextRender rodando depois — o vídeo nunca recebia o
+  // MediaStream, ficava 0x0/paused, e o face-api travava tentando detectar
+  // rosto num frame que não existia.
+  private attachStreamToVideo(
+    getRef: () => ElementRef<HTMLVideoElement> | undefined,
+    stream: MediaStream,
+  ): void {
+    afterNextRender(
+      () => {
+        const video = getRef()?.nativeElement;
+        if (!video) return;
+        video.srcObject = stream;
+        video.play().catch(() => undefined);
+      },
+      { injector: this.injector },
+    );
   }
 
   private async startCamera(): Promise<void> {
@@ -94,15 +133,7 @@ export class PetTechnicianComponent implements OnDestroy {
       this.cameraStream = stream;
       this.cameraError.set(false);
       this.cameraActive.set(true);
-      afterNextRender(
-        () => {
-          const video = this.faceVideoRef?.nativeElement;
-          if (!video) return;
-          video.srcObject = stream;
-          video.play().catch(() => undefined);
-        },
-        { injector: this.injector },
-      );
+      this.attachStreamToVideo(() => this.faceVideoRef, stream);
     } catch {
       this.cameraError.set(true);
       this.cameraActive.set(false);
@@ -138,7 +169,7 @@ export class PetTechnicianComponent implements OnDestroy {
       case 'ok':
         return 'Identidade confirmada';
       default:
-        return 'Reconhecimento facial';
+        return this.state.hasFaceEnrollment() ? 'Reconhecimento facial' : 'Nenhum rosto cadastrado';
     }
   });
   readonly faceText = computed(() => {
@@ -146,23 +177,43 @@ export class PetTechnicianComponent implements OnDestroy {
       case 'scan':
         return 'Mantenha o rosto centralizado no quadro.';
       case 'ok':
-        return 'Bem-vinda, Bárbara. Carregando suas permissões…';
+        return 'Identidade confirmada. Carregando suas permissões…';
       default:
-        return 'Posicione o rosto para acessar o PET Digital com sua credencial do SESMT.';
+        if (this.state.faceAuthError()) return this.state.faceAuthError() as string;
+        return this.state.hasFaceEnrollment()
+          ? 'Posicione o rosto para acessar o PET Digital com sua credencial.'
+          : 'Entre por e-mail e senha uma vez para habilitar o reconhecimento facial neste aparelho.';
     }
   });
   readonly faceColor = computed(() =>
     this.state.authPhase() === 'ok' ? 'var(--status-ok)' : 'var(--color-bg)',
   );
   readonly faceScanning = computed(() => this.state.authPhase() === 'scan');
-  readonly faceButtonLabel = computed(() =>
-    this.state.authPhase() === 'idle'
+  readonly faceButtonLabel = computed(() => {
+    if (this.state.authPhase() !== 'idle') return 'Aguarde…';
+    return this.state.hasFaceEnrollment()
       ? 'Iniciar reconhecimento facial'
-      : 'Aguarde…',
+      : 'Entre por e-mail e senha';
+  });
+  readonly faceButtonDisabled = computed(
+    () => this.state.authPhase() !== 'idle' || !this.state.hasFaceEnrollment(),
   );
 
   startAuth(): void {
-    this.state.startAuth();
+    if (!this.state.hasFaceEnrollment()) {
+      this.state.setAuthMethod('senha');
+      return;
+    }
+    void this.state.startFacialRecognition(this.faceVideoRef?.nativeElement ?? null);
+  }
+
+  // ── Cadastro de reconhecimento facial (depois de um login real) ─────
+  confirmEnroll(): void {
+    void this.state.confirmFaceEnrollment(this.enrollVideoRef?.nativeElement ?? null);
+  }
+
+  skipEnroll(): void {
+    this.state.skipFaceEnrollment();
   }
 
   // ── Acesso por e-mail e senha ───────────────────────────────────────

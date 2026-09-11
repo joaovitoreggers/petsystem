@@ -29,6 +29,8 @@ import { WorkPermitsApiService } from './services/work-permits-api.service';
 import { TeamMembersApiService, UpdateTeamMemberPayload } from './services/team-members-api.service';
 import { AuthApiService, AuthenticatedUser } from './services/auth-api.service';
 import { AuthTokenService } from './services/auth-token.service';
+import { DeviceAuthService, FaceEnrollment } from './services/device-auth.service';
+import { FaceRecognitionService } from './services/face-recognition.service';
 
 export type PortalRole = 'tecnico' | 'gestor' | 'equipe' | 'usuarios' | 'empresas';
 export type TechnicianScreen =
@@ -166,8 +168,18 @@ export class PetStateService {
     private readonly teamMembersApi: TeamMembersApiService,
     private readonly authApi: AuthApiService,
     private readonly authToken: AuthTokenService,
+    private readonly deviceAuth: DeviceAuthService,
+    private readonly faceRecognition: FaceRecognitionService,
   ) {
     this.loadFromBackend();
+    const enrollment = this.deviceAuth.get();
+    this.faceEnrollment.set(enrollment);
+    // Sem cadastro de rosto neste aparelho, a aba de e-mail/senha é o
+    // caminho óbvio de primeiro acesso — evita abrir numa aba que só ia
+    // explicar que não dá pra usá-la ainda.
+    if (!enrollment) {
+      this.authMethod.set('senha');
+    }
   }
 
   private async loadFromBackend(): Promise<void> {
@@ -319,24 +331,112 @@ export class PetStateService {
     this.role.set(role);
   }
 
-  // ── Login simulado ──────────────────────────────────────────────────
-  startAuth(): void {
+  // ── Reconhecimento facial ────────────────────────────────────────────
+  // Reconhecimento de verdade (câmera + face-api.js rodando no navegador),
+  // mas só facilita a entrada de quem já tem conta: só funciona depois de
+  // um primeiro login por e-mail/senha ter cadastrado um rosto NESTE
+  // aparelho (ver confirmFaceEnrollment). O que fica salvo localmente é o
+  // descritor (vetor de 128 números, não dá pra virar imagem de volta) +
+  // um token de aparelho (nunca a senha) — casar o rosto é só a chave que
+  // libera usar esse token pra pedir uma sessão de verdade ao back-end.
+  readonly faceEnrollment = signal<FaceEnrollment | null>(null);
+  readonly faceAuthError = signal<string | null>(null);
+  readonly hasFaceEnrollment = computed(() => this.faceEnrollment() !== null);
+
+  async startFacialRecognition(video: HTMLVideoElement | null): Promise<void> {
     if (this.authPhase() !== 'idle') return;
+    const enrollment = this.faceEnrollment();
+    if (!enrollment) {
+      this.faceAuthError.set(
+        'Nenhum rosto cadastrado neste aparelho ainda. Entre por e-mail e senha para habilitar.',
+      );
+      return;
+    }
+    if (!video) {
+      this.faceAuthError.set('Câmera indisponível.');
+      return;
+    }
+    this.faceAuthError.set(null);
     this.authPhase.set('scan');
-    setTimeout(() => {
+    const descriptor = await this.faceRecognition.captureDescriptor(video);
+    if (!descriptor) {
+      this.authPhase.set('idle');
+      this.faceAuthError.set(
+        'Não foi possível identificar um rosto. Centralize o rosto no quadro e tente de novo.',
+      );
+      return;
+    }
+    if (!this.faceRecognition.isMatch(enrollment.descriptor, descriptor)) {
+      this.authPhase.set('idle');
+      this.faceAuthError.set('Rosto não reconhecido. Tente novamente ou entre por e-mail e senha.');
+      return;
+    }
+    try {
+      const result = await firstValueFrom(this.authApi.deviceLogin(enrollment.deviceToken));
+      this.session.set(result);
+      this.authToken.setToken(result.accessToken);
       this.authPhase.set('ok');
       setTimeout(() => {
         this.authPhase.set('idle');
         this.screen.set('home');
       }, 500);
-    }, 1600);
+    } catch {
+      // Token do aparelho não vale mais (ex.: revogado num logout feito
+      // enquanto este aparelho estava sem rede) — sem sessão de verdade
+      // por trás, o cadastro local também não serve mais pra nada.
+      this.deviceAuth.clear();
+      this.faceEnrollment.set(null);
+      this.authPhase.set('idle');
+      this.faceAuthError.set('O reconhecimento deste aparelho expirou. Entre por e-mail e senha.');
+    }
+  }
+
+  // ── Cadastro de reconhecimento facial (opt-in, após login real) ─────
+  readonly enrollPromptOpen = signal(false);
+  readonly enrolling = signal(false);
+  readonly enrollError = signal<string | null>(null);
+
+  async confirmFaceEnrollment(video: HTMLVideoElement | null): Promise<void> {
+    if (this.enrolling()) return;
+    this.enrolling.set(true);
+    this.enrollError.set(null);
+    try {
+      if (!video) {
+        this.enrollError.set('Câmera indisponível.');
+        return;
+      }
+      const descriptor = await this.faceRecognition.captureDescriptor(video);
+      if (!descriptor) {
+        this.enrollError.set(
+          'Não foi possível identificar um rosto. Centralize o rosto no quadro e tente de novo.',
+        );
+        return;
+      }
+      const { deviceToken } = await firstValueFrom(this.authApi.issueDeviceToken());
+      const enrollment: FaceEnrollment = {
+        descriptor: Array.from(descriptor),
+        deviceToken,
+        userLabel: this.session()?.user.email ?? '',
+      };
+      this.deviceAuth.save(enrollment);
+      this.faceEnrollment.set(enrollment);
+      this.enrollPromptOpen.set(false);
+      this.screen.set('home');
+    } catch {
+      this.enrollError.set('Não foi possível habilitar o reconhecimento facial agora.');
+    } finally {
+      this.enrolling.set(false);
+    }
+  }
+
+  skipFaceEnrollment(): void {
+    this.enrollPromptOpen.set(false);
+    this.screen.set('home');
   }
 
   // ── Login por e-mail e senha ────────────────────────────────────────
-  // Caminho real: chama o AuthModule do back-end (`POST /api/auth/login`),
-  // que valida a credencial no banco e devolve o JWT. Diferente do
-  // reconhecimento facial acima — esse continua sendo uma simulação da
-  // fatia de design, sem credencial nenhuma.
+  // Chama o AuthModule do back-end (`POST /api/auth/login`), que valida a
+  // credencial no banco e devolve o JWT.
   readonly authMethod = signal<AuthMethod>('facial');
   readonly loginEmail = signal('');
   readonly loginPassword = signal('');
@@ -406,11 +506,18 @@ export class PetStateService {
       this.session.set(result);
       this.authToken.setToken(result.accessToken);
       this.loginPassword.set('');
-      this.screen.set('home');
+      // Sem rosto cadastrado neste aparelho ainda: oferece habilitar antes
+      // de seguir pra home (câmera continua ligada, tela de login ainda de
+      // pé) — reconhecimento facial só facilita quem já tem conta, então
+      // o primeiro acesso sempre passa por aqui.
+      if (this.faceEnrollment()) {
+        this.screen.set('home');
+      } else {
+        this.enrollPromptOpen.set(true);
+      }
     } catch (err) {
       // Sem atalho aqui: credencial não confere ou servidor fora do ar
-      // significa não entrar. O acesso offline continua sendo o facial,
-      // que é declaradamente uma simulação — senha errada nunca abre porta.
+      // significa não entrar.
       this.loginError.set(loginErrorMessage(err));
     } finally {
       this.loginLoading.set(false);
@@ -418,6 +525,19 @@ export class PetStateService {
   }
 
   logout(): void {
+    // "Lembrada até a pessoa clicar em Sair": sair precisa mesmo invalidar
+    // o aparelho, não só limpar o token local — ver
+    // AuthService.revokeDeviceToken no back-end. Melhor esforço: se a
+    // chamada falhar (sem rede, por exemplo), o cadastro local já é limpo
+    // de qualquer jeito, então o pior caso é um DeviceCredential órfão no
+    // banco, nunca um acesso que deveria ter sido revogado continuando
+    // válido no próprio aparelho.
+    const enrollment = this.faceEnrollment();
+    if (enrollment) {
+      firstValueFrom(this.authApi.revokeDeviceToken(enrollment.deviceToken)).catch(() => undefined);
+    }
+    this.deviceAuth.clear();
+    this.faceEnrollment.set(null);
     this.screen.set('login');
     this.authPhase.set('idle');
     this.session.set(null);
@@ -425,7 +545,8 @@ export class PetStateService {
     this.loginEmail.set('');
     this.loginPassword.set('');
     this.loginError.set(null);
-    this.authMethod.set('facial');
+    this.faceAuthError.set(null);
+    this.authMethod.set('senha');
   }
 
   selectHomeTab(tab: HomeTab): void {

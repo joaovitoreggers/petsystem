@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AuthModule } from './auth/auth.module';
+import { DeviceCredential } from './auth/entities/device-credential.entity';
 import { Employee } from './employees/entities/employee.entity';
 import { EmployeesModule } from './employees/employees.module';
 import { User } from './users/entities/user.entity';
@@ -31,7 +32,16 @@ import { TenancyModule } from './tenancy/tenancy.module';
         username: configService.get<string>('DB_USERNAME', 'petsystem'),
         password: configService.get<string>('DB_PASSWORD', 'petsystem'),
         database: configService.get<string>('DB_NAME', 'petsystem'),
-        entities: [User, Employee, AccessEvent, WorkPermit, TeamMember, CompanyGroup, Branch],
+        entities: [
+          User,
+          Employee,
+          AccessEvent,
+          WorkPermit,
+          TeamMember,
+          CompanyGroup,
+          Branch,
+          DeviceCredential,
+        ],
         synchronize: true,
       }),
     }),

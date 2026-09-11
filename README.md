@@ -36,14 +36,15 @@ apps/
 > deles. PETs e Funcionários (`WorkPermitsModule`/`TeamMembersModule`, abaixo)
 > são funcionais de verdade: a lista inicial carrega da API, e emitir/encerrar
 > uma PET ou cadastrar um funcionário grava no banco — mas exigem login real
-> (e-mail/senha, `POST /api/auth/login`) desde a introdução de multi-tenancy;
-> sem sessão não dá para saber a qual tenant um registro pertence. O caminho
-> de reconhecimento facial continua sendo uma simulação de UI (sem
-> credencial, sem token) — nesse caso a tela cai nos dados mockados locais em
-> vez de quebrar, então continua demonstrável sozinha mesmo sem back-end no
-> ar. O restante (áreas de risco, checklist, limites de gás, crachás
-> simulados no scanner de QR, histórico de 30 dias) continua com dados de
-> referência fixos no front-end — não são entidades do banco.
+> (e-mail/senha ou reconhecimento facial, ver "Reconhecimento facial" abaixo)
+> desde a introdução de multi-tenancy; sem sessão não dá para saber a qual
+> tenant um registro pertence. Sem nenhuma sessão (aparelho novo, sem rosto
+> cadastrado, e ainda sem ter feito login por e-mail/senha) a tela cai nos
+> dados mockados locais em vez de quebrar, então continua demonstrável
+> sozinha mesmo sem back-end no ar. O restante (áreas de risco, checklist,
+> limites de gás, crachás simulados no scanner de QR, histórico de 30 dias)
+> continua com dados de referência fixos no front-end — não são entidades do
+> banco.
 
 `Usuario` (login — porteiro/operador, autentica via `/auth/login`) e
 `Employee`/funcionário (pessoa de campo validada nas tentativas de entrada,
@@ -503,6 +504,58 @@ evitaria um ciclo, já que `TeamMembersModule`/`WorkPermitsModule`/
 preenche `companyGroupId`/`branchId` em usuários/PETs/funcionários/
 funcionários-de-crachá que já existiam no banco antes dessas colunas
 existirem (rode de novo com segurança depois de atualizar).
+
+## Reconhecimento facial
+
+Reconhecimento de verdade — câmera + biometria, rodando inteiro no
+navegador via [`@vladmandic/face-api`](https://github.com/vladmandic/face-api)
+(TensorFlow.js; modelos em `apps/frontend/public/assets/face-models/`,
+baixados uma vez e cacheados pelo navegador) — mas só **facilita o acesso
+de quem já tem conta**: não é um método de cadastro, é um atalho pra pular
+a senha num aparelho pessoal já usado antes.
+
+1. Primeiro acesso num aparelho é sempre por e-mail/senha
+   (`POST /api/auth/login`). Sem nenhum rosto cadastrado ainda, a aba
+   "Reconhecimento facial" da tela de login mostra isso e não deixa
+   iniciar o scan.
+2. Logo depois de um login por senha bem-sucedido, se este aparelho ainda
+   não tem um rosto cadastrado, a tela oferece habilitar (opt-in, sempre
+   com "Agora não" como opção). Aceitando: a câmera captura um frame, o
+   `face-api.js` extrai um **descritor** (vetor de 128 números — nunca a
+   imagem em si, e nada sai do navegador) e o front-end pede um **token de
+   aparelho** ao back-end (`POST /api/auth/device-token`, exige a sessão
+   real que acabou de logar). Descritor + token ficam só no `localStorage`
+   deste navegador (`DeviceAuthService`).
+3. Nas próximas vezes, escolher "Reconhecimento facial" captura um novo
+   frame, compara o descritor contra o guardado localmente (distância
+   euclidiana, limiar padrão do `face-api.js`) e, se bater, troca o token
+   de aparelho guardado por uma sessão de verdade
+   (`POST /api/auth/device-login`) — mesmo formato de resposta de
+   `POST /api/auth/login`, claims incluídos.
+4. **Sair sempre revoga o aparelho** (`DELETE /api/auth/device-token`) —
+   "lembrada até clicar em Sair", não além disso: sem revogar de verdade
+   no back-end, o descritor + token sozinhos no `localStorage` (ex.
+   copiados por alguém) continuariam entrando depois do logout.
+
+O token de aparelho é um segredo opaco (`id.segredo`, gerado com
+`crypto.randomBytes`, guardado com hash bcrypt via `DeviceCredential` —
+mesma tabela nova, mesmo tratamento que a senha) — nunca a senha em si, e
+sozinho não abre nada sem o rosto batendo primeiro. Revogar o token de
+outra conta é um no-op silencioso (`204` sem revogar nada), não um erro,
+pra não vazar se aquele token existe.
+
+| Rota | Descrição |
+|------|-----------|
+| `POST /api/auth/device-token` | Emite um token de aparelho pro usuário autenticado — exige `JwtAuthGuard` |
+| `POST /api/auth/device-login` | Troca um token de aparelho válido por uma sessão real (mesmo formato de `/auth/login`) |
+| `DELETE /api/auth/device-token` | Revoga um token — exige `JwtAuthGuard`; só revoga se pertencer a quem está pedindo |
+
+Fora do escopo desta fase (avaliado e descartado de propósito, ver
+histórico da conversa): reconhecimento biométrico contra um cadastro
+central no servidor, aparelho compartilhado com múltiplas contas
+reconhecíveis, detecção de vivacidade (anti-spoofing — uma foto impressa
+mostrada à câmera não é hoje distinguida de um rosto real), e múltiplas
+amostras de cadastro por pessoa (só uma captura por enrollment).
 
 ## Análise de causas por IA (OpenAI)
 
