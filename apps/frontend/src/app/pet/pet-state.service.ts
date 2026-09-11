@@ -24,6 +24,7 @@ import {
   requiresGasMonitoring,
   riskAreaNrs,
   stepsFor,
+  teamMemberToBadge,
 } from './pet-mock-data';
 import { WorkPermitsApiService } from './services/work-permits-api.service';
 import { TeamMembersApiService, UpdateTeamMemberPayload } from './services/team-members-api.service';
@@ -288,12 +289,28 @@ export class PetStateService {
   readonly gasReadingsLog = signal<{ time: string; text: string }[]>([]);
   readonly currentBadge = signal<Badge | null>(null);
   readonly badgeCycleIndex = signal(0);
+  // Alternativa à leitura de crachá: buscar o funcionário já cadastrado
+  // pelo nome ou matrícula e selecioná-lo — cai no mesmo `currentBadge`
+  // (convertido pelo mesmo formato), então o preview e o botão de confirmar
+  // continuam funcionando iguais para as duas origens.
+  readonly employeeSearchQuery = signal('');
+  readonly employeeSearchResults = computed(() => {
+    const q = this.employeeSearchQuery().trim().toLowerCase();
+    if (!q) return [];
+    return TEAM_MEMBERS.filter(
+      (m) => m.name.toLowerCase().includes(q) || m.registration.includes(q),
+    ).slice(0, 6);
+  });
   readonly authorizedTeam = signal<Badge[]>([]);
   // Vigia e resgatistas: papéis próprios na PET física (blocos de
   // identificação separados da equipe que executa o serviço), preenchidos
   // pela mesma leitura de crachá usada para a equipe.
   readonly vigiaTeam = signal<Badge[]>([]);
   readonly resgateTeam = signal<Badge[]>([]);
+  // Qual dos 3 campos (técnico/vigia/socorrista) está com o painel de
+  // adicionar aberto — nunca mais de um por vez, então basta um único
+  // `currentBadge`/busca compartilhados entre eles.
+  readonly addingRole = signal<PetTeamRole | null>(null);
   readonly fireWatchRounds = signal<FireWatchRound[]>(emptyFireWatchRounds());
   readonly technicianSigned = signal(false);
   readonly executorSigned = signal(false);
@@ -700,6 +717,8 @@ export class PetStateService {
     this.gasReadingsLog.set([]);
     this.currentBadge.set(null);
     this.badgeCycleIndex.set(0);
+    this.employeeSearchQuery.set('');
+    this.addingRole.set(null);
     this.authorizedTeam.set([]);
     this.vigiaTeam.set([]);
     this.resgateTeam.set([]);
@@ -784,18 +803,45 @@ export class PetStateService {
     const idx = this.badgeCycleIndex() % MOCK_BADGES.length;
     this.currentBadge.set(MOCK_BADGES[idx]);
     this.badgeCycleIndex.update((i) => i + 1);
+    // Sem isso, um texto ainda digitado na busca (sem resultado escolhido)
+    // ficava preso na tela junto do crachá recém-lido, sugerindo uma pessoa
+    // que não é a que será realmente adicionada.
+    this.employeeSearchQuery.set('');
   }
 
-  addBadgeToTeam(): void {
-    this.addBadgeTo(this.authorizedTeam, 'na equipe autorizada');
+  setEmployeeSearchQuery(value: string): void {
+    this.employeeSearchQuery.set(value);
   }
 
-  addBadgeToVigia(): void {
-    this.addBadgeTo(this.vigiaTeam, 'como vigia');
+  selectEmployeeFromSearch(member: TeamMember): void {
+    this.currentBadge.set(teamMemberToBadge(member));
+    this.employeeSearchQuery.set('');
   }
 
-  addBadgeToResgate(): void {
-    this.addBadgeTo(this.resgateTeam, 'como resgatista');
+  teamForRole(role: PetTeamRole): Badge[] {
+    if (role === 'equipe') return this.authorizedTeam();
+    if (role === 'vigia') return this.vigiaTeam();
+    return this.resgateTeam();
+  }
+
+  private targetForRole(role: PetTeamRole): WritableSignal<Badge[]> {
+    if (role === 'equipe') return this.authorizedTeam;
+    if (role === 'vigia') return this.vigiaTeam;
+    return this.resgateTeam;
+  }
+
+  toggleAddPanel(role: PetTeamRole): void {
+    this.addingRole.set(this.addingRole() === role ? null : role);
+    this.currentBadge.set(null);
+    this.employeeSearchQuery.set('');
+  }
+
+  confirmAddCurrentBadge(): void {
+    const role = this.addingRole();
+    if (!role) return;
+    const roleLabel = role === 'equipe' ? 'na equipe autorizada' : role === 'vigia' ? 'como vigia' : 'como resgatista';
+    this.addBadgeTo(this.targetForRole(role), roleLabel);
+    this.addingRole.set(null);
   }
 
   private addBadgeTo(target: WritableSignal<Badge[]>, roleLabel: string): void {
