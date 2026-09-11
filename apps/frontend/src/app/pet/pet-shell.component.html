@@ -14,7 +14,7 @@
     </div>
 
     <nav class="shell__nav" aria-label="Módulos">
-      @for (item of navItems; track item.id) {
+      @for (item of navItems(); track item.id) {
         <button
           type="button"
           class="navitem"
@@ -103,13 +103,16 @@
         @case ('equipe') {
           <app-pet-team />
         }
+        @case ('usuarios') {
+          <app-pet-users />
+        }
       }
     </main>
   </div>
 
   <!-- ── Navegação inferior (celular/tablet) ────────────────────────── -->
   <nav class="shell__bottomnav" aria-label="Módulos">
-    @for (item of navItems; track item.id) {
+    @for (item of navItems(); track item.id) {
       <button
         type="button"
         class="bottomnav__item"

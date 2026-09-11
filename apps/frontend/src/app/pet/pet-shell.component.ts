@@ -3,6 +3,7 @@ import { PetStateService, PortalRole } from './pet-state.service';
 import { PetTechnicianComponent } from './technician/pet-technician.component';
 import { PetManagerComponent } from './manager/pet-manager.component';
 import { PetTeamComponent } from './team/pet-team.component';
+import { PetUsersComponent } from './users/pet-users.component';
 import { IconComponent, IconName } from '../shared/icon.component';
 import { riskAreaNames, riskAreaNrs } from './pet-mock-data';
 
@@ -23,13 +24,14 @@ interface NavItem {
     PetTechnicianComponent,
     PetManagerComponent,
     PetTeamComponent,
+    PetUsersComponent,
     IconComponent,
   ],
   templateUrl: './pet-shell.component.html',
   styleUrl: './pet-shell.component.scss',
 })
 export class PetShellComponent {
-  readonly navItems: NavItem[] = [
+  private readonly allNavItems: NavItem[] = [
     {
       id: 'tecnico',
       label: 'Campo',
@@ -54,12 +56,30 @@ export class PetShellComponent {
       icon: 'team',
       badge: () => null,
     },
+    {
+      id: 'usuarios',
+      label: 'Usuários',
+      shortLabel: 'Usuários',
+      description: 'Contas de login e papéis de acesso',
+      icon: 'shield',
+      badge: () => null,
+    },
   ];
+
+  // "Usuários" só aparece com sessão de admin/gestor — a mesma checagem que
+  // libera editar/excluir em Funcionários. O back-end (RolesGuard) é quem
+  // aplica de verdade; isto só evita oferecer uma aba cujas rotas de
+  // escrita a API recusaria.
+  readonly navItems = computed(() =>
+    this.state.canManageTeam()
+      ? this.allNavItems
+      : this.allNavItems.filter((item) => item.id !== 'usuarios'),
+  );
 
   readonly currentNav = computed(
     () =>
-      this.navItems.find((item) => item.id === this.state.role()) ??
-      this.navItems[0],
+      this.navItems().find((item) => item.id === this.state.role()) ??
+      this.navItems()[0],
   );
 
   // Confirmação antes de acionar a evacuação: ação irreversível na operação
@@ -68,6 +88,15 @@ export class PetShellComponent {
   readonly evacStartedAt = signal('');
 
   constructor(readonly state: PetStateService) {
+    // Se a sessão de admin/gestor cair (logout, expiração) enquanto a aba
+    // Usuários está aberta, volta para Campo em vez de deixar o conteúdo
+    // tentando carregar uma lista que a API não vai mais devolver.
+    effect(() => {
+      if (this.state.role() === 'usuarios' && !this.state.canManageTeam()) {
+        this.state.setRole('tecnico');
+      }
+    });
+
     // Carimba o horário sempre que a evacuação começa — vale tanto para o
     // acionamento pelo shell quanto pelo banner de alerta do painel.
     effect(() => {

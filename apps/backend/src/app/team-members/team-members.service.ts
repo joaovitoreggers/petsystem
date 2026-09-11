@@ -1,12 +1,14 @@
-import { ConflictException, Inject, Injectable } from '@nestjs/common';
+import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { TeamMember } from './entities/team-member.entity';
 import {
   CreateTeamMemberData,
   ITeamMemberRepository,
   TEAM_MEMBER_REPOSITORY,
+  UpdateTeamMemberData,
 } from './repositories/team-member-repository.interface';
 
 export type CreateTeamMemberInput = CreateTeamMemberData;
+export type UpdateTeamMemberInput = UpdateTeamMemberData;
 
 /**
  * Público boundary de TeamMembersModule — controllers só dependem deste
@@ -33,5 +35,20 @@ export class TeamMembersService {
       throw new ConflictException('Já existe um funcionário cadastrado com essa matrícula');
     }
     return this.teamMemberRepository.create(data);
+  }
+
+  async update(registration: string, data: UpdateTeamMemberInput): Promise<TeamMember> {
+    const updated = await this.teamMemberRepository.update(registration, data);
+    if (!updated) {
+      throw new NotFoundException('Funcionário não encontrado');
+    }
+    return updated;
+  }
+
+  async delete(registration: string): Promise<void> {
+    const removed = await this.teamMemberRepository.delete(registration);
+    if (!removed) {
+      throw new NotFoundException('Funcionário não encontrado');
+    }
   }
 }

@@ -2,7 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { TeamMember } from '../entities/team-member.entity';
-import { CreateTeamMemberData, ITeamMemberRepository } from './team-member-repository.interface';
+import {
+  CreateTeamMemberData,
+  ITeamMemberRepository,
+  UpdateTeamMemberData,
+} from './team-member-repository.interface';
 
 @Injectable()
 export class TeamMemberRepository implements ITeamMemberRepository {
@@ -30,5 +34,24 @@ export class TeamMemberRepository implements ITeamMemberRepository {
       documents: data.documents,
     });
     return this.repository.save(member);
+  }
+
+  async update(registration: string, data: UpdateTeamMemberData): Promise<TeamMember | null> {
+    const member = await this.repository.findOneBy({ registration });
+    if (!member) {
+      return null;
+    }
+    if (data.name !== undefined) member.name = data.name;
+    if (data.role !== undefined) member.role = data.role;
+    if (data.company !== undefined) member.company = data.company;
+    if (data.unit !== undefined) member.unit = data.unit;
+    if (data.isThirdParty !== undefined) member.isThirdParty = data.isThirdParty;
+    if (data.documents !== undefined) member.documents = data.documents;
+    return this.repository.save(member);
+  }
+
+  async delete(registration: string): Promise<boolean> {
+    const result = await this.repository.delete({ registration });
+    return (result.affected ?? 0) > 0;
   }
 }

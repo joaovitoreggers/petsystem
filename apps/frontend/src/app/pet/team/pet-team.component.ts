@@ -74,6 +74,10 @@ export class PetTeamComponent {
 
   readonly filter = signal<TeamFilter>('todos');
   readonly modalOpen = signal(false);
+  readonly dialogMode = signal<'create' | 'edit'>('create');
+  readonly editingRegistration = signal<string | null>(null);
+  readonly saveError = signal<string | null>(null);
+  readonly saving = signal(false);
 
   readonly cadName = signal('');
   readonly cadRegistration = signal('');
@@ -82,6 +86,10 @@ export class PetTeamComponent {
   readonly cadUnit = signal('Matelândia');
   readonly cadVinculo = signal<'Próprio' | 'Terceiro'>('Próprio');
   readonly cadDocDates = signal<Record<string, string>>({ ASO: '' });
+
+  readonly deleteTarget = signal<TeamMember | null>(null);
+  readonly deleting = signal(false);
+  readonly deleteError = signal<string | null>(null);
 
   constructor(readonly state: PetStateService) {}
 
@@ -215,8 +223,33 @@ export class PetTeamComponent {
   }
 
   openModal(): void {
+    this.dialogMode.set('create');
+    this.editingRegistration.set(null);
+    this.saveError.set(null);
+    this.cadName.set('');
+    this.cadRegistration.set('');
+    this.cadRole.set('');
+    this.cadCompany.set('Lar · Manutenção');
+    this.cadUnit.set('Matelândia');
+    this.cadVinculo.set('Próprio');
+    this.cadDocDates.set({ ASO: '' });
     this.modalOpen.set(true);
   }
+
+  openEditModal(member: TeamMember): void {
+    this.dialogMode.set('edit');
+    this.editingRegistration.set(member.registration);
+    this.saveError.set(null);
+    this.cadName.set(member.name);
+    this.cadRegistration.set(member.registration);
+    this.cadRole.set(member.role);
+    this.cadCompany.set(member.company);
+    this.cadUnit.set(member.unit);
+    this.cadVinculo.set(member.isThirdParty ? 'Terceiro' : 'Próprio');
+    this.cadDocDates.set({ ...member.documents });
+    this.modalOpen.set(true);
+  }
+
   closeModal(): void {
     this.modalOpen.set(false);
   }
@@ -274,18 +307,58 @@ export class PetTeamComponent {
   readonly cadSummary = computed(() => {
     const missing = this.cadMissing();
     if (missing.length > 0) return `Falta preencher: ${missing.join(', ')}.`;
-    return `Pronto para cadastrar · ${Object.keys(this.cadDocDates()).length} documentos com validade registrada.`;
+    const count = Object.keys(this.cadDocDates()).length;
+    return this.dialogMode() === 'edit'
+      ? `Pronto para salvar · ${count} documentos com validade registrada.`
+      : `Pronto para cadastrar · ${count} documentos com validade registrada.`;
   });
 
-  readonly cadDisabled = computed(() => this.cadMissing().length > 0);
+  readonly cadDisabled = computed(() => this.cadMissing().length > 0 || this.saving());
 
-  save(): void {
+  readonly dialogTitle = computed(() =>
+    this.dialogMode() === 'edit' ? 'Editar funcionário' : 'Cadastrar funcionário',
+  );
+  readonly dialogActionLabel = computed(() =>
+    this.saving() ? 'Salvando…' : this.dialogMode() === 'edit' ? 'Salvar alterações' : 'Cadastrar e gerar QR',
+  );
+
+  async save(): Promise<void> {
     if (this.cadDisabled()) return;
     const documents: Record<string, string> = {};
     const dates = this.cadDocDates();
     for (const code of Object.keys(dates)) {
       if (dates[code]) documents[code] = dates[code];
     }
+
+    if (this.dialogMode() === 'edit') {
+      const registration = this.editingRegistration();
+      if (!registration) return;
+      this.saving.set(true);
+      this.saveError.set(null);
+      try {
+        await this.state.updateTeamMember(registration, {
+          name: this.cadName().trim(),
+          role: this.cadRole().trim(),
+          company: this.cadCompany().trim(),
+          unit: this.cadUnit(),
+          isThirdParty: this.cadVinculo() === 'Terceiro',
+          documents,
+        });
+        this.modalOpen.set(false);
+      } catch {
+        this.saveError.set(
+          'Não foi possível salvar — confira se você está autenticado com e-mail/senha de gestor.',
+        );
+      } finally {
+        this.saving.set(false);
+      }
+      return;
+    }
+
+    this.createMember(documents);
+  }
+
+  private createMember(documents: Record<string, string>): void {
     this.state.registerTeamMember({
       name: this.cadName().trim(),
       registration: this.cadRegistration().trim(),
@@ -304,5 +377,31 @@ export class PetTeamComponent {
     this.cadUnit.set('Matelândia');
     this.cadVinculo.set('Próprio');
     this.cadDocDates.set({ ASO: '' });
+  }
+
+  openDeleteDialog(member: TeamMember): void {
+    this.deleteTarget.set(member);
+    this.deleteError.set(null);
+  }
+
+  closeDeleteDialog(): void {
+    this.deleteTarget.set(null);
+  }
+
+  async confirmDelete(): Promise<void> {
+    const target = this.deleteTarget();
+    if (!target) return;
+    this.deleting.set(true);
+    this.deleteError.set(null);
+    try {
+      await this.state.deleteTeamMember(target.registration);
+      this.deleteTarget.set(null);
+    } catch {
+      this.deleteError.set(
+        'Não foi possível excluir — confira se você está autenticado com e-mail/senha de gestor.',
+      );
+    } finally {
+      this.deleting.set(false);
+    }
   }
 }

@@ -1,0 +1,204 @@
+<div class="users">
+  <div class="users__head">
+    <div class="section-kicker">Controle de acesso · SESMT</div>
+    <h1 class="users__title">Usuários e papéis de acesso</h1>
+    <div class="users__head-row">
+      <div class="users__head-text">
+        Cada conta faz login por e-mail e senha e recebe um papel: apenas
+        Administrador e Gestor conseguem cadastrar, editar ou excluir
+        funcionários e outros usuários.
+      </div>
+      <button
+        type="button"
+        class="btn btn-primary users__new"
+        (click)="openCreateModal()"
+      >
+        <app-icon name="plus" [size]="17" />
+        Cadastrar usuário
+      </button>
+    </div>
+  </div>
+
+  @if (loading()) {
+    <div class="users__loading">Carregando usuários…</div>
+  } @else if (loadError()) {
+    <div class="users__form-error">{{ loadError() }}</div>
+  } @else {
+    <div class="table-wrap users__table">
+      <table class="table">
+        <thead>
+          <tr>
+            <th style="width: 30%">Nome</th>
+            <th style="width: 34%">E-mail</th>
+            <th>Papel</th>
+            <th style="width: 90px">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of rows(); track row.user.id) {
+            <tr>
+              <td data-label="Nome">
+                <span class="users__name">{{ row.user.name }}</span>
+                @if (row.isSelf) {
+                  <span class="tag users__tag-self">você</span>
+                }
+              </td>
+              <td data-label="E-mail" class="mono">{{ row.user.email }}</td>
+              <td data-label="Papel">
+                <span class="status-pill users__role-pill">{{ row.roleLabel }}</span>
+              </td>
+              <td data-label="Ações" class="users__actions">
+                <button
+                  type="button"
+                  class="btn-icon-ghost"
+                  title="Editar usuário"
+                  (click)="openEditModal(row.user)"
+                >
+                  <app-icon name="pencil" [size]="16" />
+                </button>
+                <button
+                  type="button"
+                  class="btn-icon-ghost btn-icon-ghost--danger"
+                  title="Excluir usuário"
+                  [disabled]="row.isSelf"
+                  [attr.aria-disabled]="row.isSelf"
+                  (click)="!row.isSelf && openDeleteDialog(row.user)"
+                >
+                  <app-icon name="trash" [size]="16" />
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    @if (rows().length === 0) {
+      <div class="empty-state users__empty">
+        <app-industrial-art class="empty-state__art" scene="shield" />
+        <div class="empty-state__title">Nenhum usuário cadastrado</div>
+        <div class="empty-state__text">
+          Cadastre a primeira conta de acesso para liberar login por e-mail e
+          senha.
+        </div>
+        <button type="button" class="btn btn-secondary" (click)="openCreateModal()">
+          <app-icon name="plus" [size]="17" />
+          Cadastrar usuário
+        </button>
+      </div>
+    }
+  }
+</div>
+
+@if (modalOpen()) {
+  <div class="dialog-backdrop" (click)="closeModal()">
+    <div class="dialog users__dialog" (click)="$event.stopPropagation()">
+      <div class="dialog-title">{{ dialogTitle() }}</div>
+      <div class="dialog-body">
+        @if (dialogMode() === 'edit') {
+          Deixe a senha em branco para não alterá-la.
+        } @else {
+          A conta passa a valer para login imediatamente após o cadastro.
+        }
+      </div>
+
+      <div class="users__form-row">
+        <div class="field" style="flex: 1; min-width: 200px">
+          <label>Nome completo</label>
+          <input
+            class="input"
+            placeholder="ex. Bárbara M. Garlini"
+            [value]="formName()"
+            (input)="formName.set($any($event.target).value)"
+          />
+        </div>
+        <div class="field" style="flex: 1; min-width: 220px">
+          <label>E-mail</label>
+          <input
+            class="input"
+            type="email"
+            placeholder="nome@petsystem.local"
+            [value]="formEmail()"
+            (input)="formEmail.set($any($event.target).value)"
+          />
+        </div>
+      </div>
+
+      <div class="users__form-row">
+        <div class="field" style="flex: 1; min-width: 200px">
+          <label>{{ dialogMode() === 'edit' ? 'Nova senha (opcional)' : 'Senha' }}</label>
+          <input
+            class="input"
+            type="password"
+            placeholder="mínimo 6 caracteres"
+            [value]="formPassword()"
+            (input)="formPassword.set($any($event.target).value)"
+          />
+        </div>
+        <div class="field" style="flex: 1; min-width: 200px">
+          <label>Papel</label>
+          <select
+            class="input"
+            (change)="formRole.set($any($event.target).value)"
+          >
+            @for (r of roleOptions; track r.value) {
+              <option [value]="r.value" [selected]="r.value === formRole()">{{ r.label }}</option>
+            }
+          </select>
+        </div>
+      </div>
+      <div class="users__role-hint">
+        @for (r of roleOptions; track r.value) {
+          @if (r.value === formRole()) {
+            {{ r.description }}
+          }
+        }
+      </div>
+
+      @if (saveError()) {
+        <div class="users__form-error">{{ saveError() }}</div>
+      }
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-secondary" (click)="closeModal()">
+          Cancelar
+        </button>
+        <button
+          type="button"
+          class="btn btn-primary"
+          [disabled]="formDisabled()"
+          (click)="save()"
+        >
+          {{ dialogActionLabel() }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (deleteTarget(); as target) {
+  <div class="dialog-backdrop" (click)="closeDeleteDialog()">
+    <div class="dialog users__delete-dialog" (click)="$event.stopPropagation()">
+      <div class="dialog-title">Excluir usuário</div>
+      <div class="dialog-body">
+        Tem certeza que quer excluir <strong>{{ target.name }}</strong> ({{ target.email }})?
+        Essa conta perde o acesso ao sistema imediatamente. Essa ação não pode ser desfeita.
+      </div>
+      @if (deleteError()) {
+        <div class="users__form-error">{{ deleteError() }}</div>
+      }
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-secondary" (click)="closeDeleteDialog()">
+          Cancelar
+        </button>
+        <button
+          type="button"
+          class="btn btn-danger"
+          [disabled]="deleting()"
+          (click)="confirmDelete()"
+        >
+          {{ deleting() ? 'Excluindo…' : 'Excluir definitivamente' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

@@ -148,6 +148,12 @@
   color: var(--text-muted);
 }
 
+.team__actions {
+  display: flex;
+  gap: var(--space-2);
+  white-space: nowrap;
+}
+
 .team__docs {
   display: flex;
   flex-direction: column;
@@ -189,9 +195,19 @@
   margin-top: var(--space-2);
 }
 
-/* ── Diálogo de cadastro ───────────────────────────────────────────── */
+/* ── Diálogo de cadastro/edição ───────────────────────────────────── */
 .team__dialog {
   width: min(720px, 100%);
+}
+.team__delete-dialog {
+  width: min(420px, 100%);
+}
+.team__form-error {
+  font-size: var(--text-sm);
+  color: var(--status-bad);
+  background: var(--status-bad-bg);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md, 6px);
 }
 .team__form-row {
   display: flex;

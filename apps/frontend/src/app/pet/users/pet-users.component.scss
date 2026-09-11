@@ -1,0 +1,100 @@
+/* ── Controle de acesso (contas de login) ─────────────────────────────
+   Lista curta — o que importa aqui é quem tem cada papel, não densidade
+   de dados como em Funcionários. */
+
+:host {
+  display: block;
+  flex: 1;
+  min-width: 0;
+}
+
+.users {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding: var(--space-5) var(--space-4) var(--space-10);
+  max-width: var(--content-max);
+  margin: 0 auto;
+  width: 100%;
+}
+
+.users__title {
+  font-size: clamp(24px, 3.4vw, 34px);
+  margin: 2px 0 0;
+}
+.users__head-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-top: var(--space-3);
+  flex-wrap: wrap;
+}
+.users__head-text {
+  flex: 1 1 420px;
+  font-size: var(--text-base);
+  color: var(--text-muted);
+  line-height: 1.55;
+  max-width: 78ch;
+}
+.users__new {
+  flex: none;
+}
+
+.users__table {
+  background: var(--surface-1);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.users__name {
+  font-weight: 600;
+}
+.users__tag-self {
+  margin-left: var(--space-2);
+  background: var(--surface-3);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: var(--text-xs);
+}
+.users__role-pill {
+  color: var(--color-accent-800);
+  background: var(--color-accent-100);
+}
+.users__actions {
+  display: flex;
+  gap: var(--space-2);
+  white-space: nowrap;
+}
+
+.users__loading,
+.users__form-error {
+  font-size: var(--text-sm);
+  color: var(--status-bad);
+  background: var(--status-bad-bg);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md, 6px);
+}
+.users__loading {
+  color: var(--text-muted);
+  background: var(--surface-2);
+}
+
+.users__dialog {
+  width: min(560px, 100%);
+}
+.users__delete-dialog {
+  width: min(420px, 100%);
+}
+.users__form-row {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+.users__role-hint {
+  font-size: var(--text-xs);
+  color: var(--text-faint);
+  margin-top: -6px;
+}

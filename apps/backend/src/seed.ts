@@ -19,6 +19,12 @@ const SEED_USERS = [
     password: 'senha123',
     role: 'operador',
   },
+  {
+    name: 'Bárbara M. Garlini',
+    email: 'gestor@petsystem.local',
+    password: 'senha123',
+    role: 'gestor',
+  },
 ];
 
 // Funcionários de campo — validados pelo QrValidationModule, não fazem

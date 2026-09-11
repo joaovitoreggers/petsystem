@@ -135,6 +135,10 @@ Variáveis de ambiente (mesmas da tabela acima, mais):
 |-------------------------------|----------|----------|
 | porteiro@petsystem.local      | senha123 | porteiro |
 | operador@petsystem.local      | senha123 | operador |
+| gestor@petsystem.local        | senha123 | gestor   |
+
+`gestor` (e `admin`, ainda sem seed) é o papel que a tela **Funcionários** do
+PET Digital exige para editar/excluir um cadastro — ver a seção seguinte.
 
 ### Funcionários de teste — validados no QR (criados por `npm run backend:seed`)
 
@@ -275,9 +279,11 @@ contar como uma leitura distinta.
 
 ## CRUD de usuários (API)
 
-Contas de login (porteiro/operador) — `name`, `email`, `password`, `role`.
-Todas as rotas abaixo exigem o JWT (`Authorization: Bearer <token>`); a tela
-`/users` no front-end (mesmo estilo simples do login/crachás, provisório) usa
+Contas de login — `name`, `email`, `password`, `role`. Todas as rotas exigem
+o JWT (`Authorization: Bearer <token>`); criar/editar/excluir exigem além
+disso o papel `admin`/`gestor` (`RolesGuard`) — só listar/buscar (`GET`) fica
+liberado para qualquer conta autenticada. A aba **Usuários** dentro do
+`/pet` (visível só com sessão admin/gestor — ver a seção seguinte) usa
 exatamente essa API.
 
 | Rota | Descrição |
@@ -314,12 +320,14 @@ mas ainda não é verificada por nenhum fluxo — não existe, nesta fase, um
 
 ## PETs e Funcionários do PET Digital (API)
 
-Back-end que sustenta as telas em `/pet` (design do PET Digital). Ao
-contrário de `/api/users` e `/api/employees`, essas duas rotas **não** usam
-`JwtAuthGuard` — o front-end do PET Digital não tem mais uma tela de login
-real (o reconhecimento facial é só uma simulação de UI), então não há token
-disponível neste MVP. `npm run backend:seed` popula as duas tabelas com o
-mesmo conteúdo que já existia como mock no front-end.
+Back-end que sustenta as telas em `/pet` (design do PET Digital). A leitura e
+a criação de PETs/funcionários seguem **sem** `JwtAuthGuard` de propósito —
+é o caminho que a simulação de reconhecimento facial usa, e essa não gera
+token nenhum. A tela também tem login real por e-mail/senha (mesmo
+`POST /api/auth/login` da tabela acima) — quando autenticado assim, o token
+fica disponível e alimenta as rotas que exigem login abaixo.
+`npm run backend:seed` popula as tabelas com o mesmo conteúdo que já existia
+como mock no front-end.
 
 | Rota | Descrição |
 |------|-----------|
@@ -329,6 +337,17 @@ mesmo conteúdo que já existia como mock no front-end.
 | `PATCH /api/work-permits/:id/close` | Encerra uma PET (`end`, `durationMinutes`) — `404` se não existir |
 | `GET /api/team-members` | Lista os funcionários cadastrados no registro do SESMT |
 | `POST /api/team-members` | Cadastra um funcionário — `409` se a matrícula já existir |
+| `PATCH /api/team-members/:registration` | Atualiza NRs, vínculo, cargo, empresa ou unidade — **exige** `JwtAuthGuard` + papel `admin`/`gestor` (`RolesGuard`); `404` se a matrícula não existir |
+| `DELETE /api/team-members/:registration` | Remove o cadastro — mesma exigência de papel; `404` se não existir |
+
+Editar/excluir são as únicas rotas de PET/funcionário que exigem login de
+verdade: dão acesso a dado crítico (validade de NR, vínculo do funcionário),
+então o front-end só mostra os botões de editar/excluir na tela
+**Funcionários** quando a sessão atual (`PetStateService.session()`) tem
+papel `admin` ou `gestor` — a checagem de verdade, porém, é o `RolesGuard`
+no back-end; a UI só evita oferecer um botão que a API recusaria. A mesma
+sessão libera a aba **Usuários** (cadastro de contas de login — ver "CRUD de
+usuários" acima), que fica fora da navegação para quem não tem esse papel.
 
 Áreas de risco, checklist, limites de gás, os crachás simulados no passo de
 QR do assistente e o histórico de 30 dias do painel do gestor continuam como
@@ -356,7 +375,10 @@ relatório — o resto do app funciona normalmente sem essa chave.
 
 - **Strategy** (Passport): `LocalStrategy` (login) e `JwtStrategy` (rota
   protegida) — `apps/backend/src/app/auth/strategies`
-- **Guard**: `JwtAuthGuard` protegendo as rotas de `QrValidationController`
+- **Guard**: `JwtAuthGuard` protegendo as rotas de `QrValidationController`;
+  `RolesGuard` (com o decorator `@Roles(...)`, lido via `Reflector`)
+  protegendo `PATCH`/`DELETE /api/team-members/:registration` e
+  `POST`/`PATCH`/`DELETE /api/users` por papel (`admin`/`gestor`)
 - **Repository**: `IUserRepository`, `IEmployeeRepository` e
   `IAccessEventRepository`, com implementações TypeORM injetadas por token —
   desacopla o domínio do ORM
