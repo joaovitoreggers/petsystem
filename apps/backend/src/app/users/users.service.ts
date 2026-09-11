@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
-import { TenantScope } from '../auth/tenant-scope';
+import { assertOwnedByScope, filterOwnedByScope, TenantScope } from '../auth/tenant-scope';
 import { User } from './entities/user.entity';
 import {
   IUserRepository,
@@ -14,6 +14,7 @@ import {
 } from './repositories/user-repository.interface';
 
 const SALT_ROUNDS = 10;
+const NOT_FOUND_MESSAGE = 'Usuário não encontrado';
 
 export interface CreateUserInput {
   name: string;
@@ -46,33 +47,33 @@ export class UsersService {
 
   async findAll(scope?: TenantScope): Promise<User[]> {
     const users = await this.userRepository.findAll();
-    return filterByScope(users, scope);
+    return filterOwnedByScope(users, scope);
   }
 
-  findById(id: string): Promise<User | null> {
-    return this.userRepository.findById(id);
+  async findById(id: string, scope?: TenantScope): Promise<User | null> {
+    const user = await this.userRepository.findById(id);
+    if (!user) {
+      return null;
+    }
+    assertOwnedByScope(user, scope, NOT_FOUND_MESSAGE);
+    return user;
   }
 
   findByEmail(email: string): Promise<User | null> {
     return this.userRepository.findByEmail(email);
   }
 
-  // `creator` é quem está cadastrando (via API) — usado só para
-  // preencher companyGroupId por padrão quando o DTO não o informa (um
-  // admin/gestor cadastra dentro do próprio grupo sem precisar escolher).
-  // Ausente no seed, que sempre informa o grupo explicitamente.
-  async create(data: CreateUserInput, creator?: { companyGroupId?: string | null }): Promise<User> {
+  // `scope` é quem está cadastrando (via API) — usado só para preencher
+  // companyGroupId por padrão quando o DTO não o informa (um admin/gestor
+  // cadastra dentro do próprio grupo sem precisar escolher). Ausente no
+  // seed, que sempre informa o grupo explicitamente.
+  async create(data: CreateUserInput, scope?: TenantScope): Promise<User> {
     const existing = await this.userRepository.findByEmail(data.email);
     if (existing) {
       throw new ConflictException('Este email já está em uso');
     }
 
-    const { companyGroupId, branchId } = resolveTenancy(
-      data.role,
-      data.companyGroupId,
-      data.branchId,
-      creator?.companyGroupId ?? null,
-    );
+    const { companyGroupId, branchId } = resolveTenancy(data.role, data.companyGroupId, data.branchId, scope);
 
     const passwordHash = await bcrypt.hash(data.password, SALT_ROUNDS);
     return this.userRepository.create({
@@ -85,15 +86,12 @@ export class UsersService {
     });
   }
 
-  async update(
-    id: string,
-    data: UpdateUserInput,
-    updater?: { companyGroupId?: string | null },
-  ): Promise<User> {
+  async update(id: string, data: UpdateUserInput, scope?: TenantScope): Promise<User> {
     const current = await this.userRepository.findById(id);
     if (!current) {
-      throw new NotFoundException('Usuário não encontrado');
+      throw new NotFoundException(NOT_FOUND_MESSAGE);
     }
+    assertOwnedByScope(current, scope, NOT_FOUND_MESSAGE);
 
     if (data.email !== undefined) {
       const existing = await this.userRepository.findByEmail(data.email);
@@ -107,7 +105,7 @@ export class UsersService {
       nextRole,
       data.companyGroupId ?? current.companyGroupId ?? undefined,
       data.branchId !== undefined ? data.branchId : current.branchId ?? undefined,
-      updater?.companyGroupId ?? null,
+      scope,
     );
 
     const passwordHash = data.password
@@ -124,15 +122,21 @@ export class UsersService {
     });
 
     if (!updated) {
-      throw new NotFoundException('Usuário não encontrado');
+      throw new NotFoundException(NOT_FOUND_MESSAGE);
     }
     return updated;
   }
 
-  async delete(id: string): Promise<void> {
+  async delete(id: string, scope?: TenantScope): Promise<void> {
+    const current = await this.userRepository.findById(id);
+    if (!current) {
+      throw new NotFoundException(NOT_FOUND_MESSAGE);
+    }
+    assertOwnedByScope(current, scope, NOT_FOUND_MESSAGE);
+
     const deleted = await this.userRepository.delete(id);
     if (!deleted) {
-      throw new NotFoundException('Usuário não encontrado');
+      throw new NotFoundException(NOT_FOUND_MESSAGE);
     }
   }
 
@@ -142,31 +146,38 @@ export class UsersService {
 }
 
 // platform-admin nunca tem grupo/filial; qualquer outro papel precisa de um
-// grupo — do DTO, ou (padrão) o do próprio admin/gestor que está cadastrando.
+// grupo — do DTO, ou (padrão) o do próprio admin/gestor que está
+// cadastrando/editando. Um admin/gestor não-platform-admin nunca pode
+// escolher um `companyGroupId` diferente do próprio — isso moveria o
+// usuário pra outro tenant, exatamente a relação entre tenants que este
+// sistema não permite; só platform-admin pode apontar pra um grupo
+// qualquer (é o único papel sem um grupo "próprio" pra comparar).
 function resolveTenancy(
   role: string,
   requestedCompanyGroupId: string | undefined,
   requestedBranchId: string | null | undefined,
-  creatorCompanyGroupId: string | null,
+  scope: TenantScope | undefined,
 ): { companyGroupId: string | null; branchId: string | null } {
   if (role === 'platform-admin') {
     return { companyGroupId: null, branchId: null };
   }
-  const companyGroupId = requestedCompanyGroupId ?? creatorCompanyGroupId;
+
+  if (
+    scope &&
+    scope.role !== 'platform-admin' &&
+    requestedCompanyGroupId !== undefined &&
+    requestedCompanyGroupId !== scope.companyGroupId
+  ) {
+    throw new BadRequestException(
+      'Você não pode atribuir um usuário a outro grupo de empresas',
+    );
+  }
+
+  const companyGroupId = requestedCompanyGroupId ?? scope?.companyGroupId ?? null;
   if (!companyGroupId) {
     throw new BadRequestException(
       'Informe o grupo de empresas para este usuário',
     );
   }
   return { companyGroupId, branchId: requestedBranchId ?? null };
-}
-
-function filterByScope(users: User[], scope?: TenantScope): User[] {
-  if (!scope || scope.role === 'platform-admin') {
-    return users;
-  }
-  if (scope.branchId) {
-    return users.filter((u) => u.branchId === scope.branchId);
-  }
-  return users.filter((u) => u.companyGroupId === scope.companyGroupId);
 }

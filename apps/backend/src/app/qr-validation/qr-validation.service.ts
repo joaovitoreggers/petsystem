@@ -1,4 +1,5 @@
 import { ConflictException, Inject, Injectable } from '@nestjs/common';
+import { TenantScope } from '../auth/tenant-scope';
 import { EmployeesService } from '../employees/employees.service';
 import { AccessResult } from './entities/access-event.entity';
 import {
@@ -46,6 +47,7 @@ export class QrValidationService {
   async recordRead(
     attemptId: string,
     qrCode: string,
+    scope?: TenantScope,
   ): Promise<{ attempt: AccessAttempt; read: RecordedRead }> {
     const attempt = this.attemptStore.get(attemptId);
 
@@ -60,9 +62,13 @@ export class QrValidationService {
       );
     }
 
-    const employee = UUID_SHAPE.test(qrCode)
-      ? await this.employeesService.findById(qrCode)
-      : null;
+    // Busca sem scope de propósito — um crachá de outro tenant precisa
+    // resultar em INVALID_QR, igual a um crachá que não existe, não num
+    // erro diferente que denunciaria que aquele QR pertence a alguém, só
+    // que "de outro lugar". `assertSameTenant` é quem decide isso, sem
+    // lançar exceção.
+    const found = UUID_SHAPE.test(qrCode) ? await this.employeesService.findById(qrCode) : null;
+    const employee = found && isSameTenant(found, scope) ? found : null;
     const result = this.evaluateAuthorization(employee);
 
     await this.accessEventRepository.record({
@@ -92,4 +98,23 @@ export class QrValidationService {
     }
     return employee.canAccessRiskAreas ? AccessResult.AUTHORIZED : AccessResult.DENIED;
   }
+}
+
+// platform-admin (ou nenhuma sessão) não restringe; caso contrário, o
+// crachá só é reconhecido se pertencer ao mesmo grupo (e, se a sessão for
+// restrita a uma filial, à mesma filial) de quem está validando.
+function isSameTenant(
+  employee: { companyGroupId: string | null; branchId: string | null },
+  scope?: TenantScope,
+): boolean {
+  if (!scope || scope.role === 'platform-admin') {
+    return true;
+  }
+  if (employee.companyGroupId !== scope.companyGroupId) {
+    return false;
+  }
+  if (scope.branchId && employee.branchId !== scope.branchId) {
+    return false;
+  }
+  return true;
 }

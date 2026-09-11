@@ -1,8 +1,10 @@
-import { ConflictException } from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { BranchesService } from '../tenancy/branches.service';
 import { TeamMember } from './entities/team-member.entity';
 import { ITeamMemberRepository } from './repositories/team-member-repository.interface';
 import { TeamMembersService } from './team-members.service';
+
+const GROUP_ID = 'gggggggg-gggg-gggg-gggg-gggggggggggg';
 
 function teamMember(overrides: Partial<TeamMember>): TeamMember {
   return {
@@ -11,6 +13,7 @@ function teamMember(overrides: Partial<TeamMember>): TeamMember {
     role: 'Mecânico industrial',
     company: 'Lar · Manutenção',
     unit: 'Matelândia',
+    companyGroupId: GROUP_ID,
     branchId: null,
     isThirdParty: false,
     documents: { ASO: '2027-03-14' },
@@ -61,16 +64,35 @@ describe('TeamMembersService', () => {
       const created = teamMember({});
       repository.create.mockResolvedValue(created);
 
-      const result = await service.create({
-        registration: '04812',
-        name: 'Jonas R. Kirchner',
-        role: 'Mecânico industrial',
-        company: 'Lar · Manutenção',
-        unit: 'Matelândia',
-        documents: { ASO: '2027-03-14' },
-      });
+      const result = await service.create(
+        {
+          registration: '04812',
+          name: 'Jonas R. Kirchner',
+          role: 'Mecânico industrial',
+          company: 'Lar · Manutenção',
+          unit: 'Matelândia',
+          documents: { ASO: '2027-03-14' },
+        },
+        { role: 'gestor', companyGroupId: GROUP_ID, branchId: null },
+      );
 
       expect(result).toBe(created);
+    });
+
+    it('rejects when no company group can be determined at all', async () => {
+      repository.findByRegistration.mockResolvedValue(null);
+
+      await expect(
+        service.create({
+          registration: '04812',
+          name: 'Jonas R. Kirchner',
+          role: 'Mecânico industrial',
+          company: 'Lar · Manutenção',
+          unit: 'Matelândia',
+          documents: {},
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(repository.create).not.toHaveBeenCalled();
     });
 
     it('resolves branchId by matching unit against the caller company group branches', async () => {
@@ -78,7 +100,7 @@ describe('TeamMembersService', () => {
       repository.create.mockResolvedValue(teamMember({}));
       branchesService.findByCompanyGroupAndName.mockResolvedValue({
         id: 'branch-1',
-        companyGroupId: 'group-1',
+        companyGroupId: GROUP_ID,
         name: 'Matelândia',
         createdAt: new Date(),
       });
@@ -92,12 +114,12 @@ describe('TeamMembersService', () => {
           unit: 'Matelândia',
           documents: {},
         },
-        { role: 'gestor', companyGroupId: 'group-1', branchId: null },
+        { role: 'gestor', companyGroupId: GROUP_ID, branchId: null },
       );
 
-      expect(branchesService.findByCompanyGroupAndName).toHaveBeenCalledWith('group-1', 'Matelândia');
+      expect(branchesService.findByCompanyGroupAndName).toHaveBeenCalledWith(GROUP_ID, 'Matelândia');
       expect(repository.create).toHaveBeenCalledWith(
-        expect.objectContaining({ branchId: 'branch-1' }),
+        expect.objectContaining({ companyGroupId: GROUP_ID, branchId: 'branch-1' }),
       );
     });
 
@@ -115,13 +137,13 @@ describe('TeamMembersService', () => {
           unit: 'Unidade Inexistente',
           documents: {},
         },
-        { role: 'gestor', companyGroupId: 'group-1', branchId: null },
+        { role: 'gestor', companyGroupId: GROUP_ID, branchId: null },
       );
 
       expect(repository.create).toHaveBeenCalledWith(expect.objectContaining({ branchId: null }));
     });
 
-    it('never resolves a branch when the caller has no scope at all (unauthenticated path)', async () => {
+    it('respects an explicit companyGroupId/branchId instead of the scope (used by the seed migration)', async () => {
       repository.findByRegistration.mockResolvedValue(null);
       repository.create.mockResolvedValue(teamMember({}));
 
@@ -132,33 +154,73 @@ describe('TeamMembersService', () => {
         company: 'Lar · Manutenção',
         unit: 'Matelândia',
         documents: {},
+        companyGroupId: 'explicit-group',
+        branchId: 'explicit-branch',
       });
 
       expect(branchesService.findByCompanyGroupAndName).not.toHaveBeenCalled();
-      expect(repository.create).toHaveBeenCalledWith(expect.objectContaining({ branchId: null }));
+      expect(repository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ companyGroupId: 'explicit-group', branchId: 'explicit-branch' }),
+      );
+    });
+  });
+
+  describe('update — tenant isolation', () => {
+    it('rejects editing a team member from a different tenant, as if it did not exist', async () => {
+      repository.findByRegistration.mockResolvedValue(
+        teamMember({ companyGroupId: 'other-group' }),
+      );
+
+      await expect(
+        service.update(
+          '04812',
+          { role: 'Hackeado' },
+          { role: 'gestor', companyGroupId: GROUP_ID, branchId: null },
+        ),
+      ).rejects.toThrow(NotFoundException);
+      expect(repository.update).not.toHaveBeenCalled();
     });
 
-    it('respects an explicitly-provided branchId instead of overriding it with the auto-resolved one', async () => {
-      repository.findByRegistration.mockResolvedValue(null);
-      repository.create.mockResolvedValue(teamMember({}));
-
-      await service.create(
-        {
-          registration: '04812',
-          name: 'Jonas R. Kirchner',
-          role: 'Mecânico industrial',
-          company: 'Lar · Manutenção',
-          unit: 'Matelândia',
-          documents: {},
-          branchId: 'explicit-branch',
-        },
-        { role: 'gestor', companyGroupId: 'group-1', branchId: null },
+    it('a branch-restricted caller cannot edit a member from a sibling branch in the same group', async () => {
+      repository.findByRegistration.mockResolvedValue(
+        teamMember({ companyGroupId: GROUP_ID, branchId: 'b2' }),
       );
 
-      expect(branchesService.findByCompanyGroupAndName).not.toHaveBeenCalled();
-      expect(repository.create).toHaveBeenCalledWith(
-        expect.objectContaining({ branchId: 'explicit-branch' }),
+      await expect(
+        service.update(
+          '04812',
+          { role: 'Hackeado' },
+          { role: 'gestor', companyGroupId: GROUP_ID, branchId: 'b1' },
+        ),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('lets platform-admin edit a team member from any tenant', async () => {
+      repository.findByRegistration.mockResolvedValue(
+        teamMember({ companyGroupId: 'other-group' }),
       );
+      repository.update.mockResolvedValue(teamMember({ companyGroupId: 'other-group' }));
+
+      await expect(
+        service.update(
+          '04812',
+          { role: 'Ok' },
+          { role: 'platform-admin', companyGroupId: null, branchId: null },
+        ),
+      ).resolves.toBeDefined();
+    });
+  });
+
+  describe('delete — tenant isolation', () => {
+    it('rejects deleting a team member from a different tenant, as if it did not exist', async () => {
+      repository.findByRegistration.mockResolvedValue(
+        teamMember({ companyGroupId: 'other-group' }),
+      );
+
+      await expect(
+        service.delete('04812', { role: 'gestor', companyGroupId: GROUP_ID, branchId: null }),
+      ).rejects.toThrow(NotFoundException);
+      expect(repository.delete).not.toHaveBeenCalled();
     });
   });
 
@@ -170,8 +232,11 @@ describe('TeamMembersService', () => {
       await expect(service.findAll()).resolves.toEqual(members);
     });
 
-    it('returns every member for platform-admin, regardless of branch', async () => {
-      const members = [teamMember({ registration: '1', branchId: 'b1' })];
+    it('returns every member for platform-admin, regardless of tenant', async () => {
+      const members = [
+        teamMember({ registration: '1', companyGroupId: GROUP_ID }),
+        teamMember({ registration: '2', companyGroupId: 'other-group' }),
+      ];
       repository.findAll.mockResolvedValue(members);
 
       await expect(
@@ -186,26 +251,22 @@ describe('TeamMembersService', () => {
       ];
       repository.findAll.mockResolvedValue(members);
 
-      const result = await service.findAll({ role: 'tecnico', companyGroupId: 'g1', branchId: 'b1' });
+      const result = await service.findAll({ role: 'tecnico', companyGroupId: GROUP_ID, branchId: 'b1' });
 
       expect(result.map((m: TeamMember) => m.registration)).toEqual(['1']);
     });
 
-    it('restricts a group-wide caller to members of branches within their own group', async () => {
+    it('restricts a group-wide caller to members of their own company group, regardless of branch', async () => {
       const members = [
-        teamMember({ registration: '1', branchId: 'b1' }), // in-group
-        teamMember({ registration: '2', branchId: 'b-other-group' }), // different group
-        teamMember({ registration: '3', branchId: null }), // no branch at all — excluded
+        teamMember({ registration: '1', companyGroupId: GROUP_ID, branchId: 'b1' }),
+        teamMember({ registration: '2', companyGroupId: GROUP_ID, branchId: null }),
+        teamMember({ registration: '3', companyGroupId: 'other-group', branchId: null }),
       ];
       repository.findAll.mockResolvedValue(members);
-      branchesService.findByCompanyGroup.mockResolvedValue([
-        { id: 'b1', companyGroupId: 'g1', name: 'Matelândia', createdAt: new Date() },
-      ]);
 
-      const result = await service.findAll({ role: 'gestor', companyGroupId: 'g1', branchId: null });
+      const result = await service.findAll({ role: 'gestor', companyGroupId: GROUP_ID, branchId: null });
 
-      expect(result.map((m: TeamMember) => m.registration)).toEqual(['1']);
-      expect(branchesService.findByCompanyGroup).toHaveBeenCalledWith('g1');
+      expect(result.map((m: TeamMember) => m.registration)).toEqual(['1', '2']);
     });
   });
 });

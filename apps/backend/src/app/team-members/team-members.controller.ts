@@ -63,7 +63,10 @@ export class TeamMembersController {
   @UseGuards(RolesGuard)
   @Roles('admin', 'gestor')
   @HttpCode(HttpStatus.NO_CONTENT)
-  remove(@Param('registration') registration: string): Promise<void> {
-    return this.teamMembersService.delete(registration);
+  remove(
+    @Param('registration') registration: string,
+    @CurrentUser() currentUser: AuthenticatedUser,
+  ): Promise<void> {
+    return this.teamMembersService.delete(registration, scopeFromUser(currentUser));
   }
 }

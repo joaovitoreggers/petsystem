@@ -28,6 +28,10 @@ describe('UsersController', () => {
 
     await controller.remove('someone-else-id', me);
 
-    expect(usersService.delete).toHaveBeenCalledWith('someone-else-id');
+    expect(usersService.delete).toHaveBeenCalledWith('someone-else-id', {
+      role: 'porteiro',
+      companyGroupId: null,
+      branchId: null,
+    });
   });
 });

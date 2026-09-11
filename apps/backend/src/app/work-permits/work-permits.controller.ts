@@ -37,8 +37,11 @@ export class WorkPermitsController {
   }
 
   @Get(':id')
-  async findOne(@Param('id') id: string): Promise<WorkPermit> {
-    const permit = await this.workPermitsService.findById(id);
+  async findOne(
+    @Param('id') id: string,
+    @CurrentUser() currentUser: AuthenticatedUser,
+  ): Promise<WorkPermit> {
+    const permit = await this.workPermitsService.findById(id, scopeFromUser(currentUser));
     if (!permit) {
       throw new NotFoundException('PET não encontrada');
     }
@@ -55,12 +58,20 @@ export class WorkPermitsController {
   }
 
   @Patch(':id/close')
-  close(@Param('id') id: string, @Body() dto: CloseWorkPermitDto): Promise<WorkPermit> {
-    return this.workPermitsService.close(id, dto);
+  close(
+    @Param('id') id: string,
+    @Body() dto: CloseWorkPermitDto,
+    @CurrentUser() currentUser: AuthenticatedUser,
+  ): Promise<WorkPermit> {
+    return this.workPermitsService.close(id, dto, scopeFromUser(currentUser));
   }
 
   @Patch(':id/reading')
-  addReading(@Param('id') id: string, @Body() dto: AddReadingDto): Promise<WorkPermit> {
-    return this.workPermitsService.addReading(id, dto);
+  addReading(
+    @Param('id') id: string,
+    @Body() dto: AddReadingDto,
+    @CurrentUser() currentUser: AuthenticatedUser,
+  ): Promise<WorkPermit> {
+    return this.workPermitsService.addReading(id, dto, scopeFromUser(currentUser));
   }
 }

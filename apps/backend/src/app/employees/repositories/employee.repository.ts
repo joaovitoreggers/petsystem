@@ -31,6 +31,8 @@ export class EmployeeRepository implements IEmployeeRepository {
       role: data.role,
       canAccessRiskAreas: data.canAccessRiskAreas,
       canPerformCorrectiveService: data.canPerformCorrectiveService,
+      companyGroupId: data.companyGroupId,
+      branchId: data.branchId,
     });
     return this.repository.save(employee);
   }
@@ -46,6 +48,8 @@ export class EmployeeRepository implements IEmployeeRepository {
     if (data.canPerformCorrectiveService !== undefined) {
       employee.canPerformCorrectiveService = data.canPerformCorrectiveService;
     }
+    if (data.companyGroupId !== undefined) employee.companyGroupId = data.companyGroupId;
+    if (data.branchId !== undefined) employee.branchId = data.branchId;
     return this.repository.save(employee);
   }
 

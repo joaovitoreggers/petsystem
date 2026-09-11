@@ -24,6 +24,16 @@ export class Employee {
   @Column({ name: 'can_perform_corrective_service', default: false })
   canPerformCorrectiveService!: boolean;
 
+  // Dono de verdade do registro para isolamento entre tenants — mesma
+  // lógica de TeamMember/WorkPermit. Sem campo de unidade em texto livre
+  // aqui (o crachá nunca teve um), então `branchId` só existe quando quem
+  // cadastrou já estava restrito a uma filial específica.
+  @Column({ name: 'company_group_id', type: 'uuid', nullable: true })
+  companyGroupId!: string | null;
+
+  @Column({ name: 'branch_id', type: 'uuid', nullable: true })
+  branchId!: string | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt!: Date;
 }

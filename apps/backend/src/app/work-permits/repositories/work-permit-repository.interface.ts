@@ -15,6 +15,7 @@ export interface CreateWorkPermitData {
   areas: string[];
   location: string;
   unit: string;
+  companyGroupId?: string | null;
   branchId?: string | null;
   teamSize: number;
   date: string;
@@ -50,7 +51,10 @@ export interface IWorkPermitRepository {
   create(data: CreateWorkPermitData): Promise<WorkPermit>;
   close(id: string, data: CloseWorkPermitData): Promise<WorkPermit | null>;
   addReading(id: string, data: AddReadingData): Promise<WorkPermit | null>;
-  updateBranch(id: string, branchId: string | null): Promise<WorkPermit | null>;
+  updateTenancy(
+    id: string,
+    data: { companyGroupId: string | null; branchId: string | null },
+  ): Promise<WorkPermit | null>;
 }
 
 export const WORK_PERMIT_REPOSITORY = Symbol('WORK_PERMIT_REPOSITORY');

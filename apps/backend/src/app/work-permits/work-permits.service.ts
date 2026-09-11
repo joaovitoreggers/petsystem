@@ -1,5 +1,5 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { TenantScope } from '../auth/tenant-scope';
+import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { assertOwnedByScope, filterOwnedByScope, TenantScope } from '../auth/tenant-scope';
 import { BranchesService } from '../tenancy/branches.service';
 import { WorkPermit, WorkPermitGasReading } from './entities/work-permit.entity';
 import {
@@ -19,6 +19,8 @@ export interface AddReadingInput {
   gas: WorkPermitGasReading;
 }
 
+const NOT_FOUND_MESSAGE = 'PET não encontrada';
+
 /**
  * Público boundary de WorkPermitsModule — controllers e outros módulos só
  * dependem deste service.
@@ -33,68 +35,76 @@ export class WorkPermitsService {
 
   async findAll(scope?: TenantScope): Promise<WorkPermit[]> {
     const permits = await this.workPermitRepository.findAll();
-    return this.filterByScope(permits, scope);
+    return filterOwnedByScope(permits, scope);
   }
 
-  findById(id: string): Promise<WorkPermit | null> {
-    return this.workPermitRepository.findById(id);
+  async findById(id: string, scope?: TenantScope): Promise<WorkPermit | null> {
+    const permit = await this.workPermitRepository.findById(id);
+    if (!permit) {
+      return null;
+    }
+    assertOwnedByScope(permit, scope, NOT_FOUND_MESSAGE);
+    return permit;
   }
 
   async create(data: CreateWorkPermitInput, scope?: TenantScope): Promise<WorkPermit> {
+    const companyGroupId = data.companyGroupId ?? scope?.companyGroupId ?? null;
+    if (!companyGroupId) {
+      throw new BadRequestException(
+        'Não foi possível determinar o grupo de empresas desta PET',
+      );
+    }
     const branchId =
-      data.branchId !== undefined ? data.branchId : await this.resolveBranchId(data.unit, scope);
-    return this.workPermitRepository.create({ ...data, branchId });
+      data.branchId !== undefined ? data.branchId : await this.resolveBranchId(companyGroupId, data.unit);
+    return this.workPermitRepository.create({ ...data, companyGroupId, branchId });
   }
 
-  async close(id: string, data: CloseWorkPermitInput): Promise<WorkPermit> {
+  async close(id: string, data: CloseWorkPermitInput, scope?: TenantScope): Promise<WorkPermit> {
+    const current = await this.workPermitRepository.findById(id);
+    if (!current) {
+      throw new NotFoundException(NOT_FOUND_MESSAGE);
+    }
+    assertOwnedByScope(current, scope, NOT_FOUND_MESSAGE);
+
     const closed = await this.workPermitRepository.close(id, data);
     if (!closed) {
-      throw new NotFoundException('PET não encontrada');
+      throw new NotFoundException(NOT_FOUND_MESSAGE);
     }
     return closed;
   }
 
-  async addReading(id: string, data: AddReadingInput): Promise<WorkPermit> {
+  async addReading(id: string, data: AddReadingInput, scope?: TenantScope): Promise<WorkPermit> {
+    const current = await this.workPermitRepository.findById(id);
+    if (!current) {
+      throw new NotFoundException(NOT_FOUND_MESSAGE);
+    }
+    assertOwnedByScope(current, scope, NOT_FOUND_MESSAGE);
+
     const updated = await this.workPermitRepository.addReading(id, data);
     if (!updated) {
-      throw new NotFoundException('PET não encontrada');
+      throw new NotFoundException(NOT_FOUND_MESSAGE);
     }
     return updated;
   }
 
-  // Só para a migração do seed: preenche branchId em PETs que já existiam
-  // antes da multi-tenancy, sem mexer em mais nada do registro.
-  async backfillBranch(id: string, branchId: string | null): Promise<void> {
-    await this.workPermitRepository.updateBranch(id, branchId);
+  // Só para a migração do seed: preenche grupo/filial em PETs que já
+  // existiam antes da multi-tenancy, sem mexer em mais nada do registro.
+  async backfillTenancy(
+    id: string,
+    data: { companyGroupId: string | null; branchId: string | null },
+  ): Promise<void> {
+    await this.workPermitRepository.updateTenancy(id, data);
   }
 
   // Mesma lógica de resolução por nome usada em TeamMembersService — sem
   // front-end de seleção de filial nesta fase, tenta casar `unit` (texto
-  // livre) com uma filial do grupo de quem está emitindo a PET.
-  private async resolveBranchId(unit: string, scope?: TenantScope): Promise<string | null> {
-    if (!scope?.companyGroupId) {
+  // livre) com uma filial do grupo dono da PET.
+  private async resolveBranchId(companyGroupId: string | null, unit: string): Promise<string | null> {
+    if (!companyGroupId) {
       return null;
     }
-    const branch = await this.branchesService.findByCompanyGroupAndName(
-      scope.companyGroupId,
-      unit,
-    );
+    const branch = await this.branchesService.findByCompanyGroupAndName(companyGroupId, unit);
     return branch?.id ?? null;
-  }
-
-  private async filterByScope(permits: WorkPermit[], scope?: TenantScope): Promise<WorkPermit[]> {
-    if (!scope || scope.role === 'platform-admin') {
-      return permits;
-    }
-    if (scope.branchId) {
-      return permits.filter((p) => p.branchId === scope.branchId);
-    }
-    if (!scope.companyGroupId) {
-      return permits;
-    }
-    const branches = await this.branchesService.findByCompanyGroup(scope.companyGroupId);
-    const branchIds = new Set(branches.map((b) => b.id));
-    return permits.filter((p) => p.branchId != null && branchIds.has(p.branchId));
   }
 }
 

@@ -32,6 +32,7 @@ export class WorkPermitRepository implements IWorkPermitRepository {
       areas: data.areas,
       location: data.location,
       unit: data.unit,
+      companyGroupId: data.companyGroupId ?? null,
       branchId: data.branchId ?? null,
       teamSize: data.teamSize,
       date: data.date,
@@ -80,12 +81,16 @@ export class WorkPermitRepository implements IWorkPermitRepository {
     return this.repository.save(permit);
   }
 
-  async updateBranch(id: string, branchId: string | null): Promise<WorkPermit | null> {
+  async updateTenancy(
+    id: string,
+    data: { companyGroupId: string | null; branchId: string | null },
+  ): Promise<WorkPermit | null> {
     const permit = await this.repository.findOneBy({ id });
     if (!permit) {
       return null;
     }
-    permit.branchId = branchId;
+    permit.companyGroupId = data.companyGroupId;
+    permit.branchId = data.branchId;
     return this.repository.save(permit);
   }
 

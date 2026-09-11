@@ -1,6 +1,7 @@
 import { Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
+import { TenantScope } from '../auth/tenant-scope';
 import { WorkPermit } from '../work-permits/entities/work-permit.entity';
 import { WorkPermitsService } from '../work-permits/work-permits.service';
 import { AREA_INFO, AreaStat, DailyStat, PetAnalysisResult, PetAnalysisSummary } from './pet-analysis.types';
@@ -43,14 +44,16 @@ export class PetAnalysisService {
     this.model = configService.get<string>('OPENAI_MODEL', 'gpt-4o-mini');
   }
 
-  async analyze(): Promise<PetAnalysisResult> {
+  async analyze(scope?: TenantScope): Promise<PetAnalysisResult> {
     if (!this.client) {
       throw new ServiceUnavailableException(
         'OPENAI_API_KEY não configurada no back-end — defina a variável de ambiente para habilitar a análise por IA.',
       );
     }
 
-    const permits = await this.workPermitsService.findAll();
+    // Escopado pelo tenant de quem pediu — sem isso, o relatório misturaria
+    // PETs de grupos de empresas diferentes num resumo só.
+    const permits = await this.workPermitsService.findAll(scope);
     const summary = this.buildSummary(permits);
 
     const completion = await this.client.chat.completions.create({

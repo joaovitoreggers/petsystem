@@ -22,10 +22,16 @@ export class TeamMember {
   @Column()
   unit!: string;
 
-  // Filial relacional correspondente a `unit`, resolvida por nome dentro do
-  // grupo de quem cadastrou. `unit` (texto livre) continua sendo a fonte
-  // exibida no front-end nesta fase — este campo é só para isolamento por
-  // tenant no back-end.
+  // Dono de verdade do registro para isolamento entre tenants: toda
+  // criação exige um grupo (ver TeamMembersService.create) — nulo só em
+  // registros órfãos de antes da multi-tenancy que o seed ainda não
+  // conseguiu casar com nenhum grupo. `branchId` é a filial relacional
+  // correspondente a `unit`, resolvida por nome dentro desse grupo — o
+  // texto livre `unit` continua sendo a fonte exibida no front-end nesta
+  // fase, os dois campos abaixo são só para o back-end.
+  @Column({ name: 'company_group_id', type: 'uuid', nullable: true })
+  companyGroupId!: string | null;
+
   @Column({ name: 'branch_id', type: 'uuid', nullable: true })
   branchId!: string | null;
 

@@ -72,8 +72,11 @@ export class WorkPermit {
   @Column()
   unit!: string;
 
-  // Filial relacional correspondente a `unit`, resolvida por nome dentro do
-  // grupo de quem emitiu a PET — mesma lógica de TeamMember.branchId.
+  // Dono de verdade do registro para isolamento entre tenants — mesma
+  // lógica de TeamMember.companyGroupId/branchId.
+  @Column({ name: 'company_group_id', type: 'uuid', nullable: true })
+  companyGroupId!: string | null;
+
   @Column({ name: 'branch_id', type: 'uuid', nullable: true })
   branchId!: string | null;
 

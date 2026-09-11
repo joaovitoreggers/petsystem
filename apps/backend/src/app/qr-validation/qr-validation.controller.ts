@@ -8,7 +8,10 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { AuthenticatedUser } from '../auth/jwt-payload.interface';
+import { scopeFromUser } from '../auth/tenant-scope';
 import { RecordReadDto } from './dto/record-read.dto';
 import { StartDetectionDto } from './dto/start-detection.dto';
 import { QrValidationService } from './qr-validation.service';
@@ -62,10 +65,12 @@ export class QrValidationController {
   async recordRead(
     @Param('id') id: string,
     @Body() dto: RecordReadDto,
+    @CurrentUser() currentUser: AuthenticatedUser,
   ): Promise<AttemptResponseDto> {
     const { attempt } = await this.qrValidationService.recordRead(
       id,
       dto.qrCode,
+      scopeFromUser(currentUser),
     );
     return toResponse(attempt);
   }
