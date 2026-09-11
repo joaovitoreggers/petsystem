@@ -114,6 +114,16 @@
 .dialog-shortcuts { display: flex; gap: 8px; flex-wrap: wrap; }
 .dialog-note { font-size: 14px; color: var(--color-neutral-700); border-top: 1px solid var(--color-divider); padding-top: 12px; }
 
+.evac-picker { width: min(480px, 100%); }
+.evac-picker__list { display: flex; flex-direction: column; gap: 6px; max-height: 46vh; overflow-y: auto; }
+.evac-picker__row {
+  display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+  border: 1px solid var(--color-divider); cursor: pointer;
+}
+.evac-picker__row--selected { border-color: var(--color-accent); background: color-mix(in srgb, var(--color-accent) 8%, transparent); }
+.evac-picker__row-main { display: flex; flex-direction: column; gap: 2px; flex: 1; font-size: 14px; }
+.evac-picker__empty { font-size: 14px; color: var(--color-neutral-700); padding: 12px 0; }
+
 .ai-dialog { width: min(640px, 100%); max-height: 82vh; overflow-y: auto; }
 .ai-dialog__letterhead-kicker {
   display: none; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--color-accent-700);

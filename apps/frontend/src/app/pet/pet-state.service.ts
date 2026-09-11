@@ -82,13 +82,25 @@ export class PetStateService {
     // Fallback para PETs de exemplo sem atmosphereAlerts (dado mockado).
     return `${pet.id} · ${pet.location} · H₂S em ${pet.gas.h2s.toFixed(1)} ppm, acima do limite de 8 ppm.`;
   });
+
+  // PET explicitamente escolhida ao acionar a evacuação (ver o seletor no
+  // painel de gestão) — sem escolha explícita, cai no primeiro alarme
+  // (comportamento antigo, ainda usado pelo botão de pânico sempre visível
+  // no topo, que aciona sem passar por um seletor).
+  readonly evacuationPetId = signal<string | null>(null);
+  readonly evacuationPet = computed(() => {
+    const id = this.evacuationPetId();
+    if (id) return this.pets().find((p) => p.id === id) ?? null;
+    return this.alarmedPets()[0] ?? null;
+  });
   readonly evacText = computed(() => {
-    const pet = this.alarmedPets()[0];
+    const pet = this.evacuationPet();
     if (!pet) return 'Retirada imediata das frentes de trabalho ativas.';
     return `${pet.id} · ${pet.location} · ${riskAreaNrs(pet.areas)}. Atmosfera fora do limite: retirada imediata da frente de trabalho.`;
   });
 
-  triggerEvacuation(): void {
+  triggerEvacuation(petId?: string): void {
+    this.evacuationPetId.set(petId ?? null);
     this.startSiren();
     this.evacuating.set(true);
   }
@@ -100,6 +112,7 @@ export class PetStateService {
   finishEvacuation(): void {
     this.stopSiren();
     this.evacuating.set(false);
+    this.evacuationPetId.set(null);
   }
 
   private startSiren(): void {

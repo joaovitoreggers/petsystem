@@ -5,7 +5,7 @@
         <span class="alert-banner__dot"></span>
         <span class="alert-banner__title">ALERTA ATMOSFÉRICO</span>
         <span class="alert-banner__text">{{ state.alertText() }}</span>
-        <button type="button" class="btn alert-banner__btn" (click)="state.triggerEvacuation()">Acionar evacuação</button>
+        <button type="button" class="btn alert-banner__btn" (click)="openEvacuationPicker()">Acionar evacuação</button>
       </div>
     }
 
@@ -258,6 +258,54 @@
             <button type="button" class="btn btn-secondary" (click)="printAiReport()">Baixar como PDF</button>
           }
           <button type="button" class="btn btn-primary" (click)="closeAiModal()">Fechar</button>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (evacuationPickerOpen()) {
+    <div class="dialog-backdrop" (click)="closeEvacuationPicker()">
+      <div class="dialog blueprint evac-picker" (click)="$event.stopPropagation()">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div class="dialog-title">Qual PET está sendo evacuada?</div>
+        <div class="dialog-body">
+          Escolha a frente de trabalho atingida pelo alerta atmosférico. A sirene e o alerta no app das equipes vão
+          identificar essa PET.
+        </div>
+        <div class="evac-picker__list">
+          @for (c of evacuationCandidates(); track c.pet.id) {
+            <label
+              class="evac-picker__row"
+              [class.evac-picker__row--selected]="selectedEvacuationPetId() === c.pet.id"
+            >
+              <input
+                type="radio"
+                name="evacuation-pet"
+                [checked]="selectedEvacuationPetId() === c.pet.id"
+                (change)="selectEvacuationPet(c.pet.id)"
+              />
+              <div class="evac-picker__row-main">
+                <span class="mono">{{ c.pet.id }}</span>
+                <span>{{ c.pet.location }}</span>
+              </div>
+              <span class="status-pill" [style.color]="c.status.fg" [style.background]="c.status.bg">
+                {{ c.status.label }}
+              </span>
+            </label>
+          } @empty {
+            <div class="evac-picker__empty">Nenhuma PET ativa no momento.</div>
+          }
+        </div>
+        <div class="dialog-actions">
+          <button type="button" class="btn btn-secondary" (click)="closeEvacuationPicker()">Cancelar</button>
+          <button
+            type="button"
+            class="btn btn-primary"
+            [disabled]="!selectedEvacuationPetId()"
+            (click)="confirmEvacuationPet()"
+          >
+            Confirmar e acionar evacuação
+          </button>
         </div>
       </div>
     </div>

@@ -53,6 +53,9 @@ export class PetManagerComponent {
   readonly aiError = signal<string | null>(null);
   readonly aiGeneratedAt = signal<string | null>(null);
 
+  readonly evacuationPickerOpen = signal(false);
+  readonly selectedEvacuationPetId = signal<string | null>(null);
+
   constructor(
     readonly state: PetStateService,
     private readonly petAnalysisApi: PetAnalysisApiService,
@@ -100,6 +103,35 @@ export class PetManagerComponent {
   }
 
   readonly activePets = computed(() => this.state.pets().filter((p) => p.status !== 'fechada'));
+
+  // PETs em alarme aparecem primeiro na lista — são o motivo mais provável
+  // de acionar a evacuação, mas o gestor pode escolher qualquer PET ativa.
+  readonly evacuationCandidates = computed(() =>
+    [...this.activePets()]
+      .sort((a, b) => Number(!!b.alarm) - Number(!!a.alarm))
+      .map((pet) => ({ pet, status: PET_STATUS[pet.alarm ? 'alarme' : pet.status] })),
+  );
+
+  openEvacuationPicker(): void {
+    const firstAlarmed = this.state.alarmedPets()[0];
+    this.selectedEvacuationPetId.set(firstAlarmed?.id ?? this.evacuationCandidates()[0]?.pet.id ?? null);
+    this.evacuationPickerOpen.set(true);
+  }
+
+  closeEvacuationPicker(): void {
+    this.evacuationPickerOpen.set(false);
+  }
+
+  selectEvacuationPet(id: string): void {
+    this.selectedEvacuationPetId.set(id);
+  }
+
+  confirmEvacuationPet(): void {
+    const id = this.selectedEvacuationPetId();
+    if (!id) return;
+    this.state.triggerEvacuation(id);
+    this.evacuationPickerOpen.set(false);
+  }
 
   readonly kpis = computed(() => {
     const pets = this.state.pets();
