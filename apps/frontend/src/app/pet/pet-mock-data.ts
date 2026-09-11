@@ -556,6 +556,38 @@ export function daysUntil(iso: string): number {
   return Math.round((new Date(y, m - 1, d).getTime() - TODAY.getTime()) / 86400000);
 }
 
+function documentStatus(days: number): BadgeItemStatus {
+  if (days < 0) return 'venc';
+  if (days <= 30) return 'prox';
+  return 'ok';
+}
+
+// Converte um funcionário do quadro (achado pela busca por texto) no mesmo
+// formato de crachá que a leitura simulada produz — a etapa "Crachá e
+// permissão" do assistente usa o resultado das duas origens do mesmo jeito
+// dali em diante (preview, ressalva por documento vencido, "+ Equipe/
+// Vigia/Resgatista").
+export function teamMemberToBadge(member: TeamMember): Badge {
+  const items: BadgeItem[] = Object.keys(member.documents)
+    .map((code) => {
+      const iso = member.documents[code];
+      const days = daysUntil(iso);
+      const status = documentStatus(days);
+      const description = DOCUMENT_TYPES.find((d) => d.code === code)?.description ?? code;
+      const value =
+        days < 0 ? `vencido há ${-days} d` : days === 0 ? 'vence hoje' : `válido até ${dateToBr(iso)}`;
+      return { name: `${code} · ${description}`, status, value };
+    })
+    .sort((a, b) => a.name.localeCompare(b.name));
+  return {
+    name: member.name,
+    registration: member.registration,
+    role: member.role,
+    company: member.isThirdParty ? `${member.company} · terceiro` : member.company,
+    items,
+  };
+}
+
 export interface MonitorArchive {
   readingCount: number;
   range: Record<GasKey, [number, number, number]>;

@@ -194,6 +194,56 @@
 }
 
 /* ── Etapa 4 · crachás ─────────────────────────────────────────────── */
+/* — campos de papel (técnico/vigia/socorrista) — */
+.role-field { border: 1px solid var(--color-divider); padding: 12px; }
+.role-field__head { display: flex; align-items: center; justify-content: space-between; }
+.role-field__label { font-family: var(--font-heading); font-weight: 600; font-size: 15px; }
+.role-field__panel { margin-top: 12px; display: flex; flex-direction: column; gap: 14px; }
+
+/* — busca de funcionário / crachá — */
+.step-hint--center { text-align: center; }
+.employee-search__results {
+  border: 1px solid var(--color-divider); background: var(--color-surface); max-height: 220px; overflow-y: auto;
+}
+.employee-search__result { width: 100%; background: transparent; border: none; font: inherit; cursor: pointer; }
+.employee-search__result:hover { background: color-mix(in srgb, var(--color-accent) 8%, transparent); }
+.employee-search__result-meta { margin-left: auto; font-size: 12px; color: var(--color-neutral-700); }
+
+/* — qr — */
+.qr-scan {
+  padding: 0; aspect-ratio: 1; position: relative; overflow: hidden;
+  background: repeating-linear-gradient(45deg, var(--color-neutral-300) 0 8px, var(--color-neutral-200) 8px 16px);
+}
+.qr-scan__frame { position: absolute; inset: 18%; border: 2px solid var(--color-accent); }
+.qr-scan__sweep {
+  position: absolute; left: 18%; right: 18%; height: 2px; background: var(--color-accent);
+  animation: petsweep 2.2s ease-in-out infinite alternate;
+}
+.qr-scan__caption {
+  position: absolute; bottom: 10px; left: 0; right: 0; text-align: center;
+  font-family: ui-monospace, monospace; font-size: 11px; color: var(--color-neutral-800);
+}
+.qr-scan__btn { height: 44px; margin: 0; }
+
+.badge-card { padding: 12px; }
+.badge-card__head { display: flex; align-items: baseline; gap: 8px; }
+.badge-card__name { font-family: var(--font-heading); font-weight: 600; font-size: 20px; }
+.badge-card__mat { margin-left: auto; font-family: ui-monospace, monospace; font-size: 12px; color: var(--color-neutral-700); }
+.badge-card__role { font-size: 13px; color: var(--color-neutral-700); }
+.badge-card__items { margin-top: 10px; display: flex; flex-direction: column; gap: 5px; }
+.badge-card__item { display: flex; gap: 8px; font-size: 13px; align-items: center; }
+.badge-card__item-val { margin-left: auto; font-size: 12px; }
+.badge-card__verdict {
+  margin-top: 12px; padding: 9px 11px; background: #dff0e6; color: #1d4d33;
+  font-family: var(--font-heading); font-weight: 600; font-size: 15px; letter-spacing: 0.04em;
+}
+.badge-card__verdict--bad { background: var(--status-bad); color: #fdf3f3; }
+.badge-card__warning {
+  display: flex; gap: 8px; align-items: flex-start; margin-top: 10px; padding: 9px 11px;
+  background: #f6e6c4; color: #6b4600; font-size: 13px; line-height: 1.45;
+}
+.badge-card__warning-icon { flex: none; font-size: 15px; }
+
 .team-row {
   display: flex;
   align-items: center;
