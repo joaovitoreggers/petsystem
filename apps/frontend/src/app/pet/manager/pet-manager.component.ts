@@ -15,6 +15,7 @@ import {
   dateToBr,
   minutesToLabel,
   riskAreaNames,
+  riskAreaNr,
   riskAreaNrs,
 } from '../pet-mock-data';
 import { PetAnalysisApiService } from '../services/pet-analysis-api.service';
@@ -327,6 +328,16 @@ export class PetManagerComponent {
         status: petStatusView(p),
         dateLabel: dateToBr(p.date),
         nr: riskAreaNrs(p.areas),
+        /**
+         * As normas item a item, e não o texto já juntado.
+         *
+         * O hífen de "NR-10" é ponto de quebra de linha válido em CSS, então
+         * a lista juntada saía do papel como "NR-33 · NR-" numa linha e "10"
+         * na outra. Norma partida ao meio deixa de identificar a norma.
+         * Renderizando cada uma num elemento próprio, a quebra só acontece
+         * entre elas.
+         */
+        nrs: p.areas.map((a) => riskAreaNr(a)),
         duration: p.durationMinutes
           ? minutesToLabel(p.durationMinutes)
           : 'em andamento',
