@@ -22,6 +22,25 @@
     </div>
   </div>
 
+  @if (state.demoMode()) {
+    <!-- Sem servidor, editar grava no aparelho. Dizer isso é o que separa
+         uma demonstração honesta de um cadastro que parece ter sido salvo
+         e não foi. -->
+    <div class="team__demo">
+      <span>
+        <strong>Modo demonstração</strong> — sem servidor. As alterações no
+        cadastro ficam gravadas neste aparelho e não chegam à base da empresa.
+      </span>
+      <button
+        type="button"
+        class="btn btn-secondary btn-sm"
+        (click)="state.resetRoster()"
+      >
+        Restaurar dados de exemplo
+      </button>
+    </div>
+  }
+
   <div class="kpi-grid">
     @for (k of kpis(); track k.label) {
       <div class="kpi">
@@ -80,7 +99,7 @@
           <th style="width: 30%">Normas e vencimentos</th>
           <th>Próximo vencimento</th>
           <th>Situação</th>
-          @if (state.canManageTeam()) {
+          @if (state.canEditRoster()) {
             <th style="width: 90px">Ações</th>
           }
         </tr>
@@ -140,7 +159,7 @@
                 {{ row.situationLabel }}
               </span>
             </td>
-            @if (state.canManageTeam()) {
+            @if (state.canEditRoster()) {
               <td data-label="Ações" class="team__actions">
                 <button
                   type="button"

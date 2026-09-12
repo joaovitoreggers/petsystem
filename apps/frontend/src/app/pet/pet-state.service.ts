@@ -65,6 +65,26 @@ const EMPTY_FIELDS: WizardFields = {
 
 let nextPetSequence = 419;
 
+/** Onde o cadastro editado sem servidor fica guardado no aparelho. */
+const ROSTER_KEY = 'artech.pet.roster';
+
+/**
+ * Cadastro guardado no aparelho, se houver; senão, os dados de exemplo.
+ *
+ * Vem antes de qualquer chamada de rede: assim que o servidor responder,
+ * loadFromBackend() substitui tudo pelo que vier de lá.
+ */
+function restoreRoster(): TeamMember[] {
+  try {
+    const raw = localStorage.getItem(ROSTER_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    if (Array.isArray(parsed) && parsed.length > 0) return parsed as TeamMember[];
+  } catch {
+    // formato inesperado ou storage bloqueado — cai nos dados de exemplo
+  }
+  return [...TEAM_MEMBERS];
+}
+
 @Injectable({ providedIn: 'root' })
 export class PetStateService {
   readonly role = signal<PortalRole>('tecnico');
@@ -175,7 +195,7 @@ export class PetStateService {
   // exemplo), a tela continua funcionando normalmente com o mock — é assim
   // que o MVP evita depender do back-end estar de pé para ser demonstrado.
   readonly pets = signal<Pet[]>([...MOCK_PETS]);
-  readonly teamMembers = signal<TeamMember[]>([...TEAM_MEMBERS]);
+  readonly teamMembers = signal<TeamMember[]>(restoreRoster());
 
   constructor(
     private readonly workPermitsApi: WorkPermitsApiService,
@@ -227,6 +247,13 @@ export class PetStateService {
    * "editar sem persistir" esconderia do usuário que a mudança não pegou.
    */
   async updateTeamMember(registration: string, patch: UpdateTeamMemberPayload): Promise<void> {
+    if (this.demoMode()) {
+      this.teamMembers.update((list) =>
+        list.map((m) => (m.registration === registration ? { ...m, ...patch } : m)),
+      );
+      this.persistRoster();
+      return;
+    }
     const updated = await firstValueFrom(this.teamMembersApi.update(registration, patch));
     this.teamMembers.update((list) =>
       list.map((m) => (m.registration === registration ? updated : m)),
@@ -234,8 +261,38 @@ export class PetStateService {
   }
 
   async deleteTeamMember(registration: string): Promise<void> {
+    if (this.demoMode()) {
+      this.teamMembers.update((list) => list.filter((m) => m.registration !== registration));
+      this.persistRoster();
+      return;
+    }
     await firstValueFrom(this.teamMembersApi.remove(registration));
     this.teamMembers.update((list) => list.filter((m) => m.registration !== registration));
+  }
+
+  /**
+   * Guarda o cadastro no aparelho, no modo demonstração.
+   *
+   * Sem isso, a edição sumia ao recarregar a página: o estado vivia só na
+   * memória da aba, e o F5 trazia de volta os dados de exemplo. Quando há
+   * servidor, quem guarda é ele, e esta cópia nem é usada.
+   */
+  private persistRoster(): void {
+    try {
+      localStorage.setItem(ROSTER_KEY, JSON.stringify(this.teamMembers()));
+    } catch {
+      // Armazenamento indisponível: vale para esta sessão apenas.
+    }
+  }
+
+  /** Descarta o cadastro local e volta aos dados de exemplo. */
+  resetRoster(): void {
+    try {
+      localStorage.removeItem(ROSTER_KEY);
+    } catch {
+      // nada a fazer
+    }
+    this.teamMembers.set([...TEAM_MEMBERS]);
   }
 
   // ── Técnico: navegação e autenticação ──────────────────────────────
@@ -490,10 +547,43 @@ export class PetStateService {
   // facial, que é simulação) com papel de admin ou gestor. O back-end
   // aplica a mesma regra (RolesGuard em cada rota); isto é só para a UI
   // não oferecer um botão/aba que a API vai recusar.
+  /**
+   * Sem sessão no servidor — o reconhecimento facial não cria uma.
+   *
+   * Neste estado o app roda inteiro sobre os dados de exemplo. Editar um
+   * funcionário aqui grava no aparelho, e a tela diz isso com todas as
+   * letras: o que não pode acontecer é a pessoa achar que gravou no
+   * servidor quando não gravou.
+   */
+  readonly demoMode = computed(() => this.session() === null);
+
+  /**
+   * Alçada de verdade sobre o cadastro — a que o back-end também exige.
+   *
+   * Não afrouxa fora de sessão, de propósito: é o que decide se a aba
+   * Usuários aparece e o que o servidor vai aceitar. Para a edição do
+   * cadastro na tela, ver canEditRoster().
+   */
   readonly canManageTeam = computed(() => {
     const role = this.session()?.user.role;
     return role === 'admin' || role === 'gestor' || role === 'platform-admin';
   });
+
+  /**
+   * A tela de Funcionários permite editar?
+   *
+   * Sim com alçada real, e sim também no modo demonstração — onde a
+   * alteração fica gravada no aparelho e a tela diz isso. Sem esta
+   * distinção, sem servidor no ar a edição simplesmente não existia para
+   * quem usa o app: os botões nunca apareciam.
+   *
+   * Note que isto é permissão de interface, não de dados: quem decide o que
+   * pode ser gravado no servidor é o back-end, que continua exigindo o JWT
+   * com papel de admin ou gestor.
+   */
+  readonly canEditRoster = computed(
+    () => this.canManageTeam() || this.demoMode(),
+  );
 
   // Grupos de empresas/filiais (tenants) — só o platform-admin gerencia a
   // estrutura em si; ver a aba Empresas.
