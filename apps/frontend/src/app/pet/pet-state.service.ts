@@ -21,6 +21,7 @@ import {
   WizardStepId,
   emptyFireWatchRounds,
   gasViolationMessage,
+  petStatusView,
   requiresGasMonitoring,
   riskAreaNrs,
   stepsFor,
@@ -113,6 +114,40 @@ export class PetStateService {
     this.evacuationPetId.set(petId ?? null);
     this.startSiren();
     this.evacuating.set(true);
+  }
+
+  // Seletor "qual PET está sendo evacuada", compartilhado pelos dois
+  // pontos de acionamento — o botão sempre visível na sidebar/topbar do
+  // shell e o banner de alerta atmosférico do painel de gestão — para que
+  // escolher a PET certa nunca dependa de por onde a evacuação foi
+  // acionada.
+  readonly evacuationPickerOpen = signal(false);
+  readonly selectedEvacuationPetId = signal<string | null>(null);
+  readonly evacuationCandidates = computed(() =>
+    [...this.openPets()]
+      .sort((a, b) => Number(!!b.alarm) - Number(!!a.alarm))
+      .map((pet) => ({ pet, status: petStatusView(pet) })),
+  );
+
+  openEvacuationPicker(): void {
+    const firstAlarmed = this.alarmedPets()[0];
+    this.selectedEvacuationPetId.set(firstAlarmed?.id ?? this.evacuationCandidates()[0]?.pet.id ?? null);
+    this.evacuationPickerOpen.set(true);
+  }
+
+  closeEvacuationPicker(): void {
+    this.evacuationPickerOpen.set(false);
+  }
+
+  selectEvacuationPet(id: string): void {
+    this.selectedEvacuationPetId.set(id);
+  }
+
+  confirmEvacuationPet(): void {
+    const id = this.selectedEvacuationPetId();
+    if (!id) return;
+    this.triggerEvacuation(id);
+    this.evacuationPickerOpen.set(false);
   }
 
   silenceSiren(): void {
