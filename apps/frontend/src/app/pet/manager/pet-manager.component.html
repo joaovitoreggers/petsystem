@@ -631,7 +631,7 @@
 
       <h4>1. Permissões emitidas no período</h4>
       <div class="table-wrap">
-        <table class="table report-table">
+        <table class="table report-table report-table--pets table--cards-wide">
           <thead>
             <tr>
               <th>PET</th>
@@ -648,16 +648,34 @@
           <tbody>
             @for (p of reportPets(); track p.pet.id) {
               <tr>
-                <td class="mono nowrap">{{ p.pet.id }}</td>
-                <td class="mono nowrap">{{ p.dateLabel }}</td>
-                <td>{{ p.pet.location }}</td>
-                <td class="mono nowrap accent">{{ p.nr }}</td>
-                <td>{{ p.pet.teamSize }}</td>
-                <td class="mono">{{ p.pet.start }}</td>
-                <td class="mono">{{ p.pet.end || '—' }}</td>
-                <td class="mono nowrap">{{ p.duration }}</td>
-                <td class="nowrap" [style.color]="p.status.fg">
-                  {{ p.status.label }}
+                <td class="mono nowrap" data-label="PET">{{ p.pet.id }}</td>
+                <td class="mono nowrap" data-label="Data">{{ p.dateLabel }}</td>
+                <td data-label="Local / unidade">{{ p.pet.location }}</td>
+                <td class="mono accent" data-label="Normas">
+                  @for (nr of p.nrs; track nr; let last = $last) {
+                    <span class="report-nr">{{ nr }}</span>@if (!last) {
+                      <span class="report-nr-sep"> · </span>
+                    }
+                  }
+                </td>
+                <td data-label="Equipe">{{ p.pet.teamSize }}</td>
+                <td class="mono" data-label="Início">{{ p.pet.start }}</td>
+                <td class="mono" data-label="Término">{{ p.pet.end || '—' }}</td>
+                <td class="mono nowrap" data-label="Duração">{{ p.duration }}</td>
+                <!--
+                  Selo com fundo, e não texto colorido: o tom de "em alarme"
+                  é claro porque foi feito para ficar sobre vermelho. Aplicado
+                  só na cor da letra, saía quase invisível na tela e sumia de
+                  vez no papel — justamente a coluna que diz se havia gente
+                  exposta.
+                -->
+                <td data-label="Situação">
+                  <span
+                    class="report-status"
+                    [style.color]="p.status.fg"
+                    [style.background]="p.status.bg"
+                    >{{ p.status.label }}</span
+                  >
                 </td>
               </tr>
             }
@@ -675,7 +693,7 @@
             </div>
             @if (t.members.length > 0) {
               <div class="table-wrap">
-                <table class="table report-table">
+                <table class="table report-table table--cards">
                   <thead>
                     <tr>
                       <th>Nome</th>
@@ -687,10 +705,12 @@
                   <tbody>
                     @for (m of t.members; track m.registration + m.petRole) {
                       <tr>
-                        <td>{{ m.name }}</td>
-                        <td class="mono">{{ m.registration }}</td>
-                        <td>{{ m.role }}</td>
-                        <td>{{ m.roleLabel }}</td>
+                        <td data-label="Nome">{{ m.name }}</td>
+                        <td class="mono" data-label="Matrícula">
+                          {{ m.registration }}
+                        </td>
+                        <td data-label="Função">{{ m.role }}</td>
+                        <td data-label="Papel na PET">{{ m.roleLabel }}</td>
                       </tr>
                     }
                   </tbody>
@@ -723,7 +743,7 @@
               >
             </div>
             <div class="table-wrap">
-              <table class="table report-table">
+              <table class="table report-table table--cards">
                 <thead>
                   <tr>
                     <th>Gás</th>
@@ -737,12 +757,16 @@
                 <tbody>
                   @for (l of m.rows; track l.label) {
                     <tr>
-                      <td>{{ l.label }}</td>
-                      <td class="mono">{{ l.min }}</td>
-                      <td class="mono">{{ l.med }}</td>
-                      <td class="mono">{{ l.max }}</td>
-                      <td class="mono muted">{{ l.limit }}</td>
-                      <td [style.color]="l.color">{{ l.situation }}</td>
+                      <td data-label="Gás">{{ l.label }}</td>
+                      <td class="mono" data-label="Mínimo">{{ l.min }}</td>
+                      <td class="mono" data-label="Médio">{{ l.med }}</td>
+                      <td class="mono" data-label="Máximo">{{ l.max }}</td>
+                      <td class="mono muted" data-label="Limite">
+                        {{ l.limit }}
+                      </td>
+                      <td data-label="Situação" [style.color]="l.color">
+                        {{ l.situation }}
+                      </td>
                     </tr>
                   }
                 </tbody>
