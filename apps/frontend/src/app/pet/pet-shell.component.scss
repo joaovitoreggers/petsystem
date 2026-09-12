@@ -400,6 +400,9 @@
   background: #7d1c1c;
   color: #fff;
   overflow-y: auto;
+  /* A rolagem para nesta camada: puxar a lista de dados não pode arrastar a
+     tela que está por baixo. */
+  overscroll-behavior: contain;
 }
 /* Faixas de advertência no topo e no rodapé — código visual industrial. */
 .evac__bar {
@@ -510,6 +513,50 @@
 .evac__btn--outline:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.12);
   border-color: #fff;
+}
+
+/* ── Evacuação em tela estreita ────────────────────────────────────────
+   Num celular, os dados da frente (local, permissão, área de risco, equipe,
+   responsável, coordenadas) ocupam mais do que a altura da tela. Com o
+   layout centralizado, "Silenciar sirene" e "Registrar evacuação concluída"
+   ficavam abaixo da dobra: era preciso rolar para alcançá-los.
+
+   Rolar para achar o botão que desliga a sirene é aceitável numa tela
+   qualquer; nesta, não. As ações ficam presas no rodapé, sempre visíveis, e
+   os dados rolam por trás delas. */
+@media (max-width: 767px) {
+  .evac__inner {
+    /* Centralizar conteúdo mais alto que a tela corta o topo em alguns
+       navegadores, além de empurrar as ações para fora. */
+    justify-content: flex-start;
+    gap: var(--space-4);
+    padding: var(--space-5) var(--space-4) 0;
+  }
+  .evac__actions {
+    position: sticky;
+    bottom: 0;
+    /* Estica até as bordas da camada e ganha fundo próprio, para o conteúdo
+       não aparecer por baixo ao rolar. */
+    margin: auto calc(var(--space-4) * -1) 0;
+    padding: var(--space-4);
+    /* env() cobre a barra de gestos do iPhone, que sobrepõe o rodapé. */
+    padding-bottom: calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
+    background: #7d1c1c;
+    box-shadow: 0 -14px 20px -6px #7d1c1c;
+  }
+  .evac__btn {
+    /* Um por linha: são ações de consequência diferente e não devem ficar
+       lado a lado, num alvo estreito, com a sirene tocando. */
+    flex: 1 1 100%;
+  }
+  .evac__title {
+    /* Sobra vertical para os dados, sem perder o impacto do aviso. */
+    font-size: clamp(26px, 8vw, 34px);
+  }
+  .evac__note {
+    font-size: var(--text-xs);
+    line-height: 1.5;
+  }
 }
 
 /* ── Tablet ────────────────────────────────────────────────────────── */
