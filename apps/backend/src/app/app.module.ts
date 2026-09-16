@@ -3,7 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AuthModule } from './auth/auth.module';
-import { DeviceCredential } from './auth/entities/device-credential.entity';
+import { WebAuthnCredential } from './auth/entities/webauthn-credential.entity';
 import { Employee } from './employees/entities/employee.entity';
 import { EmployeesModule } from './employees/employees.module';
 import { User } from './users/entities/user.entity';
@@ -40,7 +40,7 @@ import { TenancyModule } from './tenancy/tenancy.module';
           TeamMember,
           CompanyGroup,
           Branch,
-          DeviceCredential,
+          WebAuthnCredential,
         ],
         synchronize: true,
       }),

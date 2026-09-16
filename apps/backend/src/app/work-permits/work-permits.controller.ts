@@ -23,8 +23,7 @@ import { WorkPermitsService } from './work-permits.service';
 /**
  * CRUD de PETs (Permissão de Entrada e Trabalho). Exige login de verdade
  * (JwtAuthGuard) em toda a rota — sem sessão não dá pra saber a qual tenant
- * a PET pertence. O caminho de reconhecimento facial (sem token) cai no
- * fallback local do front-end nesse caso.
+ * a PET pertence; sem ela, o front-end cai no fallback local.
  */
 @Controller('work-permits')
 @UseGuards(JwtAuthGuard)
