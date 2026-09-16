@@ -1268,3 +1268,331 @@ input[type='checkbox'] {
     display: block !important;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+      Impressão do relatório — folha A4
+   ═══════════════════════════════════════════════════════════════════════
+
+   O PDF sai feio por dois motivos que nada têm a ver com o relatório em si:
+
+   1. O app é um "shell" com barra lateral, topo e navegação inferior. Nada
+      disso pertence a um documento que vai ser arquivado ou entregue à
+      fiscalização.
+   2. O conteúdo rola dentro de `.shell__content`, que tem altura fixa e
+      `overflow: auto`. Na impressão, um contêiner assim não pagina: o
+      navegador recorta tudo o que passa da primeira tela.
+
+   Estas regras vivem no global, e não em pet-report.scss, porque precisam
+   alcançar o shell — estilo de componente é encapsulado e não chega lá.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+@page {
+  size: A4 portrait;
+  margin: 14mm 12mm;
+}
+
+@media print {
+  /* O documento é preto sobre branco. Fundo cinza de tela vira toner. */
+  html,
+  body {
+    background: #fff;
+    margin: 0;
+    padding: 0;
+    font-size: 9.5pt;
+    line-height: 1.4;
+    color: #000;
+  }
+
+  /* Estrutura do app: fora. A negação protege a impressão do laudo de IA,
+     que usa outro caminho (body.ai-report-printing) e vive num diálogo. */
+  body:not(.ai-report-printing) {
+    .shell__sidebar,
+    .shell__topbar,
+    .shell__bottomnav,
+    .netbar,
+    .toasts,
+    .alert-banner,
+    .evac,
+    .dialog-backdrop,
+    .no-print {
+      display: none !important;
+    }
+
+    /* Desfaz o app shell: sem altura de viewport e sem rolagem interna, o
+       conteúdo volta a ser um fluxo único e o navegador consegue paginar. */
+    .shell,
+    .shell__main,
+    .shell__content {
+      display: block !important;
+      height: auto !important;
+      min-height: 0 !important;
+      max-height: none !important;
+      overflow: visible !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      gap: 0 !important;
+    }
+  }
+
+  .report-page {
+    padding: 0 !important;
+    max-width: none;
+    margin: 0;
+  }
+
+  /* Cores de status e barras do gráfico são informação, não decoração:
+     sem isto o navegador imprime tudo em branco e a coluna "situação"
+     perde o sentido. */
+  .report {
+    border: 0;
+    box-shadow: none;
+    padding: 0;
+    border-radius: 0;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* ── Cabeçalho do documento ──────────────────────────────────────── */
+  .report__head {
+    padding-bottom: 4mm;
+    margin-bottom: 4mm;
+    border-bottom: 1.5pt solid #000;
+    break-inside: avoid;
+  }
+  .report__logo {
+    height: 13mm;
+  }
+  .report__title {
+    font-size: 16pt;
+    line-height: 1.15;
+  }
+  .report__period {
+    font-size: 9.5pt;
+    color: #333;
+  }
+  .report__meta {
+    font-size: 7.5pt;
+    line-height: 1.5;
+    color: #333;
+  }
+
+  .report__summary {
+    padding: 3mm 0;
+    gap: 4mm;
+    break-inside: avoid;
+  }
+  .report__summary-value {
+    font-size: 15pt;
+  }
+  .report__summary-label {
+    font-size: 7pt;
+  }
+  .report__summary-note {
+    font-size: 7.5pt;
+    color: #444;
+  }
+
+  /* Título de seção nunca fica órfão no pé da página. */
+  .report h4 {
+    font-size: 11pt;
+    margin: 7mm 0 2mm;
+    padding-bottom: 1.5mm;
+    border-bottom: 0.75pt solid #000;
+    break-after: avoid;
+    break-inside: avoid;
+  }
+  .report h4:first-of-type {
+    margin-top: 5mm;
+  }
+
+  /* ── Tabela ──────────────────────────────────────────────────────── */
+  .table-wrap {
+    overflow: visible !important;
+  }
+  /* Em tela estreita as tabelas do relatório viram cartões (table--cards e
+     table--cards-wide). A folha A4 tem menos de 1023px de largura, então
+     essa regra valeria também na impressão e o relatório sairia como uma
+     pilha de cartões. No papel tudo volta a ser tabela. */
+  .report-table {
+    display: table;
+    width: 100%;
+  }
+  .report-table thead {
+    display: table-header-group;
+  }
+  .report-table tbody {
+    display: table-row-group;
+  }
+  .report-table tr {
+    display: table-row;
+    background: none;
+    border: 0;
+    margin: 0;
+    padding: 0;
+    box-shadow: none;
+    width: auto;
+  }
+  .report-table td {
+    display: table-cell;
+    width: auto;
+    text-align: left;
+  }
+  /* O rótulo dentro da célula é muleta do modo cartão; na tabela quem
+     rotula é o cabeçalho da coluna. */
+  .report-table td::before {
+    content: none;
+  }
+  .report-table {
+    width: 100%;
+    font-size: 8pt;
+    border-collapse: collapse;
+  }
+  /* Sem grade fixa.
+     Porcentagem de largura é frágil: quando o conteúdo não cabe na fatia
+     que lhe foi dada, ele não encolhe — transborda por cima da coluna
+     vizinha, que foi o que aconteceu com "PET-2026-0421" invadindo a data
+     e "em andamento" invadindo a situação. Deixando o navegador distribuir,
+     cada coluna recebe o que precisa, e a sobra vai para as duas colunas
+     que podem quebrar (local e normas). */
+  .report-table--pets {
+    table-layout: auto;
+  }
+  /* O cabeçalho se repete em cada página; uma tabela de 40 PETs sem isso
+     vira, da segunda página em diante, uma lista de números sem rótulo. */
+  .report-table thead {
+    display: table-header-group;
+  }
+  .report-table tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .report-table th {
+    position: static !important;
+    background: #f0f0f0 !important;
+    color: #000;
+    font-size: 6.8pt;
+    letter-spacing: 0.06em;
+    padding: 1.6mm 1.5mm;
+    border-bottom: 0.75pt solid #000;
+  }
+  .report-table td {
+    padding: 1.4mm 1.5mm;
+    border-bottom: 0.4pt solid #bbb;
+    vertical-align: top;
+    /* Nome de local é longo e não cabe numa linha: quebrar é melhor do
+       que cortar. */
+    word-break: break-word;
+  }
+  .report-table tbody tr:last-child td {
+    border-bottom: 0.4pt solid #bbb;
+  }
+  /* Local é a única coluna que ganha em quebrar: nome de equipamento é
+     longo. Data, horário e duração quebrados viram "05/09/20" numa linha e
+     "26" na outra — ilegível, e foi o que aconteceu na primeira prova. */
+  /* Local e normas são as colunas elásticas: absorvem a sobra e quebram em
+     duas linhas quando precisam. As demais — identificador, data, horário,
+     duração e situação — ficam inteiras, porque partidas no meio ("05/09/20"
+     numa linha e "26" na outra) deixam de ser legíveis. */
+  .report-table--pets td:nth-child(3) {
+    white-space: normal;
+    /* Nome de equipamento é longo e pode ser partido — é texto corrido. */
+    word-break: break-word;
+  }
+  .report-table--pets td:nth-child(4) {
+    white-space: normal;
+    /* A lista de normas quebra entre os itens, nunca dentro de um:
+       "NR-33 · NR-" numa linha e "10" na outra parte o identificador da
+       norma ao meio, e norma partida deixa de ser norma. */
+    word-break: normal;
+    overflow-wrap: normal;
+  }
+  .report-table--pets td:nth-child(1),
+  .report-table--pets td:nth-child(2),
+  .report-table--pets td:nth-child(6),
+  .report-table--pets td:nth-child(7),
+  .report-table--pets td:nth-child(8),
+  .report-table--pets td:nth-child(9),
+  .report-table--pets th {
+    white-space: nowrap;
+  }
+  /* Respiro entre colunas: sem ele, "PET-2026-0421" e a data ficam coladas
+     mesmo sem transbordar. */
+  .report-table--pets th,
+  .report-table--pets td {
+    padding-right: 3mm;
+  }
+  .report-table--pets th:last-child,
+  .report-table--pets td:last-child {
+    padding-right: 0;
+  }
+  .report-table .nowrap {
+    white-space: nowrap;
+  }
+  .report-status {
+    padding: 0.5mm 1.4mm;
+    font-size: 6.8pt;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* ── Blocos que não podem ser partidos ao meio ───────────────────── */
+  .report__team,
+  .report__monitor,
+  .report__signature,
+  .report__chart {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .report__team-head,
+  .report__monitor-head {
+    font-size: 9.5pt;
+  }
+  .report__chart {
+    height: 30mm;
+  }
+  .report__chart-bar,
+  .report__legend-swatch {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .report__chart-legend {
+    font-size: 7pt;
+    margin-top: 1.5mm;
+    padding-top: 1.5mm;
+  }
+
+  /* Assinaturas começam em página nova quando não couberem inteiras. */
+  .report__signatures {
+    margin-top: 14mm;
+    gap: 12mm;
+    break-inside: avoid;
+  }
+  .report__signature {
+    border-top: 0.75pt solid #000;
+    padding-top: 2mm;
+    font-size: 8.5pt;
+  }
+  .report__footnote {
+    margin-top: 5mm;
+    font-size: 7pt;
+    color: #444;
+    line-height: 1.5;
+  }
+
+  /* Sem rodapé próprio repetido em cada página.
+     A única forma de consegui-lo no Chrome é `position: fixed`, e na prova
+     de impressão ele foi desenhado por cima de uma linha da tabela em vez
+     de ficar na margem — texto sobreposto num documento de segurança do
+     trabalho é pior do que documento sem rodapé. Número de página e data
+     ficam por conta do cabeçalho/rodapé do próprio navegador, e a
+     identificação do documento já está no topo (report__meta) e na nota
+     de rodapé final. */
+
+  /* Nenhuma sombra, canto arredondado ou animação sobrevive ao papel. */
+  * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+    animation: none !important;
+    transition: none !important;
+  }
+}

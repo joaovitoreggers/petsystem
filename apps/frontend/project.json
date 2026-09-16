@@ -8,7 +8,9 @@
   "targets": {
     "build": {
       "executor": "@angular/build:application",
-      "outputs": ["{options.outputPath}"],
+      "outputs": [
+        "{options.outputPath}"
+      ],
       "defaultConfiguration": "production",
       "options": {
         "outputPath": "dist/apps/frontend",
@@ -21,7 +23,9 @@
             "input": "apps/frontend/public"
           }
         ],
-        "styles": ["apps/frontend/src/styles.scss"]
+        "styles": [
+          "apps/frontend/src/styles.scss"
+        ]
       },
       "configurations": {
         "production": {
@@ -63,11 +67,16 @@
         "development": {
           "buildTarget": "frontend:build:development"
         }
+      },
+      "options": {
+        "proxyConfig": "apps/frontend/proxy.conf.cjs"
       }
     },
     "test": {
       "executor": "@nx/jest:jest",
-      "outputs": ["{projectRoot}/test-output/jest/coverage"],
+      "outputs": [
+        "{projectRoot}/test-output/jest/coverage"
+      ],
       "options": {
         "jestConfig": "apps/frontend/jest.config.cts",
         "tsConfig": "apps/frontend/tsconfig.spec.json"

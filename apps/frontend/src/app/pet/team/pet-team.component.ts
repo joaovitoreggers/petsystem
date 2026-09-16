@@ -373,10 +373,8 @@ export class PetTeamComponent {
           documents,
         });
         this.modalOpen.set(false);
-      } catch {
-        this.saveError.set(
-          'Não foi possível salvar — confira se você está autenticado com e-mail/senha de gestor.',
-        );
+      } catch (err) {
+        this.saveError.set(teamErrorMessage(err, 'salvar'));
       } finally {
         this.saving.set(false);
       }
@@ -424,12 +422,49 @@ export class PetTeamComponent {
     try {
       await this.state.deleteTeamMember(target.registration);
       this.deleteTarget.set(null);
-    } catch {
-      this.deleteError.set(
-        'Não foi possível excluir — confira se você está autenticado com e-mail/senha de gestor.',
-      );
+    } catch (err) {
+      this.deleteError.set(teamErrorMessage(err, 'excluir'));
     } finally {
       this.deleting.set(false);
     }
   }
+}
+
+/**
+ * Por que a alteração do cadastro não foi gravada, na linguagem de quem está
+ * na tela.
+ *
+ * A mensagem anterior culpava a autenticação em qualquer falha. Com o
+ * servidor fora do ar — o caso mais comum — ela mandava o usuário conferir a
+ * senha, que está certa, e escondia o motivo real. Cada causa exige uma ação
+ * diferente de quem está ali: reentrar, chamar quem tem alçada, ou esperar o
+ * servidor voltar.
+ */
+function teamErrorMessage(err: unknown, acao: 'salvar' | 'excluir'): string {
+  const status = (err as { status?: number })?.status;
+
+  // status 0 é o navegador não ter conseguido falar com ninguém; 502/503/504
+  // é o proxy respondendo que o back-end não respondeu.
+  if (status === 0 || status === undefined || status >= 502) {
+    return `Servidor indisponível: a alteração não foi gravada. Nada mudou no cadastro — tente de novo quando a conexão voltar.`;
+  }
+  if (status === 401) {
+    return 'Sua sessão expirou. Entre de novo com e-mail e senha para continuar.';
+  }
+  if (status === 403) {
+    return `Seu perfil não tem alçada para ${acao} funcionários. Procure o SESMT.`;
+  }
+  if (status === 404) {
+    return 'Este funcionário não existe mais no cadastro — atualize a lista.';
+  }
+  if (status === 409) {
+    const body = (err as { error?: { message?: unknown } })?.error;
+    return typeof body?.message === 'string'
+      ? body.message
+      : 'Não foi possível concluir: o funcionário está vinculado a outro registro.';
+  }
+  if (status === 400) {
+    return 'Confira os campos: algum valor não foi aceito pelo servidor.';
+  }
+  return `Não foi possível ${acao} agora. Tente novamente.`;
 }
