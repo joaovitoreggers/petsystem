@@ -42,6 +42,7 @@ const HISTORY_FILTERS: { id: HistoryFilter; label: string }[] = [
 })
 export class PetManagerComponent {
   readonly gasKeys: GasKey[] = ['o2', 'co', 'h2s', 'lel'];
+  readonly teamRoleLabel = PET_TEAM_ROLE_LABEL;
   readonly historyFilters = HISTORY_FILTERS;
   readonly thirtyDays = THIRTY_DAY_READINGS;
 
@@ -56,6 +57,19 @@ export class PetManagerComponent {
   readonly aiReport = signal<string | null>(null);
   readonly aiError = signal<string | null>(null);
   readonly aiGeneratedAt = signal<string | null>(null);
+
+  // Detalhe de uma PET, aberto por qualquer lista do painel (frentes em
+  // execução, histórico, ocorrências) — só leitura: o painel de gestão
+  // audita, não opera a PET (isso é do técnico em campo).
+  readonly detailPetId = signal<string | null>(null);
+
+  openDetail(id: string): void {
+    this.detailPetId.set(id);
+  }
+
+  closeDetail(): void {
+    this.detailPetId.set(null);
+  }
 
   constructor(
     readonly state: PetStateService,
@@ -105,6 +119,19 @@ export class PetManagerComponent {
   readonly activePets = computed(() =>
     this.state.pets().filter((p) => p.status !== 'fechada'),
   );
+
+  readonly detailPet = computed<Pet | undefined>(() =>
+    this.state.pets().find((p) => p.id === this.detailPetId()),
+  );
+  readonly detailCard = computed(() => {
+    const pet = this.detailPet();
+    if (!pet) return null;
+    return {
+      status: petStatusView(pet),
+      areaLabel: riskAreaNames(pet.areas),
+      nr: riskAreaNrs(pet.areas),
+    };
+  });
 
   readonly kpis = computed(() => {
     const pets = this.state.pets();

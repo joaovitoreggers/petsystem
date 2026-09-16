@@ -78,6 +78,10 @@
             <article
               class="monitor-card"
               [class.monitor-card--alarm]="m.pet.alarm"
+              role="button"
+              tabindex="0"
+              (click)="openDetail(m.pet.id)"
+              (keydown.enter)="openDetail(m.pet.id)"
             >
               <div class="monitor-card__head">
                 <div class="monitor-card__id mono">{{ m.pet.id }}</div>
@@ -281,7 +285,13 @@
         <div class="panel__body">
           <div class="incident-grid">
             @for (o of incidents(); track o.pet.id) {
-              <article class="incident-card">
+              <article
+                class="incident-card"
+                role="button"
+                tabindex="0"
+                (click)="openDetail(o.pet.id)"
+                (keydown.enter)="openDetail(o.pet.id)"
+              >
                 <div class="incident-card__head">
                   <span class="mono">{{ o.pet.id }}</span>
                   <span class="tag tag-accent incident-card__nr">{{
@@ -340,7 +350,12 @@
             </thead>
             <tbody>
               @for (h of filteredHistory(); track h.pet.id) {
-                <tr>
+                <tr
+                  class="history-row"
+                  tabindex="0"
+                  (click)="openDetail(h.pet.id)"
+                  (keydown.enter)="openDetail(h.pet.id)"
+                >
                   <td data-label="PET" class="mono nowrap">{{ h.pet.id }}</td>
                   <td data-label="Data" class="mono nowrap">
                     {{ h.dateLabel }}
@@ -530,6 +545,116 @@
     </div>
   }
 
+  <!-- ── Detalhe de uma PET (só leitura) ──────────────────────────────
+       Aberto por qualquer lista do painel — frentes em execução,
+       histórico, ocorrências. -->
+  @if (detailPet(); as pet) {
+    <div class="dialog-backdrop" (click)="closeDetail()">
+      <div class="dialog blueprint pet-detail" (click)="$event.stopPropagation()">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div class="pet-detail__head">
+          <div>
+            <div class="pet-detail__id mono">{{ pet.id }}</div>
+            <div class="pet-detail__local">{{ pet.location }}</div>
+            <div class="pet-detail__nr">{{ detailCard()?.areaLabel }} · {{ detailCard()?.nr }}</div>
+          </div>
+          <div
+            class="status-pill"
+            [style.color]="detailCard()?.status?.fg"
+            [style.background]="detailCard()?.status?.bg"
+          >
+            {{ detailCard()?.status?.label }}
+          </div>
+        </div>
+
+        @if (pet.gas) {
+          <div>
+            <div class="section-kicker">Última medição atmosférica</div>
+            <div class="gauge-grid">
+              <div class="gauge blueprint">
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                <div class="gauge__label">O₂</div>
+                <div class="gauge__value">{{ pet.gas.o2.toFixed(1) }}<span class="gauge__unit">%</span></div>
+              </div>
+              <div class="gauge blueprint">
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                <div class="gauge__label">CO</div>
+                <div class="gauge__value">{{ pet.gas.co.toFixed(0) }}<span class="gauge__unit">ppm</span></div>
+              </div>
+              <div class="gauge blueprint">
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                <div class="gauge__label">H₂S</div>
+                <div class="gauge__value">{{ pet.gas.h2s.toFixed(1) }}<span class="gauge__unit">ppm</span></div>
+              </div>
+              <div class="gauge blueprint">
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                <div class="gauge__label">LEL</div>
+                <div class="gauge__value">{{ pet.gas.lel.toFixed(0) }}<span class="gauge__unit">%</span></div>
+              </div>
+            </div>
+          </div>
+        }
+
+        @if (pet.team && pet.team.length > 0) {
+          <div>
+            <div class="section-kicker">Equipe</div>
+            <div class="pet-detail__team">
+              @for (m of pet.team; track m.registration) {
+                <span class="tag tag-neutral">{{ m.name }} · {{ teamRoleLabel[m.petRole] }}</span>
+              }
+            </div>
+          </div>
+        }
+
+        <div>
+          <div class="section-kicker">Histórico da permissão</div>
+          <div class="timeline">
+            <div class="timeline__row">
+              <div class="timeline__time">{{ pet.start }}</div>
+              <div class="timeline__text">
+                PET emitida por {{ pet.technician }} · equipe de {{ pet.teamSize }}.
+              </div>
+            </div>
+            @for (alert of pet.criticalAlerts ?? []; track alert.timestamp + alert.registration + alert.documentName) {
+              <div class="timeline__row timeline__row--critical">
+                <div class="timeline__time">{{ alert.timestamp }}</div>
+                <div class="timeline__text">
+                  <span class="timeline__critical-icon">⚠</span>
+                  {{ alert.message }}
+                </div>
+              </div>
+            }
+            @for (reading of pet.readings ?? []; track reading.time + reading.text) {
+              <div class="timeline__row">
+                <div class="timeline__time">{{ reading.time }}</div>
+                <div class="timeline__text">Nova medição: {{ reading.text }}</div>
+              </div>
+            }
+            @for (alert of pet.atmosphereAlerts ?? []; track alert.timestamp + alert.gas + alert.value) {
+              <div class="timeline__row timeline__row--critical">
+                <div class="timeline__time">{{ alert.timestamp }}</div>
+                <div class="timeline__text">
+                  <span class="timeline__critical-icon">⚠</span> Atmosfera fora do limite: {{ alert.message }}
+                </div>
+              </div>
+            }
+            @if (pet.end) {
+              <div class="timeline__row">
+                <div class="timeline__time">{{ pet.end }}</div>
+                <div class="timeline__text">
+                  PET encerrada{{ pet.closeReason ? ' · ' + pet.closeReason : '' }}{{ pet.closedBy ? ' · responsável: ' + pet.closedBy : '' }}.
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+
+        <div class="dialog-actions">
+          <button type="button" class="btn btn-secondary" (click)="closeDetail()">Fechar</button>
+        </div>
+      </div>
+    </div>
+  }
 } @else {
   <div class="report-page">
     <div class="report-page__toolbar no-print">
