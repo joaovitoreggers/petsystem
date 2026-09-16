@@ -11,10 +11,13 @@ import {
 } from '@angular/core';
 import { PetStateService } from '../pet-state.service';
 import {
+  ChecklistAnswer,
   GAS_LIMITS,
   GasKey,
+  PET_TEAM_ROLE_LABEL,
   petStatusView,
   Pet,
+  buildChecklistGroups,
   isGasWithinLimit,
   riskAreaNames,
   riskAreaNrs,
@@ -157,6 +160,34 @@ export class PetTechnicianComponent implements OnDestroy {
     const pet = this.detailPet();
     return pet ? this.toCard(pet) : undefined;
   });
+
+  readonly teamRoleLabel = PET_TEAM_ROLE_LABEL;
+  readonly checklistAnswerLabel: Record<ChecklistAnswer, string> = {
+    sim: 'SIM',
+    nao: 'NÃO',
+    na: 'NA',
+  };
+
+  // Checklist respondido na etapa "Checklist e foto" — só os itens com
+  // resposta salva aparecem. Mesma lógica do painel de gestão (ver
+  // PetManagerComponent.detailChecklistGroups).
+  readonly detailChecklistGroups = computed(() => {
+    const pet = this.detailPet();
+    if (!pet?.checklist) return [];
+    const checklist = pet.checklist;
+    return buildChecklistGroups(pet.areas)
+      .map((group) => ({
+        title: group.title,
+        items: group.items
+          .filter((item) => checklist[item.key] !== undefined)
+          .map((item) => ({ ...item, answer: checklist[item.key] })),
+      }))
+      .filter((group) => group.items.length > 0);
+  });
+
+  readonly detailFireWatchRounds = computed(
+    () => this.detailPet()?.fireWatchRounds?.filter((r) => r.hora && r.nome) ?? [],
+  );
 
   readonly emittedPet = computed<Pet | undefined>(() =>
     this.state.pets().find((p) => p.id === this.state.emittedPetId()),
