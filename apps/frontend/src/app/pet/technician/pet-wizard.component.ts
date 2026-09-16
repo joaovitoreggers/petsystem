@@ -4,9 +4,7 @@ import { PetStateService } from '../pet-state.service';
 import { TenancyApiService } from '../services/tenancy-api.service';
 import {
   AREA_NOTE,
-  CHECKLISTS,
   ChecklistAnswer,
-  EPI_CHECKLIST,
   GAS_LIMITS,
   GasKey,
   MOCK_BADGES,
@@ -15,6 +13,7 @@ import {
   RiskAreaId,
   STEP_NAME,
   TeamMember,
+  buildChecklistGroups,
   isGasWithinLimit,
   riskAreaNrs,
 } from '../pet-mock-data';
@@ -204,27 +203,9 @@ export class PetWizardComponent {
 
   // EPI é um bloco único da PET (não repete por área), seguido pelo
   // checklist específico de cada área de risco selecionada.
-  readonly checkGroups = computed(() => {
-    const epiGroup = {
-      title: EPI_CHECKLIST.title,
-      areaId: null as RiskAreaId | null,
-      items: EPI_CHECKLIST.items.map((label, itemIndex) => ({
-        key: `epi:0:${itemIndex}`,
-        label,
-      })),
-    };
-    const areaGroups = this.state.selectedAreas().flatMap((areaId) =>
-      CHECKLISTS[areaId].map((group, groupIndex) => ({
-        title: `${group.title}`,
-        areaId: areaId as RiskAreaId | null,
-        items: group.items.map((label, itemIndex) => ({
-          key: `${areaId}:${groupIndex}:${itemIndex}`,
-          label,
-        })),
-      })),
-    );
-    return [epiGroup, ...areaGroups];
-  });
+  readonly checkGroups = computed(() =>
+    buildChecklistGroups(this.state.selectedAreas()),
+  );
 
   readonly checklistOptions: { value: ChecklistAnswer; label: string }[] = [
     { value: 'sim', label: 'SIM' },

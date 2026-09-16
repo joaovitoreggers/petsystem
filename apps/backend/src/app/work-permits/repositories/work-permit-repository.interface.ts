@@ -1,6 +1,8 @@
 import {
   WorkPermit,
+  WorkPermitChecklistAnswer,
   WorkPermitCriticalAlert,
+  WorkPermitFireWatchRound,
   WorkPermitGasReading,
   WorkPermitStatus,
   WorkPermitTeamMember,
@@ -31,6 +33,13 @@ export interface CreateWorkPermitData {
   criticalAlerts?: WorkPermitCriticalAlert[];
   team?: WorkPermitTeamMember[];
   companyPhone?: string;
+  description?: string;
+  serviceType?: string;
+  executingCompany?: string;
+  plannedStart?: string;
+  plannedEnd?: string;
+  checklist?: Record<string, WorkPermitChecklistAnswer>;
+  fireWatchRounds?: WorkPermitFireWatchRound[];
 }
 
 export interface CloseWorkPermitData {

@@ -567,6 +567,50 @@
           </div>
         </div>
 
+        @if (pet.description || pet.serviceType || pet.executingCompany || pet.plannedStart || pet.plannedEnd) {
+          <div>
+            <div class="section-kicker">Dados da abertura</div>
+            <div class="pet-detail__fields">
+              @if (pet.serviceType) {
+                <div class="pet-detail__field">
+                  <span class="pet-detail__field-label">Tipo de intervenção</span>
+                  <span>{{ pet.serviceType }}</span>
+                </div>
+              }
+              @if (pet.executingCompany) {
+                <div class="pet-detail__field">
+                  <span class="pet-detail__field-label">Empresa executante</span>
+                  <span>{{ pet.executingCompany }}</span>
+                </div>
+              }
+              @if (pet.plannedStart) {
+                <div class="pet-detail__field">
+                  <span class="pet-detail__field-label">Início previsto</span>
+                  <span>{{ pet.plannedStart }}</span>
+                </div>
+              }
+              @if (pet.plannedEnd) {
+                <div class="pet-detail__field">
+                  <span class="pet-detail__field-label">Término previsto</span>
+                  <span>{{ pet.plannedEnd }}</span>
+                </div>
+              }
+              @if (pet.companyPhone) {
+                <div class="pet-detail__field">
+                  <span class="pet-detail__field-label">Telefone</span>
+                  <span>{{ pet.companyPhone }}</span>
+                </div>
+              }
+              @if (pet.description) {
+                <div class="pet-detail__field pet-detail__field--wide">
+                  <span class="pet-detail__field-label">Descrição do serviço</span>
+                  <span>{{ pet.description }}</span>
+                </div>
+              }
+            </div>
+          </div>
+        }
+
         @if (pet.gas) {
           <div>
             <div class="section-kicker">Última medição atmosférica</div>
@@ -601,6 +645,41 @@
             <div class="pet-detail__team">
               @for (m of pet.team; track m.registration) {
                 <span class="tag tag-neutral">{{ m.name }} · {{ teamRoleLabel[m.petRole] }}</span>
+              }
+            </div>
+          </div>
+        }
+
+        @if (detailChecklistGroups().length > 0) {
+          <div>
+            <div class="section-kicker">Checklist</div>
+            <div class="pet-detail__checklist">
+              @for (group of detailChecklistGroups(); track group.title) {
+                <div class="pet-detail__checklist-group">
+                  <div class="pet-detail__checklist-title">{{ group.title }}</div>
+                  @for (item of group.items; track item.key) {
+                    <div class="pet-detail__checklist-item">
+                      <span
+                        class="pet-detail__checklist-answer"
+                        [class.pet-detail__checklist-answer--nao]="item.answer === 'nao'"
+                        [class.pet-detail__checklist-answer--na]="item.answer === 'na'"
+                        >{{ checklistAnswerLabel[item.answer] }}</span
+                      >
+                      <span>{{ item.label }}</span>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          </div>
+        }
+
+        @if (detailFireWatchRounds().length > 0) {
+          <div>
+            <div class="section-kicker">Rondas de vigia (trabalho a quente)</div>
+            <div class="pet-detail__team">
+              @for (round of detailFireWatchRounds(); track round.hora + round.nome) {
+                <span class="tag tag-neutral">{{ round.hora }} · {{ round.nome }}</span>
               }
             </div>
           </div>

@@ -48,6 +48,13 @@ export class WorkPermitRepository implements IWorkPermitRepository {
       criticalAlerts: data.criticalAlerts,
       team: data.team,
       companyPhone: data.companyPhone,
+      description: data.description,
+      serviceType: data.serviceType,
+      executingCompany: data.executingCompany,
+      plannedStart: data.plannedStart,
+      plannedEnd: data.plannedEnd,
+      checklist: data.checklist,
+      fireWatchRounds: data.fireWatchRounds,
     });
     return this.repository.save(permit);
   }

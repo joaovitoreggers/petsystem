@@ -1074,6 +1074,10 @@ export class PetStateService {
       ...this.badgesToTeam(this.resgateTeam(), 'resgate'),
     ];
     const teamSize = team.length;
+    // Rondas de vigia só existem de verdade em trabalho a quente (NR-18) —
+    // nas demais áreas o bloco nem aparece na etapa "Checklist e foto",
+    // então enviar os 4 slots vazios não representaria nada preenchido.
+    const fireWatchRounds = areas.includes('quente') ? this.fireWatchRounds() : undefined;
     const payload = {
       areas,
       location: fields.local || 'Local não informado',
@@ -1087,6 +1091,13 @@ export class PetStateService {
       criticalAlerts,
       team,
       companyPhone: fields.telefone || undefined,
+      description: fields.descricao || undefined,
+      serviceType: fields.tipo || undefined,
+      executingCompany: fields.empresa || undefined,
+      plannedStart: fields.inicio || undefined,
+      plannedEnd: fields.fim || undefined,
+      checklist: this.checklistState(),
+      fireWatchRounds,
     };
 
     let pet: Pet;
@@ -1110,6 +1121,13 @@ export class PetStateService {
         criticalAlerts,
         team,
         companyPhone: payload.companyPhone,
+        description: payload.description,
+        serviceType: payload.serviceType,
+        executingCompany: payload.executingCompany,
+        plannedStart: payload.plannedStart,
+        plannedEnd: payload.plannedEnd,
+        checklist: payload.checklist,
+        fireWatchRounds: payload.fireWatchRounds,
       };
     }
     this.pets.update((list) => [pet, ...list]);

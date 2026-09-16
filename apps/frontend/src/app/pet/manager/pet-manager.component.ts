@@ -2,6 +2,7 @@ import { Component, computed, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { PetStateService } from '../pet-state.service';
 import {
+  ChecklistAnswer,
   GAS_LIMITS,
   GasKey,
   INCIDENT_CAUSE,
@@ -11,6 +12,7 @@ import {
   RISK_AREAS,
   RiskAreaId,
   THIRTY_DAY_READINGS,
+  buildChecklistGroups,
   buildMonitorArchive,
   dateToBr,
   minutesToLabel,
@@ -43,6 +45,11 @@ const HISTORY_FILTERS: { id: HistoryFilter; label: string }[] = [
 export class PetManagerComponent {
   readonly gasKeys: GasKey[] = ['o2', 'co', 'h2s', 'lel'];
   readonly teamRoleLabel = PET_TEAM_ROLE_LABEL;
+  readonly checklistAnswerLabel: Record<ChecklistAnswer, string> = {
+    sim: 'SIM',
+    nao: 'NÃO',
+    na: 'NA',
+  };
   readonly historyFilters = HISTORY_FILTERS;
   readonly thirtyDays = THIRTY_DAY_READINGS;
 
@@ -132,6 +139,30 @@ export class PetManagerComponent {
       nr: riskAreaNrs(pet.areas),
     };
   });
+
+  // Checklist respondido na etapa "Checklist e foto" — só os itens com
+  // resposta salva aparecem (PETs emitidas antes desse campo existir, ou
+  // com o checklist pulado, não têm nada aqui). As chaves vêm no mesmo
+  // formato que o assistente gera, ver buildChecklistGroups().
+  readonly detailChecklistGroups = computed(() => {
+    const pet = this.detailPet();
+    if (!pet?.checklist) return [];
+    const checklist = pet.checklist;
+    return buildChecklistGroups(pet.areas)
+      .map((group) => ({
+        title: group.title,
+        items: group.items
+          .filter((item) => checklist[item.key] !== undefined)
+          .map((item) => ({ ...item, answer: checklist[item.key] })),
+      }))
+      .filter((group) => group.items.length > 0);
+  });
+
+  // Rondas de vigia de fogo (trabalho a quente) — só as de fato
+  // preenchidas, pelo mesmo motivo do checklist acima.
+  readonly detailFireWatchRounds = computed(
+    () => this.detailPet()?.fireWatchRounds?.filter((r) => r.hora && r.nome) ?? [],
+  );
 
   readonly kpis = computed(() => {
     const pets = this.state.pets();

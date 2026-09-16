@@ -268,6 +268,39 @@ export function emptyFireWatchRounds(): FireWatchRound[] {
   ];
 }
 
+export interface ChecklistGroupView {
+  title: string;
+  areaId: RiskAreaId | null;
+  items: { key: string; label: string }[];
+}
+
+// EPI (bloco único) seguido do checklist específico de cada área de risco
+// selecionada, com a mesma chave usada pelo assistente ("epi:0:<índice>" /
+// "<área>:<grupo>:<índice>") — usado tanto para renderizar a etapa
+// "Checklist e foto" quanto para reconstituir as respostas salvas no
+// detalhe de uma PET já emitida.
+export function buildChecklistGroups(areas: RiskAreaId[]): ChecklistGroupView[] {
+  const epiGroup: ChecklistGroupView = {
+    title: EPI_CHECKLIST.title,
+    areaId: null,
+    items: EPI_CHECKLIST.items.map((label, itemIndex) => ({
+      key: `epi:0:${itemIndex}`,
+      label,
+    })),
+  };
+  const areaGroups = areas.flatMap((areaId) =>
+    CHECKLISTS[areaId].map((group, groupIndex) => ({
+      title: group.title,
+      areaId,
+      items: group.items.map((label, itemIndex) => ({
+        key: `${areaId}:${groupIndex}:${itemIndex}`,
+        label,
+      })),
+    })),
+  );
+  return [epiGroup, ...areaGroups];
+}
+
 export const AREA_NOTE: Record<RiskAreaId, string> = {
   confinado: 'Espaço confinado (NR-33): o fluxo inclui medição atmosférica contínua, vigia externo e plano de resgate antes da liberação.',
   quente: 'Trabalho a quente (NR-18): o fluxo inclui medição de gás inflamável, isolamento da área e vigia de fogo por 60 min após o término.',
@@ -450,6 +483,18 @@ export interface Pet {
   companyPhone?: string;
   closeReason?: string;
   closedBy?: string;
+  // Preenchidos na etapa "Atividade e local" do assistente — antes só
+  // ficavam na tela e eram descartados ao emitir a PET.
+  description?: string;
+  serviceType?: string;
+  executingCompany?: string;
+  plannedStart?: string;
+  plannedEnd?: string;
+  // Respostas SIM/NÃO/NA da etapa "Checklist e foto" — ver
+  // buildChecklistGroups() para reconstituir os grupos/rótulos a partir
+  // das chaves.
+  checklist?: Record<string, ChecklistAnswer>;
+  fireWatchRounds?: FireWatchRound[];
 }
 
 export const MOCK_PETS: Pet[] = [
