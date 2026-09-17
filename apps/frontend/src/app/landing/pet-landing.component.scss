@@ -829,3 +829,26 @@ footer {
   font-size: 13px;
   color: var(--graphite-soft);
 }
+
+/* Contato via WhatsApp — sempre acessível, mesmo com o resto da página rolada. */
+.whatsapp-fab {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #25d366;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 18px rgba(15, 26, 36, 0.28), 0 2px 6px rgba(15, 26, 36, 0.18);
+  z-index: 50;
+  transition: transform 140ms ease;
+}
+.whatsapp-fab:hover { transform: scale(1.06); }
+.whatsapp-fab svg { width: 30px; height: 30px; }
+@media (max-width: 640px) {
+  .whatsapp-fab { right: 16px; bottom: 16px; width: 52px; height: 52px; }
+  .whatsapp-fab svg { width: 27px; height: 27px; }
+}

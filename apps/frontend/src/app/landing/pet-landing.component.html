@@ -13,7 +13,7 @@
       <a href="#funcionalidades">Funcionalidades</a>
       <a href="#seguranca">Confiança</a>
       <a routerLink="/pet" class="btn btn--ghost-dark">Entrar</a>
-      <a class="btn btn--amber" href="#cta">Agendar demonstração</a>
+      <a [href]="whatsappUrl" target="_blank" rel="noopener" class="btn btn--amber">Agendar demonstração</a>
     </div>
   </div>
 </nav>
@@ -26,7 +26,7 @@
         <h1>A Permissão de Entrada e Trabalho não cabe mais numa <em>prancheta</em>.</h1>
         <p class="lede">O PET Digital emite, mede e encerra a permissão de entrada e trabalho em áreas de risco direto do celular do técnico — checklist certo, atmosfera monitorada e equipe com capacitação em dia, tudo visível em tempo real para quem lidera a segurança.</p>
         <div class="hero__ctas">
-          <a class="btn btn--amber" href="#cta">Agendar demonstração</a>
+          <a [href]="whatsappUrl" target="_blank" rel="noopener" class="btn btn--amber">Agendar demonstração</a>
           <a class="btn btn--ghost-dark" href="#funcionalidades">Ver funcionalidades</a>
         </div>
         <div class="hero__meta">
@@ -393,8 +393,8 @@
           <p>Sem prancheta, sem planilha perdida: cada permissão emitida, cada leitura de gás e cada checklist fica registrado e visível para quem precisa decidir rápido.</p>
         </div>
         <div class="cta__actions">
-          <a routerLink="/pet" class="btn btn--amber">Acessar o sistema</a>
-          <a class="btn btn--ghost-dark" href="#funcionalidades">Rever funcionalidades</a>
+          <a [href]="whatsappUrl" target="_blank" rel="noopener" class="btn btn--amber">Falar no WhatsApp</a>
+          <a routerLink="/pet" class="btn btn--ghost-dark">Acessar o sistema</a>
         </div>
       </div>
     </div>
@@ -412,3 +412,18 @@
     <div class="foot-stack">© 2026 ARTECH · Tecnologia que transforma</div>
   </div>
 </footer>
+
+<a
+  class="whatsapp-fab"
+  [href]="whatsappUrl"
+  target="_blank"
+  rel="noopener"
+  aria-label="Falar no WhatsApp"
+>
+  <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <path
+      fill="#fff"
+      d="M16.04 4C9.4 4 4 9.4 4 16.04c0 2.45.7 4.73 1.9 6.66L4 28l5.47-1.86A11.96 11.96 0 0 0 16.04 28C22.68 28 28.08 22.6 28.08 15.96 28.08 9.32 22.68 4 16.04 4Zm0 21.7c-1.98 0-3.83-.56-5.4-1.53l-.39-.23-3.62 1.16 1.18-3.53-.25-.4a9.63 9.63 0 0 1-1.5-5.13c0-5.33 4.34-9.67 9.68-9.67 2.58 0 5.01 1 6.84 2.83a9.6 9.6 0 0 1 2.83 6.84c0 5.34-4.34 9.66-9.67 9.66Zm5.3-7.24c-.29-.15-1.72-.85-1.99-.94-.27-.1-.46-.15-.65.15-.19.29-.75.94-.92 1.13-.17.19-.34.22-.63.07-.29-.15-1.22-.45-2.32-1.44-.86-.77-1.44-1.71-1.61-2-.17-.29-.02-.45.13-.6.13-.13.29-.34.44-.51.15-.17.19-.29.29-.48.1-.19.05-.36-.02-.51-.07-.15-.65-1.57-.9-2.15-.24-.57-.48-.5-.65-.5h-.56c-.19 0-.51.07-.78.36-.27.29-1.02 1-1.02 2.44s1.05 2.83 1.19 3.02c.15.19 2.06 3.14 4.98 4.41.7.3 1.24.48 1.67.62.7.22 1.34.19 1.84.12.56-.08 1.72-.7 1.97-1.38.24-.68.24-1.26.17-1.38-.07-.12-.26-.19-.55-.34Z"
+    />
+  </svg>
+</a>
