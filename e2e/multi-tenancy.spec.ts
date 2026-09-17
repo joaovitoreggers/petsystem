@@ -10,7 +10,7 @@ const PASSWORD = 'senha123';
  * falham no login.
  */
 async function loginAs(page: Page, email: string): Promise<void> {
-  await page.goto('/');
+  await page.goto('/pet');
   await page.getByRole('tab', { name: 'E-mail e senha' }).click();
   await page.getByPlaceholder('nome@petsystem.local').fill(email);
   await page.getByPlaceholder('Sua senha').fill(PASSWORD);
@@ -165,7 +165,7 @@ test.describe('Sidebar mostra o tenant da sessão', () => {
   });
 
   test('falls back to the static text before any login', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/pet');
 
     await expect(page.locator('.shell__brand-unit').first()).toContainText('Lar Cooperativa · SESMT');
   });
@@ -217,7 +217,7 @@ test.describe('Filial real no formulário de funcionário (não mockada)', () =>
 
 test.describe('Sessão não autenticada (fallback local)', () => {
   test('the field screen still renders PETs via the local mock fallback, no crash', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/pet');
 
     // Sem login, a tela de Campo (home por padrão) precisa continuar de pé
     // com os dados mockados locais — é o fallback que absorve o 401 das
