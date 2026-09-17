@@ -49,12 +49,12 @@
                 type="button"
                 role="tab"
                 class="login__method"
-                [class.login__method--active]="state.authMethod() === 'facial'"
-                [attr.aria-selected]="state.authMethod() === 'facial'"
-                (click)="state.setAuthMethod('facial')"
+                [class.login__method--active]="state.authMethod() === 'biometria'"
+                [attr.aria-selected]="state.authMethod() === 'biometria'"
+                (click)="state.setAuthMethod('biometria')"
               >
-                <app-icon name="camera" [size]="16" />
-                Reconhecimento facial
+                <app-icon name="fingerprint" [size]="16" />
+                Biometria do aparelho
               </button>
               <button
                 type="button"
@@ -70,43 +70,21 @@
             </div>
 
             <div class="login__center">
-              @if (state.authMethod() === 'facial') {
-                <div class="face-frame">
-                  @if (cameraActive()) {
-                    <video
-                      #faceVideo
-                      class="face-frame__video"
-                      autoplay
-                      playsinline
-                      muted
-                    ></video>
-                  } @else {
-                    <div class="face-frame__grid"></div>
-                  }
-                  <div class="face-frame__border"></div>
+              @if (state.authMethod() === 'biometria') {
+                <div class="biometric-frame">
                   <div
-                    class="face-frame__oval"
-                    [style.border-color]="faceColor()"
-                  ></div>
-                  @if (faceScanning()) {
-                    <div
-                      class="face-frame__sweep"
-                      [style.background]="faceColor()"
-                    ></div>
-                  }
-                  <div class="face-frame__caption">
-                    {{
-                      cameraError()
-                        ? cameraBlockedByOrigin()
-                          ? 'a câmera exige HTTPS · use e-mail e senha'
-                          : 'câmera indisponível · toque para tentar de novo'
-                        : 'câmera frontal'
-                    }}
+                    class="biometric-frame__icon"
+                    [class.biometric-frame__icon--scanning]="biometricScanning()"
+                    [style.color]="
+                      state.authPhase() === 'ok' ? 'var(--status-ok)' : 'var(--color-bg)'
+                    "
+                  >
+                    <app-icon name="fingerprint" [size]="48" />
                   </div>
                 </div>
                 <div class="login__status">
-                  <div class="login__title">{{ faceTitle() }}</div>
-                  <div class="login__text">{{ faceText() }}</div>
+                  <div class="login__title">{{ biometricTitle() }}</div>
+                  <div class="login__text">{{ biometricText() }}</div>
                 </div>
               } @else {
                 <!-- (keydown.enter) além do (submit): o botão "Entrar" fica fora do
@@ -175,20 +153,21 @@
               }
             </div>
 
-            @if (state.authMethod() === 'facial') {
+            @if (state.authMethod() === 'biometria') {
               <button
                 type="button"
                 class="btn login__btn"
-                [disabled]="faceButtonDisabled()"
+                [disabled]="biometricButtonDisabled()"
                 (click)="startAuth()"
               >
-                {{ faceButtonLabel() }}
+                {{ biometricButtonLabel() }}
               </button>
               <div class="login__disclaimer">
-                reconhecimento roda no seu navegador (face-api.js) · só reabre
-                uma conta já cadastrada neste aparelho<br />
-                nenhuma imagem é enviada nem armazenada — só um descritor
-                numérico, local
+                usa a biometria nativa do aparelho (Face ID, Touch ID, Windows
+                Hello ou impressão digital) · só reabre uma conta já
+                cadastrada aqui<br />
+                a chave nunca sai deste aparelho — o servidor só guarda a
+                parte pública, para conferir a assinatura
               </div>
             } @else {
               <!-- `type="submit"` + `form` ligam o botão ao formulário mesmo
@@ -211,33 +190,27 @@
 
         @if (state.enrollPromptOpen()) {
           <div class="dialog-backdrop">
-            <div class="dialog enroll-face">
-              <div class="dialog-title">Habilitar reconhecimento facial neste aparelho?</div>
+            <div class="dialog enroll-biometric">
+              <div class="dialog-title">Habilitar biometria do aparelho?</div>
               <div class="dialog-body">
-                Da próxima vez, você entra só posicionando o rosto — sem digitar
-                senha. Guardamos só um descritor numérico do seu rosto (não uma
-                imagem) neste aparelho, e ele fica valendo até você clicar em
-                Sair.
+                Da próxima vez, você entra só com Face ID, Touch ID, Windows
+                Hello ou impressão digital — sem digitar senha. A chave fica
+                guardada no hardware seguro deste aparelho e continua valendo
+                mesmo depois de sair, do mesmo jeito que num navegador.
               </div>
 
-              <div class="face-frame enroll-face__frame">
-                @if (cameraActive()) {
-                  <video #enrollVideo class="face-frame__video" autoplay playsinline muted></video>
-                } @else {
-                  <div class="face-frame__grid"></div>
-                }
-                <div class="face-frame__border"></div>
-                <div class="face-frame__oval"></div>
-                <div class="face-frame__caption">
-                  {{
-                    cameraError()
-                      ? cameraBlockedByOrigin()
-                          ? 'a câmera exige HTTPS · use e-mail e senha'
-                          : 'câmera indisponível · toque para tentar de novo'
-                      : 'câmera frontal'
-                  }}
+              @if (biometricSupported()) {
+                <div class="biometric-frame enroll-biometric__frame">
+                  <div class="biometric-frame__icon">
+                    <app-icon name="fingerprint" [size]="40" />
+                  </div>
                 </div>
-              </div>
+              } @else {
+                <div class="login__error" role="alert">
+                  <app-icon name="alert" [size]="16" />
+                  <span>Este aparelho não parece ter Face ID, Touch ID, Windows Hello ou leitor de impressão digital.</span>
+                </div>
+              }
 
               @if (state.enrollError(); as erro) {
                 <div class="login__error" role="alert">
@@ -253,7 +226,7 @@
                 <button
                   type="button"
                   class="btn btn-primary"
-                  [disabled]="state.enrolling() || !cameraActive()"
+                  [disabled]="state.enrolling() || !biometricSupported()"
                   (click)="confirmEnroll()"
                 >
                   {{ state.enrolling() ? 'Cadastrando…' : 'Habilitar' }}
@@ -447,6 +420,50 @@
             </div>
 
             <div class="detalhe__body petscroll">
+              @if (pet.description || pet.serviceType || pet.executingCompany || pet.plannedStart || pet.plannedEnd) {
+                <div>
+                  <div class="section-kicker">Dados da abertura</div>
+                  <div class="detalhe__fields">
+                    @if (pet.serviceType) {
+                      <div class="detalhe__field">
+                        <span class="detalhe__field-label">Tipo de intervenção</span>
+                        <span>{{ pet.serviceType }}</span>
+                      </div>
+                    }
+                    @if (pet.executingCompany) {
+                      <div class="detalhe__field">
+                        <span class="detalhe__field-label">Empresa executante</span>
+                        <span>{{ pet.executingCompany }}</span>
+                      </div>
+                    }
+                    @if (pet.plannedStart) {
+                      <div class="detalhe__field">
+                        <span class="detalhe__field-label">Início previsto</span>
+                        <span>{{ pet.plannedStart }}</span>
+                      </div>
+                    }
+                    @if (pet.plannedEnd) {
+                      <div class="detalhe__field">
+                        <span class="detalhe__field-label">Término previsto</span>
+                        <span>{{ pet.plannedEnd }}</span>
+                      </div>
+                    }
+                    @if (pet.companyPhone) {
+                      <div class="detalhe__field">
+                        <span class="detalhe__field-label">Telefone</span>
+                        <span>{{ pet.companyPhone }}</span>
+                      </div>
+                    }
+                    @if (pet.description) {
+                      <div class="detalhe__field detalhe__field--wide">
+                        <span class="detalhe__field-label">Descrição do serviço</span>
+                        <span>{{ pet.description }}</span>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+
               @if (pet.gas) {
                 <div>
                   <div class="section-kicker">Última medição atmosférica</div>
@@ -490,6 +507,52 @@
                   </div>
                 </div>
               }
+              @if (pet.team && pet.team.length > 0) {
+                <div>
+                  <div class="section-kicker">Equipe</div>
+                  <div class="detalhe__team">
+                    @for (m of pet.team; track m.registration) {
+                      <span class="tag tag-neutral">{{ m.name }} · {{ teamRoleLabel[m.petRole] }}</span>
+                    }
+                  </div>
+                </div>
+              }
+
+              @if (detailChecklistGroups().length > 0) {
+                <div>
+                  <div class="section-kicker">Checklist</div>
+                  <div class="detalhe__checklist">
+                    @for (group of detailChecklistGroups(); track group.title) {
+                      <div class="detalhe__checklist-group">
+                        <div class="detalhe__checklist-title">{{ group.title }}</div>
+                        @for (item of group.items; track item.key) {
+                          <div class="detalhe__checklist-item">
+                            <span
+                              class="detalhe__checklist-answer"
+                              [class.detalhe__checklist-answer--nao]="item.answer === 'nao'"
+                              [class.detalhe__checklist-answer--na]="item.answer === 'na'"
+                              >{{ checklistAnswerLabel[item.answer] }}</span
+                            >
+                            <span>{{ item.label }}</span>
+                          </div>
+                        }
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+
+              @if (detailFireWatchRounds().length > 0) {
+                <div>
+                  <div class="section-kicker">Rondas de vigia (trabalho a quente)</div>
+                  <div class="detalhe__team">
+                    @for (round of detailFireWatchRounds(); track round.hora + round.nome) {
+                      <span class="tag tag-neutral">{{ round.hora }} · {{ round.nome }}</span>
+                    }
+                  </div>
+                </div>
+              }
+
               <div>
                 <div class="section-kicker">Histórico da permissão</div>
                 <div class="timeline">

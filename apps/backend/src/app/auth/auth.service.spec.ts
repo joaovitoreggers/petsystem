@@ -1,14 +1,27 @@
 import { UnauthorizedException } from '@nestjs/common';
-import * as bcrypt from 'bcrypt';
+import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import {
+  generateAuthenticationOptions,
+  generateRegistrationOptions,
+  verifyAuthenticationResponse,
+  verifyRegistrationResponse,
+} from '@simplewebauthn/server';
 import { BranchesService } from '../tenancy/branches.service';
 import { CompanyGroupsService } from '../tenancy/company-groups.service';
 import { User } from '../users/entities/user.entity';
 import { UsersService } from '../users/users.service';
 import { AuthService } from './auth.service';
 import { AuthenticatedUser } from './jwt-payload.interface';
-import { DeviceCredential } from './entities/device-credential.entity';
-import { IDeviceCredentialRepository } from './repositories/device-credential-repository.interface';
+import { WebAuthnCredential } from './entities/webauthn-credential.entity';
+import { IWebAuthnCredentialRepository } from './repositories/webauthn-credential-repository.interface';
+
+jest.mock('@simplewebauthn/server', () => ({
+  generateRegistrationOptions: jest.fn(),
+  verifyRegistrationResponse: jest.fn(),
+  generateAuthenticationOptions: jest.fn(),
+  verifyAuthenticationResponse: jest.fn(),
+}));
 
 function user(overrides: Partial<AuthenticatedUser>): AuthenticatedUser {
   return {
@@ -35,11 +48,15 @@ function fullUser(overrides: Partial<User>): User {
   };
 }
 
-function credential(overrides: Partial<DeviceCredential>): DeviceCredential {
+function credential(overrides: Partial<WebAuthnCredential>): WebAuthnCredential {
   return {
     id: 'cred-1',
     userId: 'u1',
-    secretHash: 'hash',
+    publicKey: Buffer.from('public-key'),
+    counter: 0,
+    deviceType: 'singleDevice',
+    backedUp: false,
+    transports: ['internal'],
     lastUsedAt: null,
     createdAt: new Date(),
     ...overrides,
@@ -50,11 +67,13 @@ describe('AuthService', () => {
   let service: AuthService;
   let usersService: jest.Mocked<Pick<UsersService, 'findByEmail' | 'validatePassword' | 'findById'>>;
   let jwtService: jest.Mocked<Pick<JwtService, 'sign'>>;
+  let configService: jest.Mocked<Pick<ConfigService, 'get'>>;
   let companyGroupsService: jest.Mocked<Pick<CompanyGroupsService, 'findById'>>;
   let branchesService: jest.Mocked<Pick<BranchesService, 'findById'>>;
-  let deviceCredentialRepository: jest.Mocked<IDeviceCredentialRepository>;
+  let webAuthnCredentialRepository: jest.Mocked<IWebAuthnCredentialRepository>;
 
   beforeEach(() => {
+    jest.clearAllMocks();
     usersService = {
       findByEmail: jest.fn(),
       validatePassword: jest.fn(),
@@ -62,20 +81,23 @@ describe('AuthService', () => {
       registrarAcesso: jest.fn().mockResolvedValue(undefined),
     };
     jwtService = { sign: jest.fn().mockReturnValue('signed-jwt') };
+    configService = { get: jest.fn((_key: string, def?: unknown) => def) };
     companyGroupsService = { findById: jest.fn() };
     branchesService = { findById: jest.fn() };
-    deviceCredentialRepository = {
+    webAuthnCredentialRepository = {
       findById: jest.fn(),
+      findByUserId: jest.fn(),
       create: jest.fn(),
-      touchLastUsed: jest.fn(),
+      updateCounter: jest.fn(),
       delete: jest.fn(),
     };
     service = new AuthService(
       usersService as unknown as UsersService,
       jwtService as unknown as JwtService,
+      configService as unknown as ConfigService,
       companyGroupsService as unknown as CompanyGroupsService,
       branchesService as unknown as BranchesService,
-      deviceCredentialRepository,
+      webAuthnCredentialRepository,
     );
   });
 
@@ -139,92 +161,219 @@ describe('AuthService', () => {
     });
   });
 
-  describe('issueDeviceToken', () => {
-    it('stores a bcrypt hash of the secret, never the secret itself', async () => {
-      deviceCredentialRepository.create.mockResolvedValue(credential({}));
+  describe('getRegistrationOptions', () => {
+    it('rejects when the user no longer exists', async () => {
+      usersService.findById.mockResolvedValue(null);
 
-      const token = await service.issueDeviceToken('u1');
+      await expect(service.getRegistrationOptions('u1')).rejects.toThrow(UnauthorizedException);
+    });
 
-      const [id, secret] = token.split('.');
-      expect(id).toBeTruthy();
-      expect(secret).toBeTruthy();
-      const createCall = deviceCredentialRepository.create.mock.calls[0][0];
-      expect(createCall.userId).toBe('u1');
-      expect(createCall.secretHash).not.toBe(secret);
-      await expect(bcrypt.compare(secret, createCall.secretHash)).resolves.toBe(true);
+    it('excludes credentials already registered by this user, so the same authenticator cannot register twice', async () => {
+      usersService.findById.mockResolvedValue(fullUser({ id: 'u1' }));
+      webAuthnCredentialRepository.findByUserId.mockResolvedValue([
+        credential({ id: 'existing-1', transports: ['internal'] }),
+      ]);
+      (generateRegistrationOptions as jest.Mock).mockResolvedValue({
+        challenge: 'the-challenge',
+      });
+
+      await service.getRegistrationOptions('u1');
+
+      const call = (generateRegistrationOptions as jest.Mock).mock.calls[0][0];
+      expect(call.excludeCredentials).toEqual([{ id: 'existing-1', transports: ['internal'] }]);
+      expect(call.authenticatorSelection).toMatchObject({
+        authenticatorAttachment: 'platform',
+        residentKey: 'required',
+        userVerification: 'required',
+      });
     });
   });
 
-  describe('loginWithDeviceToken', () => {
-    it('rejects a malformed token (missing the secret half)', async () => {
-      await expect(service.loginWithDeviceToken('just-an-id')).rejects.toThrow(
-        UnauthorizedException,
-      );
-      expect(deviceCredentialRepository.findById).not.toHaveBeenCalled();
+  describe('verifyRegistration', () => {
+    it('rejects when no registration was ever started for this user', async () => {
+      await expect(
+        service.verifyRegistration('u1', {} as never),
+      ).rejects.toThrow(UnauthorizedException);
+      expect(verifyRegistrationResponse).not.toHaveBeenCalled();
     });
 
-    it('rejects when the credential id does not exist', async () => {
-      deviceCredentialRepository.findById.mockResolvedValue(null);
+    it('rejects when the challenge already expired', async () => {
+      usersService.findById.mockResolvedValue(fullUser({ id: 'u1' }));
+      webAuthnCredentialRepository.findByUserId.mockResolvedValue([]);
+      (generateRegistrationOptions as jest.Mock).mockResolvedValue({ challenge: 'c1' });
+      await service.getRegistrationOptions('u1');
+      jest.spyOn(Date, 'now').mockReturnValue(Date.now() + 10 * 60 * 1000);
 
-      await expect(service.loginWithDeviceToken('missing-id.some-secret')).rejects.toThrow(
+      await expect(service.verifyRegistration('u1', {} as never)).rejects.toThrow(
         UnauthorizedException,
       );
+
+      jest.spyOn(Date, 'now').mockRestore();
     });
 
-    it('rejects when the secret does not match the stored hash', async () => {
-      const secretHash = await bcrypt.hash('the-real-secret', 4);
-      deviceCredentialRepository.findById.mockResolvedValue(credential({ secretHash }));
+    it('stores the credential returned by a verified registration', async () => {
+      usersService.findById.mockResolvedValue(fullUser({ id: 'u1' }));
+      webAuthnCredentialRepository.findByUserId.mockResolvedValue([]);
+      (generateRegistrationOptions as jest.Mock).mockResolvedValue({ challenge: 'the-challenge' });
+      await service.getRegistrationOptions('u1');
+      (verifyRegistrationResponse as jest.Mock).mockResolvedValue({
+        verified: true,
+        registrationInfo: {
+          credential: {
+            id: 'new-cred-id',
+            publicKey: new Uint8Array([1, 2, 3]),
+            counter: 0,
+            transports: ['internal'],
+          },
+          credentialDeviceType: 'singleDevice',
+          credentialBackedUp: false,
+        },
+      });
 
-      await expect(service.loginWithDeviceToken('cred-1.wrong-secret')).rejects.toThrow(
+      await service.verifyRegistration('u1', { id: 'new-cred-id' } as never);
+
+      expect(webAuthnCredentialRepository.create).toHaveBeenCalledWith({
+        id: 'new-cred-id',
+        userId: 'u1',
+        publicKey: Buffer.from([1, 2, 3]),
+        counter: 0,
+        deviceType: 'singleDevice',
+        backedUp: false,
+        transports: ['internal'],
+      });
+    });
+
+    it('rejects when the server verification fails', async () => {
+      usersService.findById.mockResolvedValue(fullUser({ id: 'u1' }));
+      webAuthnCredentialRepository.findByUserId.mockResolvedValue([]);
+      (generateRegistrationOptions as jest.Mock).mockResolvedValue({ challenge: 'the-challenge' });
+      await service.getRegistrationOptions('u1');
+      (verifyRegistrationResponse as jest.Mock).mockResolvedValue({ verified: false });
+
+      await expect(service.verifyRegistration('u1', {} as never)).rejects.toThrow(
         UnauthorizedException,
       );
+      expect(webAuthnCredentialRepository.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('loginWithBiometric', () => {
+    it('rejects an unknown or expired challengeId', async () => {
+      await expect(
+        service.loginWithBiometric('missing-challenge', { id: 'cred-1' } as never),
+      ).rejects.toThrow(UnauthorizedException);
+      expect(webAuthnCredentialRepository.findById).not.toHaveBeenCalled();
     });
 
-    it('issues a fresh real session when the token is valid, and marks it used', async () => {
-      const secretHash = await bcrypt.hash('the-real-secret', 4);
-      deviceCredentialRepository.findById.mockResolvedValue(credential({ secretHash, userId: 'u1' }));
+    it('rejects when the credential id in the response is not registered', async () => {
+      (generateAuthenticationOptions as jest.Mock).mockResolvedValue({ challenge: 'c1' });
+      const { challengeId } = await service.getAuthenticationOptions();
+      webAuthnCredentialRepository.findById.mockResolvedValue(null);
+
+      await expect(
+        service.loginWithBiometric(challengeId, { id: 'unknown-cred' } as never),
+      ).rejects.toThrow(UnauthorizedException);
+      expect(verifyAuthenticationResponse).not.toHaveBeenCalled();
+    });
+
+    it('rejects when the signature does not verify', async () => {
+      (generateAuthenticationOptions as jest.Mock).mockResolvedValue({ challenge: 'c1' });
+      const { challengeId } = await service.getAuthenticationOptions();
+      webAuthnCredentialRepository.findById.mockResolvedValue(credential({}));
+      (verifyAuthenticationResponse as jest.Mock).mockResolvedValue({ verified: false });
+
+      await expect(
+        service.loginWithBiometric(challengeId, { id: 'cred-1' } as never),
+      ).rejects.toThrow(UnauthorizedException);
+      expect(webAuthnCredentialRepository.updateCounter).not.toHaveBeenCalled();
+    });
+
+    it('issues a real session and advances the stored counter on a verified login', async () => {
+      (generateAuthenticationOptions as jest.Mock).mockResolvedValue({ challenge: 'c1' });
+      const { challengeId } = await service.getAuthenticationOptions();
+      webAuthnCredentialRepository.findById.mockResolvedValue(credential({ userId: 'u1', counter: 4 }));
+      (verifyAuthenticationResponse as jest.Mock).mockResolvedValue({
+        verified: true,
+        authenticationInfo: { newCounter: 5 },
+      });
       usersService.findById.mockResolvedValue(fullUser({ id: 'u1' }));
 
-      const result = await service.loginWithDeviceToken('cred-1.the-real-secret');
+      const result = await service.loginWithBiometric(challengeId, { id: 'cred-1' } as never);
 
       expect(result.accessToken).toBe('signed-jwt');
-      expect(deviceCredentialRepository.touchLastUsed).toHaveBeenCalledWith('cred-1');
+      expect(webAuthnCredentialRepository.updateCounter).toHaveBeenCalledWith('cred-1', 5);
     });
 
     it('rejects when the credential is valid but the user no longer exists', async () => {
-      const secretHash = await bcrypt.hash('the-real-secret', 4);
-      deviceCredentialRepository.findById.mockResolvedValue(credential({ secretHash }));
+      (generateAuthenticationOptions as jest.Mock).mockResolvedValue({ challenge: 'c1' });
+      const { challengeId } = await service.getAuthenticationOptions();
+      webAuthnCredentialRepository.findById.mockResolvedValue(credential({ userId: 'u1' }));
+      (verifyAuthenticationResponse as jest.Mock).mockResolvedValue({
+        verified: true,
+        authenticationInfo: { newCounter: 1 },
+      });
       usersService.findById.mockResolvedValue(null);
 
-      await expect(service.loginWithDeviceToken('cred-1.the-real-secret')).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(
+        service.loginWithBiometric(challengeId, { id: 'cred-1' } as never),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('cannot be replayed — the challenge is consumed on first use', async () => {
+      (generateAuthenticationOptions as jest.Mock).mockResolvedValue({ challenge: 'c1' });
+      const { challengeId } = await service.getAuthenticationOptions();
+      webAuthnCredentialRepository.findById.mockResolvedValue(credential({ userId: 'u1' }));
+      (verifyAuthenticationResponse as jest.Mock).mockResolvedValue({
+        verified: true,
+        authenticationInfo: { newCounter: 1 },
+      });
+      usersService.findById.mockResolvedValue(fullUser({ id: 'u1' }));
+
+      await service.loginWithBiometric(challengeId, { id: 'cred-1' } as never);
+
+      await expect(
+        service.loginWithBiometric(challengeId, { id: 'cred-1' } as never),
+      ).rejects.toThrow(UnauthorizedException);
     });
   });
 
-  describe('revokeDeviceToken', () => {
+  describe('hasBiometricCredential', () => {
+    it('is true once at least one credential is registered', async () => {
+      webAuthnCredentialRepository.findByUserId.mockResolvedValue([credential({})]);
+
+      await expect(service.hasBiometricCredential('u1')).resolves.toBe(true);
+    });
+
+    it('is false with no credentials', async () => {
+      webAuthnCredentialRepository.findByUserId.mockResolvedValue([]);
+
+      await expect(service.hasBiometricCredential('u1')).resolves.toBe(false);
+    });
+  });
+
+  describe('forgetBiometricCredential', () => {
     it('deletes the credential when it belongs to the caller', async () => {
-      deviceCredentialRepository.findById.mockResolvedValue(credential({ userId: 'u1' }));
+      webAuthnCredentialRepository.findById.mockResolvedValue(credential({ userId: 'u1' }));
 
-      await service.revokeDeviceToken('cred-1.secret', 'u1');
+      await service.forgetBiometricCredential('cred-1', 'u1');
 
-      expect(deviceCredentialRepository.delete).toHaveBeenCalledWith('cred-1');
+      expect(webAuthnCredentialRepository.delete).toHaveBeenCalledWith('cred-1');
     });
 
     it('does nothing when the credential belongs to a different user', async () => {
-      deviceCredentialRepository.findById.mockResolvedValue(credential({ userId: 'someone-else' }));
+      webAuthnCredentialRepository.findById.mockResolvedValue(credential({ userId: 'someone-else' }));
 
-      await service.revokeDeviceToken('cred-1.secret', 'u1');
+      await service.forgetBiometricCredential('cred-1', 'u1');
 
-      expect(deviceCredentialRepository.delete).not.toHaveBeenCalled();
+      expect(webAuthnCredentialRepository.delete).not.toHaveBeenCalled();
     });
 
     it('does nothing when the credential does not exist', async () => {
-      deviceCredentialRepository.findById.mockResolvedValue(null);
+      webAuthnCredentialRepository.findById.mockResolvedValue(null);
 
-      await service.revokeDeviceToken('cred-1.secret', 'u1');
+      await service.forgetBiometricCredential('cred-1', 'u1');
 
-      expect(deviceCredentialRepository.delete).not.toHaveBeenCalled();
+      expect(webAuthnCredentialRepository.delete).not.toHaveBeenCalled();
     });
   });
 });

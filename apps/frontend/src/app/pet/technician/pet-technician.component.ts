@@ -1,21 +1,15 @@
-import {
-  Component,
-  ElementRef,
-  Injector,
-  OnDestroy,
-  ViewChild,
-  afterNextRender,
-  computed,
-  effect,
-  signal,
-} from '@angular/core';
+import { Component, computed, signal } from '@angular/core';
+import { platformAuthenticatorIsAvailable } from '@simplewebauthn/browser';
 import { PetStateService } from '../pet-state.service';
 import { AccessService } from '../services/access.service';
 import {
+  ChecklistAnswer,
   GAS_LIMITS,
   GasKey,
+  PET_TEAM_ROLE_LABEL,
   petStatusView,
   Pet,
+  buildChecklistGroups,
   isGasWithinLimit,
   riskAreaNames,
   riskAreaNrs,
@@ -50,124 +44,27 @@ interface MeasurementFieldView {
   templateUrl: './pet-technician.component.html',
   styleUrls: ['./pet-technician.component.scss', './pet-login.scss'],
 })
-export class PetTechnicianComponent implements OnDestroy {
-  // O <video> só existe no DOM quando cameraActive() vira true (@if no
-  // template), então o ViewChild só é preenchido depois que o Angular
-  // renderiza esse @if — daí o afterNextRender abaixo em vez de acessar
-  // faceVideoRef logo após o .set(true). Sem isso, srcObject podia nunca
-  // ser atribuído: a câmera ficava ligada (getUserMedia já resolvido) mas
-  // sem imagem, e sem nova tentativa depois.
-  @ViewChild('faceVideo')
-  private readonly faceVideoRef?: ElementRef<HTMLVideoElement>;
-  // Vídeo próprio do diálogo de cadastro de reconhecimento facial: ele
-  // pode aparecer depois de um login pela aba "E-mail e senha", onde o
-  // #faceVideo acima nunca chegou a existir no DOM (só renderiza dentro
-  // da aba "Reconhecimento facial"). Os dois compartilham o mesmo
-  // MediaStream — startCamera() atribui a ambos quando existirem.
-  @ViewChild('enrollVideo')
-  private readonly enrollVideoRef?: ElementRef<HTMLVideoElement>;
-
-  readonly cameraActive = signal(false);
+export class PetTechnicianComponent {
+  // Se este aparelho tem um autenticador de plataforma disponível (Face
+  // ID/Touch ID/Windows Hello/impressão digital) — sem isso, a aba de
+  // biometria só ia mostrar um prompt que o navegador nunca conseguiria
+  // atender. `platformAuthenticatorIsAvailable()` é assíncrono; começa
+  // otimista (true) para não piscar a UI antes da resposta chegar.
+  readonly biometricSupported = signal(true);
 
   /** Quem pode abrir uma PET, segundo o servidor. */
   readonly podeEmitirPet = computed(() => this.access.pode()('emitir_pet'));
 
-  /** Quem pode medir e encerrar uma PET já aberta. */
+  /** Quem pode medir e encerrar uma PET ja aberta. */
   readonly podeOperarPet = computed(() => this.access.pode()('operar_pet'));
-
-  /**
-   * A câmera está barrada pela origem, e não por falta de permissão?
-   *
-   * Navegador nenhum entrega câmera fora de um contexto seguro: só em
-   * HTTPS ou em localhost. Aberto pelo IP da rede em http://, o
-   * `navigator.mediaDevices` simplesmente não existe — e aí "toque para
-   * tentar de novo" é uma instrução falsa, porque tentar de novo nunca vai
-   * funcionar. Quando é este o caso, a tela diz o motivo de verdade.
-   */
-  readonly cameraBlockedByOrigin = signal(false);
-  readonly cameraError = signal(false);
-  private cameraStream: MediaStream | null = null;
 
   constructor(
     readonly state: PetStateService,
     readonly access: AccessService,
-    private readonly injector: Injector,
   ) {
-    effect(() => {
-      if (this.state.screen() === 'login') {
-        this.startCamera();
-      } else {
-        this.stopCamera();
-      }
-    });
-    // O diálogo de cadastro (#enrollVideo) só existe no DOM quando
-    // enrollPromptOpen vira true, o que costuma acontecer bem depois da
-    // câmera já ter ligado — precisa da própria atribuição de srcObject,
-    // não só a que startCamera() já fez pro #faceVideo.
-    effect(() => {
-      if (this.state.enrollPromptOpen() && this.cameraStream) {
-        this.attachStreamToVideo(() => this.enrollVideoRef, this.cameraStream);
-      }
-    });
-  }
-
-  ngOnDestroy(): void {
-    this.stopCamera();
-  }
-
-  // Recebe uma função que LÊ o ViewChild, não o ViewChild já resolvido: no
-  // primeiro ciclo em que o @if que monta o <video> vira verdadeiro, a
-  // propriedade ainda está undefined nesse exato instante (Angular só a
-  // preenche durante a checagem de view que roda depois). Capturar o valor
-  // na hora da chamada prendia esse undefined pra sempre no closure, mesmo
-  // o afterNextRender rodando depois — o vídeo nunca recebia o
-  // MediaStream, ficava 0x0/paused, e o face-api travava tentando detectar
-  // rosto num frame que não existia.
-  private attachStreamToVideo(
-    getRef: () => ElementRef<HTMLVideoElement> | undefined,
-    stream: MediaStream,
-  ): void {
-    afterNextRender(
-      () => {
-        const video = getRef()?.nativeElement;
-        if (!video) return;
-        video.srcObject = stream;
-        video.play().catch(() => undefined);
-      },
-      { injector: this.injector },
-    );
-  }
-
-  private async startCamera(): Promise<void> {
-    if (this.cameraStream) return;
-    if (!navigator.mediaDevices?.getUserMedia) {
-      this.cameraBlockedByOrigin.set(!window.isSecureContext);
-      this.cameraError.set(true);
-      return;
-    }
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user' },
-        audio: false,
-      });
-      this.cameraStream = stream;
-      this.cameraError.set(false);
-      this.cameraBlockedByOrigin.set(false);
-      this.cameraActive.set(true);
-      this.attachStreamToVideo(() => this.faceVideoRef, stream);
-    } catch {
-      // Chegou aqui com a API disponível: foi recusa de permissão ou câmera
-      // ocupada — nesses casos tentar de novo faz sentido.
-      this.cameraBlockedByOrigin.set(false);
-      this.cameraError.set(true);
-      this.cameraActive.set(false);
-    }
-  }
-
-  private stopCamera(): void {
-    this.cameraStream?.getTracks().forEach((track) => track.stop());
-    this.cameraStream = null;
-    this.cameraActive.set(false);
+    platformAuthenticatorIsAvailable()
+      .then((available) => this.biometricSupported.set(available))
+      .catch(() => this.biometricSupported.set(false));
   }
 
   readonly visibleCards = computed<PetCardView[]>(() =>
@@ -182,62 +79,96 @@ export class PetTechnicianComponent implements OnDestroy {
     return pet ? this.toCard(pet) : undefined;
   });
 
+  readonly teamRoleLabel = PET_TEAM_ROLE_LABEL;
+  readonly checklistAnswerLabel: Record<ChecklistAnswer, string> = {
+    sim: 'SIM',
+    nao: 'NÃO',
+    na: 'NA',
+  };
+
+  // Checklist respondido na etapa "Checklist e foto" — só os itens com
+  // resposta salva aparecem. Mesma lógica do painel de gestão (ver
+  // PetManagerComponent.detailChecklistGroups).
+  readonly detailChecklistGroups = computed(() => {
+    const pet = this.detailPet();
+    if (!pet?.checklist) return [];
+    const checklist = pet.checklist;
+    return buildChecklistGroups(pet.areas)
+      .map((group) => ({
+        title: group.title,
+        items: group.items
+          .filter((item) => checklist[item.key] !== undefined)
+          .map((item) => ({ ...item, answer: checklist[item.key] })),
+      }))
+      .filter((group) => group.items.length > 0);
+  });
+
+  readonly detailFireWatchRounds = computed(
+    () => this.detailPet()?.fireWatchRounds?.filter((r) => r.hora && r.nome) ?? [],
+  );
+
   readonly emittedPet = computed<Pet | undefined>(() =>
     this.state.pets().find((p) => p.id === this.state.emittedPetId()),
   );
 
-  readonly faceTitle = computed(() => {
+  readonly biometricTitle = computed(() => {
     switch (this.state.authPhase()) {
       case 'scan':
-        return 'Validando identidade…';
+        return 'Aguardando confirmação…';
       case 'ok':
         return 'Identidade confirmada';
       default:
-        return this.state.hasFaceEnrollment() ? 'Reconhecimento facial' : 'Nenhum rosto cadastrado';
+        if (!this.biometricSupported()) return 'Biometria indisponível neste aparelho';
+        return this.state.hasBiometricEnrollment()
+          ? 'Biometria do aparelho'
+          : 'Nenhuma biometria cadastrada';
     }
   });
-  readonly faceText = computed(() => {
+  readonly biometricText = computed(() => {
     switch (this.state.authPhase()) {
       case 'scan':
-        return 'Mantenha o rosto centralizado no quadro.';
+        return 'Siga a instrução que apareceu no seu aparelho (rosto, digital ou PIN).';
       case 'ok':
         return 'Identidade confirmada. Carregando suas permissões…';
       default:
-        if (this.state.faceAuthError()) return this.state.faceAuthError() as string;
-        return this.state.hasFaceEnrollment()
-          ? 'Posicione o rosto para acessar o PET Digital com sua credencial.'
-          : 'Entre por e-mail e senha uma vez para habilitar o reconhecimento facial neste aparelho.';
+        if (this.state.biometricAuthError()) return this.state.biometricAuthError() as string;
+        if (!this.biometricSupported()) {
+          return 'Este aparelho não oferece Face ID, Touch ID, Windows Hello ou impressão digital. Entre por e-mail e senha.';
+        }
+        return this.state.hasBiometricEnrollment()
+          ? 'Toque no botão abaixo e confirme com a biometria deste aparelho.'
+          : 'Entre por e-mail e senha uma vez para habilitar a biometria neste aparelho.';
     }
   });
-  readonly faceColor = computed(() =>
-    this.state.authPhase() === 'ok' ? 'var(--status-ok)' : 'var(--color-bg)',
-  );
-  readonly faceScanning = computed(() => this.state.authPhase() === 'scan');
-  readonly faceButtonLabel = computed(() => {
+  readonly biometricScanning = computed(() => this.state.authPhase() === 'scan');
+  readonly biometricButtonLabel = computed(() => {
     if (this.state.authPhase() !== 'idle') return 'Aguarde…';
-    return this.state.hasFaceEnrollment()
-      ? 'Iniciar reconhecimento facial'
+    return this.state.hasBiometricEnrollment()
+      ? 'Usar biometria do aparelho'
       : 'Entre por e-mail e senha';
   });
-  readonly faceButtonDisabled = computed(
-    () => this.state.authPhase() !== 'idle' || !this.state.hasFaceEnrollment(),
+  readonly biometricButtonDisabled = computed(
+    () =>
+      this.state.authPhase() !== 'idle' ||
+      !this.state.hasBiometricEnrollment() ||
+      !this.biometricSupported(),
   );
 
   startAuth(): void {
-    if (!this.state.hasFaceEnrollment()) {
+    if (!this.state.hasBiometricEnrollment()) {
       this.state.setAuthMethod('senha');
       return;
     }
-    void this.state.startFacialRecognition(this.faceVideoRef?.nativeElement ?? null);
+    void this.state.startBiometricLogin();
   }
 
-  // ── Cadastro de reconhecimento facial (depois de um login real) ─────
+  // ── Cadastro de biometria (depois de um login real) ──────────────────
   confirmEnroll(): void {
-    void this.state.confirmFaceEnrollment(this.enrollVideoRef?.nativeElement ?? null);
+    void this.state.confirmBiometricEnrollment();
   }
 
   skipEnroll(): void {
-    this.state.skipFaceEnrollment();
+    this.state.skipBiometricEnrollment();
   }
 
   // ── Acesso por e-mail e senha ───────────────────────────────────────

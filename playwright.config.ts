@@ -23,17 +23,10 @@ export default defineConfig({
       name: 'chromium',
       use: {
         ...devices['Desktop Chrome'],
-        permissions: ['camera'],
-        // Câmera falsa do Chromium (um padrão de barras coloridas em
-        // movimento, sem rosto nenhum) — deixa getUserMedia() funcionar de
-        // verdade em CI/sandbox sem hardware de câmera, então dá pra
-        // testar os estados de "câmera ligada" (ver e2e/reconhecimento-
-        // facial.spec.ts). Não tem rosto pra detectar, então o caminho de
-        // "reconhecimento com sucesso" continua fora do alcance de E2E —
-        // só dá pra verificar via captura manual de um usuário de verdade.
-        launchOptions: {
-          args: ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'],
-        },
+        // Sem flags especiais de câmera: a biometria nativa (ver
+        // e2e/biometria-nativa.spec.ts) usa o autenticador virtual do
+        // WebAuthn via CDP, que funciona de fábrica em Chromium headless —
+        // sem precisar de hardware nem de --use-fake-*.
       },
     },
   ],

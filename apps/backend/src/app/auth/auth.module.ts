@@ -8,10 +8,9 @@ import { UsersModule } from '../users/users.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { AccessControlModule } from './access-control.module';
-import { DeviceCredential } from './entities/device-credential.entity';
-
-import { DEVICE_CREDENTIAL_REPOSITORY } from './repositories/device-credential-repository.interface';
-import { DeviceCredentialRepository } from './repositories/device-credential.repository';
+import { WebAuthnCredential } from './entities/webauthn-credential.entity';
+import { WEBAUTHN_CREDENTIAL_REPOSITORY } from './repositories/webauthn-credential-repository.interface';
+import { WebAuthnCredentialRepository } from './repositories/webauthn-credential.repository';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { LocalStrategy } from './strategies/local.strategy';
 
@@ -20,7 +19,7 @@ import { LocalStrategy } from './strategies/local.strategy';
     UsersModule,
     TenancyModule,
     PassportModule,
-    TypeOrmModule.forFeature([DeviceCredential]),
+    TypeOrmModule.forFeature([WebAuthnCredential]),
     AccessControlModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -38,7 +37,7 @@ import { LocalStrategy } from './strategies/local.strategy';
     AuthService,
     LocalStrategy,
     JwtStrategy,
-    { provide: DEVICE_CREDENTIAL_REPOSITORY, useClass: DeviceCredentialRepository },
+    { provide: WEBAUTHN_CREDENTIAL_REPOSITORY, useClass: WebAuthnCredentialRepository },
   ],
   // Exportados para qualquer modulo poder proteger rota por permissao sem
   // reconstruir a consulta de cargos.

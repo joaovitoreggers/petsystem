@@ -1,6 +1,12 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
+import type {
+  AuthenticationResponseJSON,
+  PublicKeyCredentialCreationOptionsJSON,
+  PublicKeyCredentialRequestOptionsJSON,
+  RegistrationResponseJSON,
+} from '@simplewebauthn/browser';
 import { environment } from '../../../environments/environment';
 
 export interface AuthenticatedUser {
@@ -25,12 +31,11 @@ export interface LoginResult {
 /**
  * Login por e-mail e senha contra o `AuthModule` do back-end
  * (`POST /api/auth/login`, guardado pelo `LocalAuthGuard`): devolve o JWT e
- * o usuário autenticado. É o mesmo contrato que já existia no servidor — a
- * tela apenas passou a usá-lo. `device-token`/`device-login` sustentam o
- * reconhecimento facial: emitir um token de aparelho exige sessão real já
- * em mãos; device-login troca esse token (nunca a senha) por uma sessão
- * nova depois que o rosto foi reconhecido localmente (ver
- * FaceRecognitionService/DeviceAuthService).
+ * o usuário autenticado. As rotas `webauthn/*` sustentam a biometria nativa
+ * do aparelho (Face ID/Touch ID/Windows Hello/impressão digital): cadastrar
+ * uma passkey exige sessão real já em mãos; o login por biometria verifica
+ * a assinatura no servidor e devolve uma sessão nova, sem nunca a chave
+ * privada sair do hardware seguro do aparelho (ver PetStateService).
  */
 @Injectable({ providedIn: 'root' })
 export class AuthApiService {
@@ -45,15 +50,38 @@ export class AuthApiService {
     });
   }
 
-  issueDeviceToken(): Observable<{ deviceToken: string }> {
-    return this.http.post<{ deviceToken: string }>(`${this.baseUrl}/device-token`, {});
+  getBiometricRegistrationOptions(): Observable<PublicKeyCredentialCreationOptionsJSON> {
+    return this.http.post<PublicKeyCredentialCreationOptionsJSON>(
+      `${this.baseUrl}/webauthn/register/options`,
+      {},
+    );
   }
 
-  deviceLogin(deviceToken: string): Observable<LoginResult> {
-    return this.http.post<LoginResult>(`${this.baseUrl}/device-login`, { deviceToken });
+  verifyBiometricRegistration(response: RegistrationResponseJSON): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/webauthn/register/verify`, response);
   }
 
-  revokeDeviceToken(deviceToken: string): Observable<void> {
-    return this.http.delete<void>(`${this.baseUrl}/device-token`, { body: { deviceToken } });
+  getBiometricLoginOptions(): Observable<{
+    options: PublicKeyCredentialRequestOptionsJSON;
+    challengeId: string;
+  }> {
+    return this.http.post<{ options: PublicKeyCredentialRequestOptionsJSON; challengeId: string }>(
+      `${this.baseUrl}/webauthn/login/options`,
+      {},
+    );
+  }
+
+  verifyBiometricLogin(
+    challengeId: string,
+    response: AuthenticationResponseJSON,
+  ): Observable<LoginResult> {
+    return this.http.post<LoginResult>(`${this.baseUrl}/webauthn/login/verify`, {
+      challengeId,
+      response,
+    });
+  }
+
+  forgetBiometricCredential(credentialId: string): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/webauthn/credentials/${credentialId}`);
   }
 }

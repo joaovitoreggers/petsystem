@@ -43,6 +43,15 @@ export interface WorkPermitAtmosphereAlert {
 
 export type WorkPermitTeamRole = 'equipe' | 'vigia' | 'resgate';
 
+export type WorkPermitChecklistAnswer = 'sim' | 'nao' | 'na';
+
+// Ronda de vigia de fogo pós-término, exigida em trabalho a quente (NR-18):
+// 4 checagens a cada 30 min nas 2h seguintes ao fim do serviço.
+export interface WorkPermitFireWatchRound {
+  hora: string;
+  nome: string;
+}
+
 // Quem foi liberado na PET, por papel — preenchido a partir da leitura de
 // crachá na etapa "Crachá e permissão" do assistente.
 export interface WorkPermitTeamMember {
@@ -137,6 +146,33 @@ export class WorkPermit {
 
   @Column({ name: 'atmosphere_alerts', type: 'jsonb', nullable: true })
   atmosphereAlerts?: WorkPermitAtmosphereAlert[];
+
+  // Campos preenchidos na etapa "Atividade e local" do assistente — antes
+  // só ficavam na tela e eram descartados ao emitir a PET.
+  @Column({ nullable: true })
+  description?: string;
+
+  @Column({ name: 'service_type', nullable: true })
+  serviceType?: string;
+
+  @Column({ name: 'executing_company', nullable: true })
+  executingCompany?: string;
+
+  @Column({ name: 'planned_start', nullable: true })
+  plannedStart?: string;
+
+  @Column({ name: 'planned_end', nullable: true })
+  plannedEnd?: string;
+
+  // Respostas SIM/NÃO/NA da etapa "Checklist e foto", chaveadas do mesmo
+  // jeito que o assistente gera (ver buildChecklistGroups no front-end):
+  // "epi:0:<índice>" para o bloco de EPI e "<área>:<grupo>:<índice>" para
+  // o checklist específico de cada área de risco.
+  @Column({ type: 'jsonb', nullable: true })
+  checklist?: Record<string, WorkPermitChecklistAnswer>;
+
+  @Column({ name: 'fire_watch_rounds', type: 'jsonb', nullable: true })
+  fireWatchRounds?: WorkPermitFireWatchRound[];
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt!: Date;

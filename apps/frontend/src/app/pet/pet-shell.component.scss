@@ -348,40 +348,24 @@
   font-weight: 700;
 }
 
-/* ── Confirmação da evacuação ──────────────────────────────────────── */
-.evac-confirm {
-  border-top: 3px solid var(--status-bad);
+/* ── Seletor "qual PET está sendo evacuada" ──────────────────────────
+   Compartilhado pelos dois pontos de acionamento (sidebar/topbar do shell
+   e o banner de alerta do painel de gestão) — ver
+   state.openEvacuationPicker(). */
+.evac-picker { width: min(480px, 100%); }
+.evac-picker__list {
+  display: flex; flex-direction: column; gap: var(--space-2); max-height: 46vh; overflow-y: auto;
 }
-.evac-confirm__mark {
-  width: 40px;
-  height: 40px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  background: var(--status-bad-bg);
-  color: var(--status-bad);
-  font-family: var(--font-heading);
-  font-weight: 700;
-  font-size: var(--text-2xl);
-  line-height: 1;
+.evac-picker__row {
+  display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); cursor: pointer;
 }
-.evac-confirm__context {
-  padding: var(--space-3);
-  border-radius: var(--radius-sm);
-  background: var(--status-bad-bg);
-  color: var(--status-bad);
-  font-size: var(--text-base);
-  line-height: 1.45;
+.evac-picker__row--selected {
+  border-color: var(--color-accent-500);
+  background: var(--status-info-bg);
 }
-.evac-confirm__context-kicker {
-  display: block;
-  font-size: var(--text-xs);
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  margin-bottom: 2px;
-  opacity: 0.85;
-}
+.evac-picker__row-main { display: flex; flex-direction: column; gap: 2px; flex: 1; font-size: var(--text-sm); }
+.evac-picker__empty { font-size: var(--text-sm); color: var(--text-muted); padding: var(--space-3) 0; }
 
 /* ── Tela de emergência ────────────────────────────────────────────────
    Legibilidade acima de tudo: fundo sólido (sem estroboscópio, que

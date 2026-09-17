@@ -276,6 +276,64 @@
   flex: none;
 }
 
+.detalhe__fields {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-3);
+}
+.detalhe__field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: var(--text-sm);
+}
+.detalhe__field--wide {
+  grid-column: 1 / -1;
+}
+.detalhe__field-label {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.detalhe__team {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.detalhe__checklist {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.detalhe__checklist-title {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: var(--space-1);
+}
+.detalhe__checklist-item {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding: 4px 0;
+  font-size: var(--text-sm);
+}
+.detalhe__checklist-answer {
+  flex: none;
+  width: 34px;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: var(--status-ok);
+}
+.detalhe__checklist-answer--nao {
+  color: var(--status-bad);
+}
+.detalhe__checklist-answer--na {
+  color: var(--text-faint);
+}
+
 .detalhe__footer {
   display: flex;
   gap: var(--space-2);

@@ -1,40 +1,39 @@
 import { Injectable } from '@angular/core';
 
-export interface FaceEnrollment {
-  // Vetor de 128 números (Float32Array serializado) — nunca uma imagem.
-  descriptor: number[];
-  // Token de "lembrar este aparelho" (id.segredo) — nunca a senha; ver
-  // AuthService.issueDeviceToken no back-end. Só ele + o rosto reconhecido
-  // localmente reabrem uma sessão.
-  deviceToken: string;
+export interface BiometricEnrollment {
+  // Guardado só para saber QUAL passkey pedir para "esquecer" depois — o
+  // segredo em si (a chave privada) nunca sai do hardware do aparelho;
+  // isto é só o identificador público da credencial.
+  credentialId: string;
   userLabel: string;
 }
 
-const STORAGE_KEY = 'pet-digital.face-enrollment';
+const STORAGE_KEY = 'pet-digital.biometric-enrollment';
 
 /**
- * Guarda o cadastro de reconhecimento facial deste aparelho — aparelho
- * pessoal, um cadastro só por vez (ver o front-end: cadastrar de novo
- * substitui o anterior). Fica só no localStorage deste navegador; nunca é
- * enviado ao back-end (só o deviceToken é, pra trocar por uma sessão).
+ * Lembra, só para fins de interface (qual aba abrir por padrão, qual
+ * credencial "esquecer"), que este aparelho já tem uma passkey cadastrada.
+ * A credencial de verdade — a chave privada — nunca sai do hardware seguro
+ * do aparelho; isto aqui não guarda segredo nenhum, só um identificador
+ * público e um rótulo para exibir.
  */
 @Injectable({ providedIn: 'root' })
 export class DeviceAuthService {
-  get(): FaceEnrollment | null {
+  get(): BiometricEnrollment | null {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return null;
       const parsed = JSON.parse(raw);
-      if (!Array.isArray(parsed?.descriptor) || typeof parsed?.deviceToken !== 'string') {
+      if (typeof parsed?.credentialId !== 'string') {
         return null;
       }
-      return parsed as FaceEnrollment;
+      return parsed as BiometricEnrollment;
     } catch {
       return null;
     }
   }
 
-  save(enrollment: FaceEnrollment): void {
+  save(enrollment: BiometricEnrollment): void {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(enrollment));
     } catch {

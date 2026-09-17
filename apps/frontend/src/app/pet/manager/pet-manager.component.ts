@@ -2,6 +2,7 @@ import { Component, computed, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { PetStateService } from '../pet-state.service';
 import {
+  ChecklistAnswer,
   GAS_LIMITS,
   GasKey,
   INCIDENT_CAUSE,
@@ -11,6 +12,7 @@ import {
   RISK_AREAS,
   RiskAreaId,
   THIRTY_DAY_READINGS,
+  buildChecklistGroups,
   buildMonitorArchive,
   dateToBr,
   minutesToLabel,
@@ -42,6 +44,12 @@ const HISTORY_FILTERS: { id: HistoryFilter; label: string }[] = [
 })
 export class PetManagerComponent {
   readonly gasKeys: GasKey[] = ['o2', 'co', 'h2s', 'lel'];
+  readonly teamRoleLabel = PET_TEAM_ROLE_LABEL;
+  readonly checklistAnswerLabel: Record<ChecklistAnswer, string> = {
+    sim: 'SIM',
+    nao: 'NÃO',
+    na: 'NA',
+  };
   readonly historyFilters = HISTORY_FILTERS;
   readonly thirtyDays = THIRTY_DAY_READINGS;
 
@@ -57,8 +65,18 @@ export class PetManagerComponent {
   readonly aiError = signal<string | null>(null);
   readonly aiGeneratedAt = signal<string | null>(null);
 
-  readonly evacuationPickerOpen = signal(false);
-  readonly selectedEvacuationPetId = signal<string | null>(null);
+  // Detalhe de uma PET, aberto por qualquer lista do painel (frentes em
+  // execução, histórico, ocorrências) — só leitura: o painel de gestão
+  // audita, não opera a PET (isso é do técnico em campo).
+  readonly detailPetId = signal<string | null>(null);
+
+  openDetail(id: string): void {
+    this.detailPetId.set(id);
+  }
+
+  closeDetail(): void {
+    this.detailPetId.set(null);
+  }
 
   constructor(
     readonly state: PetStateService,
@@ -109,34 +127,42 @@ export class PetManagerComponent {
     this.state.pets().filter((p) => p.status !== 'fechada'),
   );
 
-  // PETs em alarme aparecem primeiro na lista — são o motivo mais provável
-  // de acionar a evacuação, mas o gestor pode escolher qualquer PET ativa.
-  readonly evacuationCandidates = computed(() =>
-    [...this.activePets()]
-      .sort((a, b) => Number(!!b.alarm) - Number(!!a.alarm))
-      .map((pet) => ({ pet, status: petStatusView(pet) })),
+  readonly detailPet = computed<Pet | undefined>(() =>
+    this.state.pets().find((p) => p.id === this.detailPetId()),
   );
+  readonly detailCard = computed(() => {
+    const pet = this.detailPet();
+    if (!pet) return null;
+    return {
+      status: petStatusView(pet),
+      areaLabel: riskAreaNames(pet.areas),
+      nr: riskAreaNrs(pet.areas),
+    };
+  });
 
-  openEvacuationPicker(): void {
-    const firstAlarmed = this.state.alarmedPets()[0];
-    this.selectedEvacuationPetId.set(firstAlarmed?.id ?? this.evacuationCandidates()[0]?.pet.id ?? null);
-    this.evacuationPickerOpen.set(true);
-  }
+  // Checklist respondido na etapa "Checklist e foto" — só os itens com
+  // resposta salva aparecem (PETs emitidas antes desse campo existir, ou
+  // com o checklist pulado, não têm nada aqui). As chaves vêm no mesmo
+  // formato que o assistente gera, ver buildChecklistGroups().
+  readonly detailChecklistGroups = computed(() => {
+    const pet = this.detailPet();
+    if (!pet?.checklist) return [];
+    const checklist = pet.checklist;
+    return buildChecklistGroups(pet.areas)
+      .map((group) => ({
+        title: group.title,
+        items: group.items
+          .filter((item) => checklist[item.key] !== undefined)
+          .map((item) => ({ ...item, answer: checklist[item.key] })),
+      }))
+      .filter((group) => group.items.length > 0);
+  });
 
-  closeEvacuationPicker(): void {
-    this.evacuationPickerOpen.set(false);
-  }
-
-  selectEvacuationPet(id: string): void {
-    this.selectedEvacuationPetId.set(id);
-  }
-
-  confirmEvacuationPet(): void {
-    const id = this.selectedEvacuationPetId();
-    if (!id) return;
-    this.state.triggerEvacuation(id);
-    this.evacuationPickerOpen.set(false);
-  }
+  // Rondas de vigia de fogo (trabalho a quente) — só as de fato
+  // preenchidas, pelo mesmo motivo do checklist acima.
+  readonly detailFireWatchRounds = computed(
+    () => this.detailPet()?.fireWatchRounds?.filter((r) => r.hora && r.nome) ?? [],
+  );
 
   readonly kpis = computed(() => {
     const pets = this.state.pets();

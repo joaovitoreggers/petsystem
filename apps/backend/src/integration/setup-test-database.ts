@@ -1,3 +1,4 @@
+import { execSync } from 'node:child_process';
 import { Client } from 'pg';
 
 /**
@@ -9,6 +10,13 @@ import { Client } from 'pg';
  * Postgres não tem `CREATE DATABASE IF NOT EXISTS`; e não dá para criar um
  * banco estando conectado nele, então conecta no banco `postgres` padrão
  * primeiro.
+ *
+ * Criado o banco, aplica as migrations nele. Antes o schema aparecia sozinho
+ * porque o TypeORM rodava com `synchronize: true`; agora o schema é
+ * versionado em SQL (ver migrate.ts) e o banco de teste nasce vazio. Rodar as
+ * mesmas migrations do banco de verdade é o que faz o teste de integração
+ * valer: ele passa a exercitar o schema que vai para produção, e uma
+ * migration esquecida quebra aqui em vez de quebrar lá.
  */
 module.exports = async function setupTestDatabase(): Promise<void> {
   const dbName = process.env.DB_NAME ?? 'petsystem_test';
@@ -31,4 +39,19 @@ module.exports = async function setupTestDatabase(): Promise<void> {
   } finally {
     await client.end();
   }
+
+  // Processo separado de propósito: migrate.ts é um CLI que termina com
+  // process.exit em caso de falha — importá-lo aqui derrubaria o Jest
+  // inteiro sem dizer o porquê. `stdio: 'inherit'` deixa o erro da
+  // migration aparecer como ele é.
+  execSync('npm run db:migrate', {
+    stdio: 'inherit',
+    env: {
+      ...process.env,
+      DB_NAME: dbName,
+      // DATABASE_URL de um banco de desenvolvimento apontaria a migration
+      // para o banco errado: aqui só valem as variáveis separadas.
+      DATABASE_URL: '',
+    },
+  });
 };

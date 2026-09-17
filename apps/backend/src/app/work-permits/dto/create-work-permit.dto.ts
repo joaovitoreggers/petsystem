@@ -6,13 +6,14 @@ import {
   IsIn,
   IsInt,
   IsNumber,
+  IsObject,
   IsOptional,
   IsString,
   Min,
   MinLength,
   ValidateNested,
 } from 'class-validator';
-import { WorkPermitTeamRole } from '../entities/work-permit.entity';
+import { WorkPermitChecklistAnswer, WorkPermitTeamRole } from '../entities/work-permit.entity';
 
 export class WorkPermitGasReadingDto {
   @IsNumber()
@@ -64,6 +65,14 @@ export class WorkPermitTeamMemberDto {
 
   @IsIn(['equipe', 'vigia', 'resgate'])
   petRole!: WorkPermitTeamRole;
+}
+
+export class WorkPermitFireWatchRoundDto {
+  @IsString()
+  hora!: string;
+
+  @IsString()
+  nome!: string;
 }
 
 export class CreateWorkPermitDto {
@@ -121,4 +130,34 @@ export class CreateWorkPermitDto {
   @IsOptional()
   @IsString()
   companyPhone?: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @IsOptional()
+  @IsString()
+  serviceType?: string;
+
+  @IsOptional()
+  @IsString()
+  executingCompany?: string;
+
+  @IsOptional()
+  @IsString()
+  plannedStart?: string;
+
+  @IsOptional()
+  @IsString()
+  plannedEnd?: string;
+
+  @IsOptional()
+  @IsObject()
+  checklist?: Record<string, WorkPermitChecklistAnswer>;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => WorkPermitFireWatchRoundDto)
+  fireWatchRounds?: WorkPermitFireWatchRoundDto[];
 }

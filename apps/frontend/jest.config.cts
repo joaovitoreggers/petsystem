@@ -13,13 +13,6 @@ module.exports = {
     ],
   },
   transformIgnorePatterns: ['node_modules/(?!.*\\.mjs$)'],
-  // @vladmandic/face-api precisa de WebGL/TF.js de navegador de verdade —
-  // sob Jest, resolve pro build de Node (que exige @tensorflow/tfjs-node,
-  // não instalado, já que o alvo real é o navegador) e nem carregaria.
-  // Ver src/test-mocks/face-api.mock.ts.
-  moduleNameMapper: {
-    '^@vladmandic/face-api$': '<rootDir>/src/test-mocks/face-api.mock.ts',
-  },
   snapshotSerializers: [
     'jest-preset-angular/build/serializers/no-ng-attributes',
     'jest-preset-angular/build/serializers/ng-snapshot',

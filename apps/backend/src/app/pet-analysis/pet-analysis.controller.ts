@@ -9,8 +9,8 @@ import { PetAnalysisService } from './pet-analysis.service';
 /**
  * Analisa as PETs registradas via OpenAI e gera um relatório apontando
  * possíveis causas e anomalias. Exige login de verdade — sem sessão não dá
- * pra saber de qual tenant analisar, e as PETs de reconhecimento facial
- * (sem token) já caem no fallback local do front-end de qualquer jeito.
+ * pra saber de qual tenant analisar, e sem ela as PETs já caem no fallback
+ * local do front-end de qualquer jeito.
  */
 @Controller('pet-analysis')
 @UseGuards(JwtAuthGuard)

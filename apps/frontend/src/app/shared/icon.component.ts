@@ -25,6 +25,7 @@ export type IconName =
   | 'document'
   | 'sparkles'
   | 'camera'
+  | 'fingerprint'
   | 'qr'
   | 'logout'
   | 'search'
@@ -133,6 +134,13 @@ export type IconName =
             d="M3.8 7.8h3l1.4-2.2h5.6L15.2 7.8h5a1.8 1.8 0 0 1 1.8 1.8v8.2a1.8 1.8 0 0 1-1.8 1.8H3.8A1.8 1.8 0 0 1 2 17.8V9.6a1.8 1.8 0 0 1 1.8-1.8Z"
           />
           <circle cx="12" cy="13.4" r="3.4" />
+        }
+        @case ('fingerprint') {
+          <path d="M12 3.2a8.8 8.8 0 0 0-8.8 8.8v2.6" />
+          <path d="M12 3.2A8.8 8.8 0 0 1 20.8 12v2.6" />
+          <path d="M7.4 21a13.5 13.5 0 0 1-.8-4.6V12a5.4 5.4 0 0 1 10.8 0v1.4" />
+          <path d="M12 21a17.6 17.6 0 0 1-1.4-6.8V12a1.4 1.4 0 0 1 2.8 0v2.2A15 15 0 0 0 15.4 21" />
+          <path d="M4.6 17.8A16.7 16.7 0 0 1 4 12" />
         }
         @case ('qr') {
           <rect x="3.2" y="3.2" width="7" height="7" rx="1.2" />

@@ -25,6 +25,7 @@ import {
   WizardStepId,
   emptyFireWatchRounds,
   gasViolationMessage,
+  petStatusView,
   requiresGasMonitoring,
   riskAreaNrs,
   stepsFor,
@@ -35,16 +36,16 @@ import { TeamMembersApiService, UpdateTeamMemberPayload } from './services/team-
 import { AccessService } from './services/access.service';
 import { AuthApiService, AuthenticatedUser } from './services/auth-api.service';
 import { AuthTokenService } from './services/auth-token.service';
-import { DeviceAuthService, FaceEnrollment } from './services/device-auth.service';
-import { FaceRecognitionService } from './services/face-recognition.service';
+import { DeviceAuthService, BiometricEnrollment } from './services/device-auth.service';
+import { startAuthentication, startRegistration, WebAuthnError } from '@simplewebauthn/browser';
 
 export type PortalRole = 'tecnico' | 'gestor' | 'equipe' | 'usuarios' | 'empresas';
 export type TechnicianScreen =
   'login' | 'home' | 'nova' | 'emitida' | 'detalhe';
 export type HomeTab = 'abertas' | 'fechadas';
 export type AuthPhase = 'idle' | 'scan' | 'ok';
-/** Como o técnico está entrando: biometria facial ou e-mail e senha. */
-export type AuthMethod = 'facial' | 'senha';
+/** Como o técnico está entrando: biometria nativa do aparelho ou e-mail e senha. */
+export type AuthMethod = 'biometria' | 'senha';
 
 interface WizardFields {
   descricao: string;
@@ -121,6 +122,40 @@ export class PetStateService {
     this.evacuating.set(true);
   }
 
+  // Seletor "qual PET está sendo evacuada", compartilhado pelos dois
+  // pontos de acionamento — o botão sempre visível na sidebar/topbar do
+  // shell e o banner de alerta atmosférico do painel de gestão — para que
+  // escolher a PET certa nunca dependa de por onde a evacuação foi
+  // acionada.
+  readonly evacuationPickerOpen = signal(false);
+  readonly selectedEvacuationPetId = signal<string | null>(null);
+  readonly evacuationCandidates = computed(() =>
+    [...this.openPets()]
+      .sort((a, b) => Number(!!b.alarm) - Number(!!a.alarm))
+      .map((pet) => ({ pet, status: petStatusView(pet) })),
+  );
+
+  openEvacuationPicker(): void {
+    const firstAlarmed = this.alarmedPets()[0];
+    this.selectedEvacuationPetId.set(firstAlarmed?.id ?? this.evacuationCandidates()[0]?.pet.id ?? null);
+    this.evacuationPickerOpen.set(true);
+  }
+
+  closeEvacuationPicker(): void {
+    this.evacuationPickerOpen.set(false);
+  }
+
+  selectEvacuationPet(id: string): void {
+    this.selectedEvacuationPetId.set(id);
+  }
+
+  confirmEvacuationPet(): void {
+    const id = this.selectedEvacuationPetId();
+    if (!id) return;
+    this.triggerEvacuation(id);
+    this.evacuationPickerOpen.set(false);
+  }
+
   silenceSiren(): void {
     this.stopSiren();
   }
@@ -190,15 +225,14 @@ export class PetStateService {
     private readonly access: AccessService,
     private readonly authToken: AuthTokenService,
     private readonly deviceAuth: DeviceAuthService,
-    private readonly faceRecognition: FaceRecognitionService,
   ) {
     // Nada de carregar dado antes de entrar: sem sessao a API responde 401
     // de qualquer jeito, e disparar essas chamadas na abertura so enchia o
     // console de erro. loadFromBackend() passou a ser chamado depois do
     // login (ver loginWithPassword e authenticateWithFace).
     const enrollment = this.deviceAuth.get();
-    this.faceEnrollment.set(enrollment);
-    // Sem cadastro de rosto neste aparelho, a aba de e-mail/senha é o
+    this.biometricEnrollment.set(enrollment);
+    // Sem passkey cadastrada neste aparelho, a aba de e-mail/senha é o
     // caminho óbvio de primeiro acesso — evita abrir numa aba que só ia
     // explicar que não dá pra usá-la ainda.
     if (!enrollment) {
@@ -408,48 +442,32 @@ export class PetStateService {
     this.role.set(role);
   }
 
-  // ── Reconhecimento facial ────────────────────────────────────────────
-  // Reconhecimento de verdade (câmera + face-api.js rodando no navegador),
-  // mas só facilita a entrada de quem já tem conta: só funciona depois de
-  // um primeiro login por e-mail/senha ter cadastrado um rosto NESTE
-  // aparelho (ver confirmFaceEnrollment). O que fica salvo localmente é o
-  // descritor (vetor de 128 números, não dá pra virar imagem de volta) +
-  // um token de aparelho (nunca a senha) — casar o rosto é só a chave que
-  // libera usar esse token pra pedir uma sessão de verdade ao back-end.
-  readonly faceEnrollment = signal<FaceEnrollment | null>(null);
-  readonly faceAuthError = signal<string | null>(null);
-  readonly hasFaceEnrollment = computed(() => this.faceEnrollment() !== null);
+  // ── Biometria nativa do aparelho (WebAuthn) ──────────────────────────
+  // Face ID/Touch ID/Windows Hello/impressão digital — a chave privada
+  // nunca sai do hardware seguro do aparelho; o servidor só guarda a chave
+  // pública e verifica a assinatura de cada tentativa de login (ver
+  // WebAuthnCredential no back-end). Só facilita a entrada de quem já tem
+  // conta: cadastrar uma passkey exige sessão real (ver
+  // confirmBiometricEnrollment). Sem `allowCredentials` nas opções de
+  // login (ver AuthService.getLoginOptions no back-end), é o próprio
+  // aparelho quem oferece a passkey certa — não é preciso digitar nada
+  // antes de tentar.
+  readonly biometricEnrollment = signal<BiometricEnrollment | null>(null);
+  readonly biometricAuthError = signal<string | null>(null);
+  readonly hasBiometricEnrollment = computed(() => this.biometricEnrollment() !== null);
 
-  async startFacialRecognition(video: HTMLVideoElement | null): Promise<void> {
+  async startBiometricLogin(): Promise<void> {
     if (this.authPhase() !== 'idle') return;
-    const enrollment = this.faceEnrollment();
-    if (!enrollment) {
-      this.faceAuthError.set(
-        'Nenhum rosto cadastrado neste aparelho ainda. Entre por e-mail e senha para habilitar.',
-      );
-      return;
-    }
-    if (!video) {
-      this.faceAuthError.set('Câmera indisponível.');
-      return;
-    }
-    this.faceAuthError.set(null);
+    this.biometricAuthError.set(null);
     this.authPhase.set('scan');
-    const descriptor = await this.faceRecognition.captureDescriptor(video);
-    if (!descriptor) {
-      this.authPhase.set('idle');
-      this.faceAuthError.set(
-        'Não foi possível identificar um rosto. Centralize o rosto no quadro e tente de novo.',
-      );
-      return;
-    }
-    if (!this.faceRecognition.isMatch(enrollment.descriptor, descriptor)) {
-      this.authPhase.set('idle');
-      this.faceAuthError.set('Rosto não reconhecido. Tente novamente ou entre por e-mail e senha.');
-      return;
-    }
     try {
-      const result = await firstValueFrom(this.authApi.deviceLogin(enrollment.deviceToken));
+      const { options, challengeId } = await firstValueFrom(
+        this.authApi.getBiometricLoginOptions(),
+      );
+      const response = await startAuthentication({ optionsJSON: options });
+      const result = await firstValueFrom(
+        this.authApi.verifyBiometricLogin(challengeId, response),
+      );
       this.session.set(result);
       this.authToken.setToken(result.accessToken);
       // Entrar pelo rosto da a mesma sessao que entrar pela senha — logo,
@@ -461,64 +479,70 @@ export class PetStateService {
         this.authPhase.set('idle');
         this.screen.set('home');
       }, 500);
-    } catch {
-      // Token do aparelho não vale mais (ex.: revogado num logout feito
-      // enquanto este aparelho estava sem rede) — sem sessão de verdade
-      // por trás, o cadastro local também não serve mais pra nada.
-      this.deviceAuth.clear();
-      this.faceEnrollment.set(null);
+    } catch (err) {
       this.authPhase.set('idle');
-      this.faceAuthError.set('O reconhecimento deste aparelho expirou. Entre por e-mail e senha.');
+      this.biometricAuthError.set(biometricErrorMessage(err));
     }
   }
 
-  // ── Cadastro de reconhecimento facial (opt-in, após login real) ─────
+  // ── Cadastro de biometria (opt-in, após login real) ──────────────────
   readonly enrollPromptOpen = signal(false);
   readonly enrolling = signal(false);
   readonly enrollError = signal<string | null>(null);
 
-  async confirmFaceEnrollment(video: HTMLVideoElement | null): Promise<void> {
+  async confirmBiometricEnrollment(): Promise<void> {
     if (this.enrolling()) return;
     this.enrolling.set(true);
     this.enrollError.set(null);
     try {
-      if (!video) {
-        this.enrollError.set('Câmera indisponível.');
-        return;
-      }
-      const descriptor = await this.faceRecognition.captureDescriptor(video);
-      if (!descriptor) {
-        this.enrollError.set(
-          'Não foi possível identificar um rosto. Centralize o rosto no quadro e tente de novo.',
-        );
-        return;
-      }
-      const { deviceToken } = await firstValueFrom(this.authApi.issueDeviceToken());
-      const enrollment: FaceEnrollment = {
-        descriptor: Array.from(descriptor),
-        deviceToken,
+      const options = await firstValueFrom(this.authApi.getBiometricRegistrationOptions());
+      const response = await startRegistration({ optionsJSON: options });
+      await firstValueFrom(this.authApi.verifyBiometricRegistration(response));
+      const enrollment: BiometricEnrollment = {
+        credentialId: response.id,
         userLabel: this.session()?.user.email ?? '',
       };
       this.deviceAuth.save(enrollment);
-      this.faceEnrollment.set(enrollment);
+      this.biometricEnrollment.set(enrollment);
       this.enrollPromptOpen.set(false);
       this.screen.set('home');
-    } catch {
-      this.enrollError.set('Não foi possível habilitar o reconhecimento facial agora.');
+    } catch (err) {
+      this.enrollError.set(biometricErrorMessage(err));
     } finally {
       this.enrolling.set(false);
     }
   }
 
-  skipFaceEnrollment(): void {
+  skipBiometricEnrollment(): void {
     this.enrollPromptOpen.set(false);
     this.screen.set('home');
+  }
+
+  /**
+   * Ação explícita de "esquecer" a biometria deste aparelho — diferente de
+   * sair (ver logout), que deliberadamente não mexe na passkey, do mesmo
+   * jeito que fechar a sessão num site não apaga o Face ID salvo dele.
+   */
+  async forgetBiometricEnrollment(): Promise<void> {
+    const enrollment = this.biometricEnrollment();
+    if (!enrollment) return;
+    try {
+      await firstValueFrom(this.authApi.forgetBiometricCredential(enrollment.credentialId));
+    } catch {
+      // Melhor esforço: mesmo se a chamada falhar, o aparelho esquece
+      // localmente de qualquer jeito.
+    }
+    this.deviceAuth.clear();
+    this.biometricEnrollment.set(null);
+    if (this.authMethod() === 'biometria') {
+      this.authMethod.set('senha');
+    }
   }
 
   // ── Login por e-mail e senha ────────────────────────────────────────
   // Chama o AuthModule do back-end (`POST /api/auth/login`), que valida a
   // credencial no banco e devolve o JWT.
-  readonly authMethod = signal<AuthMethod>('facial');
+  readonly authMethod = signal<AuthMethod>('biometria');
   readonly loginEmail = signal('');
   readonly loginPassword = signal('');
   readonly loginLoading = signal(false);
@@ -636,11 +660,10 @@ export class PetStateService {
       // Agora sim vale buscar PETs e funcionarios: com o token em maos, a
       // API responde de verdade.
       void this.loadFromBackend();
-      // Sem rosto cadastrado neste aparelho ainda: oferece habilitar antes
-      // de seguir pra home (câmera continua ligada, tela de login ainda de
-      // pé) — reconhecimento facial só facilita quem já tem conta, então
-      // o primeiro acesso sempre passa por aqui.
-      if (this.faceEnrollment()) {
+      // Sem passkey cadastrada neste aparelho ainda: oferece habilitar
+      // antes de seguir pra home — a biometria nativa só facilita quem já
+      // tem conta, então o primeiro acesso sempre passa por aqui.
+      if (this.biometricEnrollment()) {
         this.screen.set('home');
       } else {
         this.enrollPromptOpen.set(true);
@@ -655,19 +678,10 @@ export class PetStateService {
   }
 
   logout(): void {
-    // "Lembrada até a pessoa clicar em Sair": sair precisa mesmo invalidar
-    // o aparelho, não só limpar o token local — ver
-    // AuthService.revokeDeviceToken no back-end. Melhor esforço: se a
-    // chamada falhar (sem rede, por exemplo), o cadastro local já é limpo
-    // de qualquer jeito, então o pior caso é um DeviceCredential órfão no
-    // banco, nunca um acesso que deveria ter sido revogado continuando
-    // válido no próprio aparelho.
-    const enrollment = this.faceEnrollment();
-    if (enrollment) {
-      firstValueFrom(this.authApi.revokeDeviceToken(enrollment.deviceToken)).catch(() => undefined);
-    }
-    this.deviceAuth.clear();
-    this.faceEnrollment.set(null);
+    // Diferente do token de aparelho antigo, uma passkey de verdade não é
+    // revogada no logout — é assim que navegadores/gerenciadores de senha
+    // se comportam (sair do site não apaga o Face ID salvo). Para remover
+    // o cadastro deste aparelho, ver forgetBiometricEnrollment().
     this.screen.set('login');
     this.authPhase.set('idle');
     this.session.set(null);
@@ -676,8 +690,8 @@ export class PetStateService {
     this.loginEmail.set('');
     this.loginPassword.set('');
     this.loginError.set(null);
-    this.faceAuthError.set(null);
-    this.authMethod.set('senha');
+    this.biometricAuthError.set(null);
+    this.authMethod.set(this.biometricEnrollment() ? 'biometria' : 'senha');
   }
 
   selectHomeTab(tab: HomeTab): void {
@@ -1050,6 +1064,10 @@ export class PetStateService {
       ...this.badgesToTeam(this.resgateTeam(), 'resgate'),
     ];
     const teamSize = team.length;
+    // Rondas de vigia só existem de verdade em trabalho a quente (NR-18) —
+    // nas demais áreas o bloco nem aparece na etapa "Checklist e foto",
+    // então enviar os 4 slots vazios não representaria nada preenchido.
+    const fireWatchRounds = areas.includes('quente') ? this.fireWatchRounds() : undefined;
     const payload = {
       areas,
       location: fields.local || 'Local não informado',
@@ -1063,6 +1081,13 @@ export class PetStateService {
       criticalAlerts,
       team,
       companyPhone: fields.telefone || undefined,
+      description: fields.descricao || undefined,
+      serviceType: fields.tipo || undefined,
+      executingCompany: fields.empresa || undefined,
+      plannedStart: fields.inicio || undefined,
+      plannedEnd: fields.fim || undefined,
+      checklist: this.checklistState(),
+      fireWatchRounds,
     };
 
     let pet: Pet;
@@ -1086,6 +1111,13 @@ export class PetStateService {
         criticalAlerts,
         team,
         companyPhone: payload.companyPhone,
+        description: payload.description,
+        serviceType: payload.serviceType,
+        executingCompany: payload.executingCompany,
+        plannedStart: payload.plannedStart,
+        plannedEnd: payload.plannedEnd,
+        checklist: payload.checklist,
+        fireWatchRounds: payload.fireWatchRounds,
       };
     }
     this.pets.update((list) => [pet, ...list]);
@@ -1131,4 +1163,24 @@ function loginErrorMessage(err: unknown): string {
     return body.message;
   }
   return 'Não foi possível entrar agora. Tente novamente.';
+}
+
+/**
+ * Mensagem de falha de biometria nativa (WebAuthn), em português.
+ *
+ * `WebAuthnError` cobre falhas do próprio navegador/autenticador (usuário
+ * cancelou o prompt, aparelho sem biometria configurada etc.); um status
+ * HTTP vem de o servidor recusar a cerimônia (desafio expirado, credencial
+ * desconhecida) — os dois merecem textos diferentes do genérico de login
+ * por senha.
+ */
+function biometricErrorMessage(err: unknown): string {
+  if (err instanceof WebAuthnError) {
+    if (err.code === 'ERROR_CEREMONY_ABORTED') return 'Verificação cancelada.';
+    return 'Não foi possível confirmar a biometria neste aparelho.';
+  }
+  const status = (err as { status?: number })?.status;
+  if (status === 401) return 'Biometria não reconhecida. Entre por e-mail e senha.';
+  if (status === 0) return 'Servidor de autenticação indisponível.';
+  return 'Não foi possível confirmar a biometria neste aparelho.';
 }

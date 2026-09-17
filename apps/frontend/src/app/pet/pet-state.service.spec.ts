@@ -1,7 +1,35 @@
 import { of, throwError } from 'rxjs';
+import type {
+  AuthenticationResponseJSON,
+  PublicKeyCredentialCreationOptionsJSON,
+  PublicKeyCredentialRequestOptionsJSON,
+  RegistrationResponseJSON,
+} from '@simplewebauthn/browser';
+import { startAuthentication, startRegistration, WebAuthnError } from '@simplewebauthn/browser';
 import { PetStateService } from './pet-state.service';
 import { LoginResult } from './services/auth-api.service';
-import { FaceEnrollment } from './services/device-auth.service';
+import { BiometricEnrollment } from './services/device-auth.service';
+
+// Mock explícito (com uma classe de verdade para WebAuthnError, não só
+// jest.fn()): PetStateService faz `instanceof WebAuthnError` para distinguir
+// "usuário cancelou o prompt" de outras falhas — um mock genérico quebraria
+// esse `instanceof`, já que a classe real nunca é executada em teste (o
+// browser real é quem mostra o prompt nativo).
+jest.mock('@simplewebauthn/browser', () => ({
+  startAuthentication: jest.fn(),
+  startRegistration: jest.fn(),
+  WebAuthnError: class WebAuthnError extends Error {
+    code: string;
+    constructor(opts: { message: string; code: string }) {
+      super(opts.message);
+      this.code = opts.code;
+      this.name = 'WebAuthnError';
+    }
+  },
+}));
+
+const mockStartAuthentication = startAuthentication as jest.Mock;
+const mockStartRegistration = startRegistration as jest.Mock;
 
 function authenticatedUser(overrides: Partial<LoginResult['user']>): LoginResult['user'] {
   return {
@@ -16,10 +44,9 @@ function authenticatedUser(overrides: Partial<LoginResult['user']>): LoginResult
   };
 }
 
-function enrollment(overrides: Partial<FaceEnrollment> = {}): FaceEnrollment {
+function enrollment(overrides: Partial<BiometricEnrollment> = {}): BiometricEnrollment {
   return {
-    descriptor: new Array(128).fill(0.1),
-    deviceToken: 'cred-1.secret',
+    credentialId: 'cred-1',
     userLabel: 'user@petsystem.local',
     ...overrides,
   };
@@ -31,15 +58,24 @@ function enrollment(overrides: Partial<FaceEnrollment> = {}): FaceEnrollment {
 // back-end (`new Service(mockDep)`), sem a máquina pesada do Angular DI.
 function createState(
   loginResult: LoginResult,
-  options: { existingEnrollment?: FaceEnrollment | null } = {},
+  options: { existingEnrollment?: BiometricEnrollment | null } = {},
 ) {
   const workPermitsApi = { findAll: jest.fn(() => throwError(() => new Error('unauthenticated'))) };
   const teamMembersApi = { findAll: jest.fn(() => throwError(() => new Error('unauthenticated'))) };
   const authApi = {
     login: jest.fn(() => of(loginResult)),
-    issueDeviceToken: jest.fn(() => of({ deviceToken: 'cred-1.secret' })),
-    deviceLogin: jest.fn(() => of(loginResult)),
-    revokeDeviceToken: jest.fn(() => of(undefined)),
+    getBiometricRegistrationOptions: jest.fn(() =>
+      of({} as PublicKeyCredentialCreationOptionsJSON),
+    ),
+    verifyBiometricRegistration: jest.fn(() => of(undefined)),
+    getBiometricLoginOptions: jest.fn(() =>
+      of({
+        options: {} as PublicKeyCredentialRequestOptionsJSON,
+        challengeId: 'challenge-1',
+      }),
+    ),
+    verifyBiometricLogin: jest.fn(() => of(loginResult)),
+    forgetBiometricCredential: jest.fn(() => of(undefined)),
   };
   const authToken = { setToken: jest.fn(), getToken: jest.fn() };
   // As permissões vêm do servidor (`/auth/me`); nestes testes o dublê só
@@ -50,10 +86,6 @@ function createState(
     save: jest.fn(),
     clear: jest.fn(),
   };
-  const faceRecognition = {
-    captureDescriptor: jest.fn(async () => new Float32Array(128).fill(0.1)),
-    isMatch: jest.fn(() => true),
-  };
 
   const state = new PetStateService(
     workPermitsApi as never,
@@ -62,7 +94,6 @@ function createState(
     access as never,
     authToken as never,
     deviceAuth as never,
-    faceRecognition as never,
   );
   return {
     state,
@@ -70,7 +101,6 @@ function createState(
     access,
     authToken,
     deviceAuth,
-    faceRecognition,
     workPermitsApi,
     teamMembersApi,
   };
@@ -263,11 +293,16 @@ describe('PetStateService — multi-tenancy session gating', () => {
   });
 });
 
-describe('PetStateService — reconhecimento facial (facilita acesso de quem já tem conta)', () => {
-  it('has no face enrollment on a fresh device', () => {
+describe('PetStateService — biometria nativa do aparelho (facilita acesso de quem já tem conta)', () => {
+  beforeEach(() => {
+    mockStartAuthentication.mockReset();
+    mockStartRegistration.mockReset();
+  });
+
+  it('has no biometric enrollment on a fresh device', () => {
     const { state } = createState({ accessToken: 't', user: authenticatedUser({}) });
 
-    expect(state.hasFaceEnrollment()).toBe(false);
+    expect(state.hasBiometricEnrollment()).toBe(false);
     expect(state.authMethod()).toBe('senha');
   });
 
@@ -277,82 +312,57 @@ describe('PetStateService — reconhecimento facial (facilita acesso de quem já
       existingEnrollment: existing,
     });
 
-    expect(state.hasFaceEnrollment()).toBe(true);
-    expect(state.authMethod()).toBe('facial');
+    expect(state.hasBiometricEnrollment()).toBe(true);
+    expect(state.authMethod()).toBe('biometria');
   });
 
-  describe('startFacialRecognition', () => {
-    it('refuses to start when nothing is enrolled on this device', async () => {
-      const { state, faceRecognition } = createState({ accessToken: 't', user: authenticatedUser({}) });
-
-      await state.startFacialRecognition(document.createElement('video'));
-
-      expect(state.faceAuthError()).toContain('Nenhum rosto cadastrado');
-      expect(faceRecognition.captureDescriptor).not.toHaveBeenCalled();
-    });
-
-    it('fails clearly when no video element is available', async () => {
-      const { state } = createState({ accessToken: 't', user: authenticatedUser({}) }, {
-        existingEnrollment: enrollment(),
-      });
-
-      await state.startFacialRecognition(null);
-
-      expect(state.faceAuthError()).toContain('Câmera indisponível');
-    });
-
-    it('shows an error and stays logged out when no face is detected in frame', async () => {
-      const { state, faceRecognition } = createState({ accessToken: 't', user: authenticatedUser({}) }, {
-        existingEnrollment: enrollment(),
-      });
-      faceRecognition.captureDescriptor.mockResolvedValue(null);
-
-      await state.startFacialRecognition(document.createElement('video'));
-
-      expect(state.session()).toBeNull();
-      expect(state.faceAuthError()).toContain('identificar um rosto');
-    });
-
-    it('shows an error and stays logged out when the captured face does not match', async () => {
-      const { state, faceRecognition } = createState({ accessToken: 't', user: authenticatedUser({}) }, {
-        existingEnrollment: enrollment(),
-      });
-      faceRecognition.isMatch.mockReturnValue(false);
-
-      await state.startFacialRecognition(document.createElement('video'));
-
-      expect(state.session()).toBeNull();
-      expect(state.faceAuthError()).toContain('não reconhecido');
-    });
-
-    it('exchanges the stored device token for a real session on a matching face', async () => {
+  describe('startBiometricLogin', () => {
+    it('fetches login options, runs the platform ceremony, and exchanges the signed assertion for a real session', async () => {
       const loginResult: LoginResult = {
         accessToken: 'real-jwt',
         user: authenticatedUser({ role: 'tecnico' }),
       };
-      const { state, authApi, authToken } = createState(loginResult, {
-        existingEnrollment: enrollment({ deviceToken: 'cred-1.the-secret' }),
-      });
+      const { state, authApi, authToken } = createState(loginResult);
+      const optionsJSON = { challenge: 'c' } as PublicKeyCredentialRequestOptionsJSON;
+      authApi.getBiometricLoginOptions.mockReturnValue(
+        of({ options: optionsJSON, challengeId: 'challenge-1' }),
+      );
+      const response = { id: 'cred-1' } as AuthenticationResponseJSON;
+      mockStartAuthentication.mockResolvedValue(response);
 
-      await state.startFacialRecognition(document.createElement('video'));
+      await state.startBiometricLogin();
 
-      expect(authApi.deviceLogin).toHaveBeenCalledWith('cred-1.the-secret');
+      expect(mockStartAuthentication).toHaveBeenCalledWith({ optionsJSON });
+      expect(authApi.verifyBiometricLogin).toHaveBeenCalledWith('challenge-1', response);
       expect(authToken.setToken).toHaveBeenCalledWith('real-jwt');
       expect(state.session()?.accessToken).toBe('real-jwt');
+      expect(state.biometricAuthError()).toBeNull();
     });
 
-    it('clears the local enrollment when the device token was revoked server-side (e.g. logged out elsewhere)', async () => {
-      const { state, authApi, deviceAuth } = createState(
-        { accessToken: 't', user: authenticatedUser({}) },
-        { existingEnrollment: enrollment() },
+    it('shows a friendly message and stays logged out when the user cancels the platform prompt', async () => {
+      const { state } = createState({ accessToken: 't', user: authenticatedUser({}) });
+      mockStartAuthentication.mockRejectedValue(
+        new WebAuthnError({ message: 'aborted', code: 'ERROR_CEREMONY_ABORTED' }),
       );
-      authApi.deviceLogin.mockReturnValue(throwError(() => new Error('401')));
 
-      await state.startFacialRecognition(document.createElement('video'));
+      await state.startBiometricLogin();
 
-      expect(deviceAuth.clear).toHaveBeenCalled();
-      expect(state.hasFaceEnrollment()).toBe(false);
-      expect(state.faceAuthError()).toContain('expirou');
+      expect(state.session()).toBeNull();
+      expect(state.biometricAuthError()).toBe('Verificação cancelada.');
+      expect(state.authPhase()).toBe('idle');
+    });
+
+    it('shows a clear message when the server rejects the signed assertion (unknown/expired credential)', async () => {
+      const { state, authApi } = createState({ accessToken: 't', user: authenticatedUser({}) });
+      mockStartAuthentication.mockResolvedValue({ id: 'cred-1' } as AuthenticationResponseJSON);
+      authApi.verifyBiometricLogin.mockReturnValue(
+        throwError(() => Object.assign(new Error('401'), { status: 401 })),
+      );
+
+      await state.startBiometricLogin();
+
+      expect(state.session()).toBeNull();
+      expect(state.biometricAuthError()).toContain('não reconhecida');
     });
   });
 
@@ -382,7 +392,7 @@ describe('PetStateService — reconhecimento facial (facilita acesso de quem já
       expect(state.screen()).toBe('home');
     });
 
-    it('confirmFaceEnrollment saves the descriptor and device token locally, then proceeds home', async () => {
+    it('confirmBiometricEnrollment fetches registration options, runs the ceremony, verifies it server-side, and saves the credential id locally', async () => {
       const { state, authApi, deviceAuth } = createState({
         accessToken: 't',
         user: authenticatedUser({ email: 'tecnico@petsystem.local' }),
@@ -392,58 +402,104 @@ describe('PetStateService — reconhecimento facial (facilita acesso de quem já
       await state.loginWithPassword();
       expect(state.enrollPromptOpen()).toBe(true);
 
-      await state.confirmFaceEnrollment(document.createElement('video'));
+      const response = { id: 'new-cred-id' } as RegistrationResponseJSON;
+      mockStartRegistration.mockResolvedValue(response);
 
-      expect(authApi.issueDeviceToken).toHaveBeenCalled();
+      await state.confirmBiometricEnrollment();
+
+      expect(authApi.getBiometricRegistrationOptions).toHaveBeenCalled();
+      expect(authApi.verifyBiometricRegistration).toHaveBeenCalledWith(response);
       expect(deviceAuth.save).toHaveBeenCalledWith(
-        expect.objectContaining({ deviceToken: 'cred-1.secret' }),
+        expect.objectContaining({ credentialId: 'new-cred-id' }),
       );
-      expect(state.hasFaceEnrollment()).toBe(true);
+      expect(state.hasBiometricEnrollment()).toBe(true);
       expect(state.enrollPromptOpen()).toBe(false);
       expect(state.screen()).toBe('home');
     });
 
-    it('skipFaceEnrollment proceeds home without saving anything', async () => {
+    it('sets an error and keeps the dialog open when the platform ceremony fails', async () => {
+      const { state } = createState({
+        accessToken: 't',
+        user: authenticatedUser({ email: 'tecnico@petsystem.local' }),
+      });
+      state.setLoginEmail('tecnico@petsystem.local');
+      state.setLoginPassword('senha123');
+      await state.loginWithPassword();
+      mockStartRegistration.mockRejectedValue(
+        new WebAuthnError({ message: 'aborted', code: 'ERROR_CEREMONY_ABORTED' }),
+      );
+
+      await state.confirmBiometricEnrollment();
+
+      expect(state.enrollError()).toBe('Verificação cancelada.');
+      expect(state.enrollPromptOpen()).toBe(true);
+      expect(state.hasBiometricEnrollment()).toBe(false);
+    });
+
+    it('skipBiometricEnrollment proceeds home without saving anything', async () => {
       const { state, deviceAuth } = createState({ accessToken: 't', user: authenticatedUser({}) });
       state.setLoginEmail('tecnico@petsystem.local');
       state.setLoginPassword('senha123');
       await state.loginWithPassword();
 
-      state.skipFaceEnrollment();
+      state.skipBiometricEnrollment();
 
       expect(deviceAuth.save).not.toHaveBeenCalled();
-      expect(state.hasFaceEnrollment()).toBe(false);
+      expect(state.hasBiometricEnrollment()).toBe(false);
       expect(state.screen()).toBe('home');
     });
   });
 
   describe('logout', () => {
-    it('revokes the device token server-side and clears the local enrollment', async () => {
+    it('does NOT clear the local biometric enrollment — a passkey survives logout, the same way a browser-saved one does', () => {
       const { state, authApi, deviceAuth } = createState(
         { accessToken: 't', user: authenticatedUser({}) },
-        { existingEnrollment: enrollment({ deviceToken: 'cred-1.the-secret' }) },
+        { existingEnrollment: enrollment() },
       );
 
       state.logout();
-      await Promise.resolve(); // deixa a chamada de revogação (fire-and-forget) rodar
 
-      expect(authApi.revokeDeviceToken).toHaveBeenCalledWith('cred-1.the-secret');
-      expect(deviceAuth.clear).toHaveBeenCalled();
-      expect(state.hasFaceEnrollment()).toBe(false);
+      expect(authApi.forgetBiometricCredential).not.toHaveBeenCalled();
+      expect(deviceAuth.clear).not.toHaveBeenCalled();
+      expect(state.hasBiometricEnrollment()).toBe(true);
+      expect(state.authMethod()).toBe('biometria');
     });
 
-    it('still clears the local enrollment even when the server call fails (offline logout)', async () => {
+    it('falls back to the senha tab after logout when this device has no enrollment', () => {
+      const { state } = createState({ accessToken: 't', user: authenticatedUser({}) });
+
+      state.logout();
+
+      expect(state.authMethod()).toBe('senha');
+    });
+  });
+
+  describe('forgetBiometricEnrollment', () => {
+    it('calls the server to forget the credential and clears it locally', async () => {
+      const { state, authApi, deviceAuth } = createState(
+        { accessToken: 't', user: authenticatedUser({}) },
+        { existingEnrollment: enrollment({ credentialId: 'cred-1' }) },
+      );
+
+      await state.forgetBiometricEnrollment();
+
+      expect(authApi.forgetBiometricCredential).toHaveBeenCalledWith('cred-1');
+      expect(deviceAuth.clear).toHaveBeenCalled();
+      expect(state.hasBiometricEnrollment()).toBe(false);
+      expect(state.authMethod()).toBe('senha');
+    });
+
+    it('still clears locally even when the server call fails (offline)', async () => {
       const { state, deviceAuth, authApi } = createState(
         { accessToken: 't', user: authenticatedUser({}) },
         { existingEnrollment: enrollment() },
       );
-      authApi.revokeDeviceToken.mockReturnValue(throwError(() => new Error('offline')));
+      authApi.forgetBiometricCredential.mockReturnValue(throwError(() => new Error('offline')));
 
-      state.logout();
-      await Promise.resolve();
+      await state.forgetBiometricEnrollment();
 
       expect(deviceAuth.clear).toHaveBeenCalled();
-      expect(state.hasFaceEnrollment()).toBe(false);
+      expect(state.hasBiometricEnrollment()).toBe(false);
     });
   });
 });
@@ -488,7 +544,7 @@ describe('PetStateService — entrar antes de tudo', () => {
     expect(state.session()).not.toBeNull();
     expect(state.autenticado()).toBe(false);
 
-    state.skipFaceEnrollment();
+    state.skipBiometricEnrollment();
 
     expect(state.autenticado()).toBe(true);
   });
@@ -512,7 +568,7 @@ describe('PetStateService — entrar antes de tudo', () => {
     state.setLoginEmail('gestor@petsystem.local');
     state.setLoginPassword('senha123');
     await state.loginWithPassword();
-    state.skipFaceEnrollment();
+    state.skipBiometricEnrollment();
     expect(state.autenticado()).toBe(true);
 
     state.logout();
