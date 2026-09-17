@@ -2,11 +2,14 @@ import {
   Body,
   Controller,
   Delete,
+  Get,
   HttpCode,
   HttpStatus,
   Post,
   UseGuards,
 } from '@nestjs/common';
+import { UsersService } from '../users/users.service';
+import { AccessControlService } from './access-control.service';
 import { AuthService, LoginResult } from './auth.service';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { DeviceLoginDto } from './dto/device-login.dto';
@@ -17,7 +20,41 @@ import { AuthenticatedUser } from './jwt-payload.interface';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly accessControl: AccessControlService,
+    private readonly usersService: UsersService,
+  ) {}
+
+  /**
+   * Quem sou eu e o que posso fazer.
+   *
+   * Rota propria, e nao um campo a mais na resposta do login, porque a
+   * pergunta se repete: depois de um login por rosto, ao reabrir o app com
+   * token guardado, e sempre que alguem mexe nos cargos. Uma permissao
+   * gravada so no momento do login envelheceria junto com o token.
+   *
+   * O que volta daqui serve a interface — para nao oferecer um botao que a
+   * API vai recusar. Quem decide de fato continua sendo o PermissionsGuard,
+   * no servidor.
+   */
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  async me(@CurrentUser() user: AuthenticatedUser) {
+    const [permissions, roles, conta] = await Promise.all([
+      this.accessControl.permissionsOf(user.id),
+      this.accessControl.rolesOf(user.id),
+      this.usersService.findById(user.id),
+    ]);
+    return {
+      // O nome acompanha porque esta rota e a que o app consulta ao reabrir
+      // com o token guardado — sem ele, a tela voltaria a nao saber quem
+      // esta ali.
+      user: { ...user, name: conta?.name ?? user.email },
+      permissions: [...permissions],
+      roles,
+    };
+  }
 
   @Post('login')
   @HttpCode(HttpStatus.OK)

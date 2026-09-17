@@ -22,7 +22,12 @@ export interface LoginResult {
   // sem precisar logar de novo, e resolver de novo a cada requisição
   // custaria uma consulta a mais em toda rota protegida — só vale a pena
   // pagar esse custo uma vez, no login.
-  user: AuthenticatedUser & { companyGroupName: string | null; branchName: string | null };
+  user: AuthenticatedUser & {
+    /** Nome de quem entrou, para a tela dizer quem esta ali. */
+    name: string;
+    companyGroupName: string | null;
+    branchName: string | null;
+  };
 }
 
 @Injectable()
@@ -69,15 +74,25 @@ export class AuthService {
       branchId: user.branchId,
     };
 
-    const [companyGroup, branch] = await Promise.all([
+    const [companyGroup, branch, conta] = await Promise.all([
       user.companyGroupId ? this.companyGroupsService.findById(user.companyGroupId) : null,
       user.branchId ? this.branchesService.findById(user.branchId) : null,
+      // O nome vem do banco na hora do login, e nao do token: guardado no
+      // JWT, continuaria mostrando o nome antigo depois de uma correcao de
+      // cadastro, ate a pessoa sair e entrar de novo.
+      this.usersService.findById(user.id),
     ]);
+
+    // Nao pode derrubar o login: a pessoa tem direito de entrar mesmo que o
+    // carimbo de ultimo acesso falhe. Bloquear a entrada por causa de um
+    // detalhe de relatorio seria deixar o porteiro na portaria.
+    await this.usersService.registrarAcesso(user.id).catch(() => undefined);
 
     return {
       accessToken: this.jwtService.sign(payload),
       user: {
         ...user,
+        name: conta?.name ?? user.email,
         companyGroupName: companyGroup?.name ?? null,
         branchName: branch?.name ?? null,
       },

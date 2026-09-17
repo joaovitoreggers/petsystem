@@ -55,7 +55,12 @@ describe('AuthService', () => {
   let deviceCredentialRepository: jest.Mocked<IDeviceCredentialRepository>;
 
   beforeEach(() => {
-    usersService = { findByEmail: jest.fn(), validatePassword: jest.fn(), findById: jest.fn() };
+    usersService = {
+      findByEmail: jest.fn(),
+      validatePassword: jest.fn(),
+      findById: jest.fn(),
+      registrarAcesso: jest.fn().mockResolvedValue(undefined),
+    };
     jwtService = { sign: jest.fn().mockReturnValue('signed-jwt') };
     companyGroupsService = { findById: jest.fn() };
     branchesService = { findById: jest.fn() };

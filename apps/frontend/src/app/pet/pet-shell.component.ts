@@ -84,7 +84,7 @@ export class PetShellComponent {
   readonly navItems = computed(() =>
     this.allNavItems.filter((item) => {
       if (item.id === 'empresas') return this.state.isPlatformAdmin();
-      if (item.id === 'usuarios') return this.state.canManageTeam();
+      if (item.id === 'usuarios') return this.state.canManageUsers();
       return true;
     }),
   );
@@ -106,7 +106,7 @@ export class PetShellComponent {
     // conteúdo tentando carregar uma lista que a API não vai mais devolver.
     effect(() => {
       const role = this.state.role();
-      if (role === 'usuarios' && !this.state.canManageTeam()) {
+      if (role === 'usuarios' && !this.state.canManageUsers()) {
         this.state.setRole('tecnico');
       }
       if (role === 'empresas' && !this.state.isPlatformAdmin()) {
