@@ -336,3 +336,30 @@
     overflow: hidden;
   }
 }
+
+/* ═══ Tela de acesso: tela cheia de verdade ═════════════════════════════
+   O login não é uma aba dentro do sistema — é a aplicação inteira naquele
+   momento. Por isso ele não mora num cartão centralizado: o quadro some
+   (sem largura máxima, sem borda, sem raio, sem sombra) e a composição
+   encosta nas quatro extremidades da janela.
+
+   O fundo quadriculado do `.field-stage` também sai daqui. Ele existe para
+   emoldurar o app de campo dentro do sistema; em volta da tela de acesso
+   ele só denunciava que havia uma caixa no meio da página. */
+.field-stage--login {
+  padding: 0;
+  align-items: stretch;
+  justify-content: stretch;
+  background: none;
+  overflow: visible;
+}
+.field-stage--login .field-app {
+  max-width: none;
+  flex: 1;
+  width: 100%;
+  min-height: 100dvh;
+  max-height: none;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}

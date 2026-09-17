@@ -1,22 +1,43 @@
-<div class="field-stage">
+<!--
+  Na tela de acesso o app inteiro é este quadro, e não uma aba dentro do
+  sistema — por isso ele deixa de imitar a altura de um celular e vira um
+  cartão do tamanho do próprio conteúdo, centrado na página.
+-->
+<div class="field-stage" [class.field-stage--login]="state.screen() === 'login'">
   <div class="field-app">
     @switch (state.screen()) {
       @case ('login') {
         <div class="screen screen--login">
-          <div class="login__logo-band">
-            <img
-              class="login__logo"
-              src="assets/artech-logo-trim.png"
-              alt="Artech — tecnologia que transforma"
-            />
+          <!--
+            Painel visual. No computador é a coluna da esquerda, com a foto
+            do ambiente industrial; no celular vira uma faixa curta no topo,
+            para o formulário continuar sendo o assunto principal da tela.
+
+            A foto entra por `--login-photo` (ver styles.scss). Enquanto
+            ninguém define essa variável, o painel usa a cena vetorial e não
+            pede arquivo nenhum ao servidor — layout inteiro, console limpo.
+          -->
+          <div class="login__visual">
+            <app-industrial-art class="login__art" scene="plant" />
+            <div class="login__scrim"></div>
+            <div class="login__claim">
+              <div class="login__claim-kicker">Artech · Segurança do trabalho</div>
+              <p class="login__claim-text">
+                Tecnologia para um trabalho mais seguro.
+              </p>
+            </div>
           </div>
-          <app-industrial-art class="login__art" scene="plant" />
           <div class="login__body">
+            <div class="login__logo-band">
+              <img
+                class="login__logo"
+                src="assets/artech-logo-trim.png"
+                alt="Artech — tecnologia que transforma"
+              />
+            </div>
             <div class="login__header">
               <span class="login__brand">PET DIGITAL</span>
-              <span class="login__unit"
-                >Lar Cooperativa<br />Agroindustrial</span
-              >
+              <span class="login__sub">Permissão de Entrada e Trabalho</span>
             </div>
 
             <div
@@ -76,7 +97,9 @@
                   <div class="face-frame__caption">
                     {{
                       cameraError()
-                        ? 'câmera indisponível · toque para tentar de novo'
+                        ? cameraBlockedByOrigin()
+                          ? 'a câmera exige HTTPS · use e-mail e senha'
+                          : 'câmera indisponível · toque para tentar de novo'
                         : 'câmera frontal'
                     }}
                   </div>
@@ -208,7 +231,9 @@
                 <div class="face-frame__caption">
                   {{
                     cameraError()
-                      ? 'câmera indisponível · toque para tentar de novo'
+                      ? cameraBlockedByOrigin()
+                          ? 'a câmera exige HTTPS · use e-mail e senha'
+                          : 'câmera indisponível · toque para tentar de novo'
                       : 'câmera frontal'
                   }}
                 </div>
@@ -242,14 +267,21 @@
       @case ('home') {
         <div class="screen screen--home">
           <div class="home__header">
-            <div class="home__kicker">Unidade Matelândia · Turno A</div>
+            <div class="home__kicker">
+              {{ state.currentBranchName() ?? 'Todas as unidades' }}
+            </div>
             <div class="home__title">Permissões de entrada e trabalho</div>
+            <!--
+              Quem está na tela é quem entrou, e não um nome fixo: o cabeçalho
+              vinha da demonstração e continuava dizendo "Bárbara" para
+              qualquer conta que fizesse login.
+            -->
             <div class="home__user">
-              <div class="home__avatar">BG</div>
+              <div class="home__avatar">{{ state.currentUserInitials() }}</div>
               <div>
-                <div class="home__user-name">Bárbara M. Garlini</div>
+                <div class="home__user-name">{{ state.currentUserName() }}</div>
                 <div class="home__user-role">
-                  Téc. Segurança do Trabalho · mat. 03177
+                  {{ access.cargoLabel() ?? state.session()?.user?.email }}
                 </div>
               </div>
               <button
@@ -329,16 +361,25 @@
             }
           </div>
 
-          <div class="home__footer">
-            <button
-              type="button"
-              class="btn btn-primary btn-lg btn-block home__new"
-              (click)="state.startNewPet()"
-            >
-              <app-icon name="plus" [size]="18" />
-              Nova PET
-            </button>
-          </div>
+          <!--
+            Emitir PET é trabalho do técnico de segurança: é ele que vistoria
+            a frente, mede a atmosfera e assina. Quem administra o sistema
+            acompanha as PETs, mas não as abre. Quem recusa de verdade é o
+            servidor (`emitir_pet` na rota de emissão); aqui só não se oferece
+            um botão que a API vai negar.
+          -->
+          @if (podeEmitirPet()) {
+            <div class="home__footer">
+              <button
+                type="button"
+                class="btn btn-primary btn-lg btn-block home__new"
+                (click)="state.startNewPet()"
+              >
+                <app-icon name="plus" [size]="18" />
+                Nova PET
+              </button>
+            </div>
+          }
         </div>
       }
 
@@ -512,8 +553,15 @@
               </div>
             </div>
 
+            <!--
+              Medir e encerrar são atos de campo, como emitir: quem mede está
+              com o detector na mão dentro do espaço confinado, e quem encerra
+              diz que a frente foi desmobilizada em segurança. Quem administra
+              acompanha a PET, mas não assina por ela. O servidor aplica a
+              mesma regra (`operar_pet`).
+            -->
             <div class="detalhe__footer">
-              @if (pet.status !== 'fechada') {
+              @if (pet.status !== 'fechada' && podeOperarPet()) {
                 <button
                   type="button"
                   class="btn btn-secondary detalhe__footer-btn"

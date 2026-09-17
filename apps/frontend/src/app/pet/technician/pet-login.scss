@@ -1,95 +1,161 @@
 /* ── Tela de acesso ───────────────────────────────────────────────────
-   Duas formas de entrar lado a lado: biometria facial (a simulação da
-   fatia de design) e credencial de e-mail e senha, que bate no AuthModule
-   real do back-end. Arquivo próprio porque é a única superfície escura do
-   fluxo de campo — misturar com o resto só atrapalhava a leitura.
-   Carregado junto via `styleUrls`. */
+   Duas formas de entrar: reconhecimento facial e credencial de e-mail e
+   senha, que bate no AuthModule real do back-end.
+
+   Composição: no computador, a foto do ambiente industrial ocupa a coluna
+   da esquerda e o acesso fica à direita, sobre superfície clara — o padrão
+   de produto que o sistema quer parecer. No celular a foto vira uma faixa
+   curta no topo e o formulário assume a tela, porque quem entra pelo
+   telefone está na portaria e precisa entrar rápido, não admirar a foto.
+
+   Carregado junto do componente via `styleUrls`. */
 
 .screen--login {
   position: relative;
-  background: radial-gradient(
-    120% 90% at 50% -10%,
-    var(--color-accent-800) 0%,
-    var(--color-accent-900) 62%
-  );
-  color: var(--text-on-dark);
+  background: var(--surface-1);
+  color: var(--text-default);
   overflow: hidden;
   isolation: isolate;
-}
-.login__logo-band {
-  background: #fff;
-  padding: var(--space-4) var(--space-6);
-  flex: none;
-  display: flex;
-  justify-content: center;
-}
-.login__logo {
-  width: min(196px, 58%);
-  height: auto;
-  mix-blend-mode: multiply;
+  /* A composição é a janela: sem caixa no meio da página, sem sobra em
+     volta. `dvh` porque no celular a barra do navegador entra e sai, e
+     `vh` deixaria uma faixa morta embaixo. */
+  width: 100%;
+  min-height: 100dvh;
 }
 
-/* Planta industrial isométrica ao fundo: dá profundidade sem competir
-   com a leitura do quadro da câmera. */
+/* ── Painel visual ───────────────────────────────────────────────────── */
+.login__visual {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background: linear-gradient(160deg, var(--color-accent-800), var(--color-accent-900));
+  /* Faixa no topo do celular: alta o bastante para situar, baixa o
+     bastante para o formulário continuar visível sem rolar. */
+  min-height: 132px;
+  flex: none;
+  display: flex;
+  align-items: flex-end;
+}
+
+/* A foto do ambiente industrial.
+   
+   Dois recortes da mesma imagem, e não um só redimensionado: no celular a
+   faixa é deitada e baixa, e usar ali o recorte retrato de 1100×1500 seria
+   baixar quatro vezes mais bytes para mostrar uma tira. Trocar a foto é
+   trocar estes dois arquivos em `apps/frontend/public/assets/`.
+
+   Origem: Unsplash (licença Unsplash — uso livre, inclusive comercial). */
+.login__visual {
+  background-image: url('/assets/login-industrial-wide.jpg');
+  background-size: cover;
+  background-position: center 38%;
+}
 .login__art {
   position: absolute;
   left: 50%;
-  bottom: -6%;
+  bottom: -12%;
   transform: translateX(-50%);
-  width: min(760px, 150%);
-  opacity: 0.16;
-  z-index: -1;
+  width: min(560px, 130%);
+  /* Fica atrás da foto: só aparece se o arquivo faltar. */
+  opacity: 0.22;
+  z-index: -3;
   pointer-events: none;
   --art-light: var(--color-accent-300);
   --art-mid: var(--color-accent-500);
   --art-dark: var(--color-accent-900);
   --art-line: var(--color-accent-200);
-  --art-accent: var(--color-accent-200);
-  --art-glow: var(--color-accent-400);
+  --art-accent: var(--color-accent-2-300);
+  --art-glow: var(--color-accent-2-400);
 }
 
+/* Camada sobre a foto: mantém o azul da marca e garante que o texto por
+   cima seja legível seja qual for a imagem que a equipe colocar. */
+.login__scrim {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  /* Leve no topo, forte embaixo: a foto continua legível como imagem e o
+     texto no rodapé do painel fica com contraste garantido. O azul da
+     marca entra por cima para a foto não brigar com a identidade. */
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--color-accent-900) 8%, transparent) 0%,
+      color-mix(in srgb, var(--color-accent-900) 40%, transparent) 46%,
+      color-mix(in srgb, var(--color-accent-900) 86%, transparent) 100%
+    );
+}
+
+.login__claim {
+  padding: var(--space-4) var(--space-5);
+  color: var(--text-on-dark);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.login__claim-kicker {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-accent-2-300);
+}
+.login__claim-text {
+  margin: 0;
+  font-weight: 700;
+  font-size: var(--text-lg);
+  line-height: 1.25;
+  max-width: 22ch;
+}
+
+/* ── Painel de acesso ────────────────────────────────────────────────── */
 .login__body {
   display: flex;
   flex-direction: column;
   flex: 1;
-  padding: var(--space-5) var(--space-6) var(--space-6);
+  padding: var(--space-5);
   gap: var(--space-4);
   min-height: 0;
-  /* A tela de login rola por dentro quando o aparelho é curto — nunca
-     empurra o conteúdo para baixo da navegação inferior. */
+  background: var(--surface-1);
+  /* Rola por dentro quando o aparelho é curto — nunca empurra o botão para
+     fora da tela. */
   overflow-y: auto;
 }
+
+.login__logo-band {
+  display: flex;
+  justify-content: center;
+  flex: none;
+}
+.login__logo {
+  width: min(160px, 46%);
+  height: auto;
+}
+
 .login__header {
   display: flex;
-  align-items: baseline;
-  gap: var(--space-3);
-  padding-bottom: var(--space-4);
-  border-bottom: 1px solid rgba(238, 242, 246, 0.18);
+  flex-direction: column;
+  gap: 2px;
+  text-align: center;
 }
 .login__brand {
-  font-family: var(--font-heading);
-  font-weight: 700;
+  font-weight: 800;
   font-size: var(--text-xl);
-  letter-spacing: 0.07em;
-  white-space: nowrap;
+  letter-spacing: 0.08em;
+  color: var(--color-accent-900);
 }
-.login__unit {
-  font-size: var(--text-xs);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  opacity: 0.62;
-  margin-left: auto;
-  text-align: right;
-  line-height: 1.4;
+.login__sub {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
 }
+
 .login__center {
   flex: 1;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  gap: var(--space-5);
-  padding: var(--space-2) 0;
+  gap: var(--space-4);
 }
 
 /* Alternador entre as duas formas de acesso: as duas ficam visíveis, sem
@@ -97,142 +163,122 @@
 .login__methods {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 3px;
-  padding: 3px;
+  gap: 4px;
+  padding: 4px;
   border-radius: var(--radius-md);
-  background: rgba(9, 17, 26, 0.42);
-  border: 1px solid rgba(238, 242, 246, 0.14);
+  background: var(--surface-2);
+  border: 1px solid var(--border-default);
   flex: none;
+  width: 100%;
 }
 .login__method {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
-  min-height: 38px;
+  min-height: 40px;
   padding: 0 var(--space-2);
   font: inherit;
   font-size: var(--text-sm);
   font-weight: 600;
-  color: rgba(238, 242, 246, 0.66);
+  color: var(--text-muted);
   background: transparent;
   border: 0;
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition:
     background var(--dur-fast) var(--ease-out),
-    color var(--dur-fast) var(--ease-out);
+    color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out);
 }
-/* `:not(--active)`: sem isso o hover sobre a aba já selecionada pintava o
-   texto de claro sobre o fundo claro do estado ativo — rótulo invisível. */
+/* `:not(--active)`: sem isso o hover sobre a aba já selecionada trocava a
+   cor do rótulo sobre o próprio fundo dele. */
 .login__method:hover:not(.login__method--active) {
-  color: var(--text-on-dark);
+  color: var(--text-default);
+  background: color-mix(in srgb, var(--color-accent-100) 70%, transparent);
 }
 .login__method--active {
-  background: var(--text-on-dark);
+  background: var(--surface-1);
   color: var(--color-accent-900);
+  box-shadow: var(--shadow-xs);
 }
 
-/* Formulário de credencial — mesmo peso visual do quadro da câmera. */
+/* ── Formulário ──────────────────────────────────────────────────────── */
 .login__form {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
   width: 100%;
-  max-width: 340px;
 }
 .login__field > label {
-  color: rgba(238, 242, 246, 0.72);
+  color: var(--text-muted);
+  font-weight: 600;
 }
+/* Campo alto o bastante para ser tocado com luva, na portaria. */
 .login__field .input {
-  background: rgba(9, 17, 26, 0.45);
-  border-color: rgba(238, 242, 246, 0.22);
-  color: var(--text-on-dark);
-}
-.login__field .input::placeholder {
-  color: rgba(238, 242, 246, 0.38);
-}
-.login__field .input:hover:not(:disabled) {
-  border-color: rgba(238, 242, 246, 0.42);
-}
-.login__field .input:focus-visible {
-  border-color: var(--color-accent-300);
-  box-shadow: 0 0 0 3px rgba(181, 217, 253, 0.24);
+  min-height: 46px;
 }
 .login__password {
   position: relative;
   display: flex;
 }
 .login__password .input {
-  padding-right: 84px;
+  padding-right: 92px;
 }
 .login__reveal {
   position: absolute;
   right: 4px;
-  /* Centralizado por deslocamento (top/bottom), não por `transform`.
-     O `.btn:active:not(:disabled)` global aplica `translateY(1px)` e tem
-     especificidade maior que esta regra: no mousedown ele substituía o
-     `translateY(-50%)` e o botão descia 20px: o cursor saía de cima dele
-     antes do mouseup e o clique nunca era disparado. Era esse o motivo de
-     "mostrar" não revelar a senha. */
+  /* Centralizado por deslocamento (top/bottom), não por `transform`: o
+     `.btn:active` global aplica `translateY(1px)` e tem especificidade
+     maior, o que fazia o botão descer e sair de baixo do cursor. */
   top: 4px;
   bottom: 4px;
-  /* Zera o mínimo do .btn para o par top/bottom definir a altura sem
-     conflito (do contrário a caixa fica superdeterminada). */
-  min-height: 0;
-  font-size: var(--text-xs);
+  padding: 0 var(--space-3);
+  font-size: var(--text-sm);
   font-weight: 600;
-  letter-spacing: 0.04em;
-  color: var(--color-accent-300);
+  color: var(--color-accent-600);
+  min-height: 0;
 }
 .login__reveal:hover:not(:disabled) {
-  background: rgba(238, 242, 246, 0.12);
-}
-.login__error {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-2);
-  padding: var(--space-3);
-  border-radius: var(--radius-sm);
-  border-left: 3px solid #f0a6a6;
-  background: rgba(142, 32, 32, 0.32);
-  color: #ffdcdc;
-  font-size: var(--text-sm);
-  line-height: 1.45;
+  color: var(--color-accent-900);
+  background: var(--surface-2);
 }
 
-/* Quadro da câmera frontal. */
-@keyframes face-sweep {
-  0% {
-    top: 4%;
-    opacity: 0.2;
-  }
-  50% {
-    opacity: 0.9;
-  }
-  100% {
-    top: 92%;
-    opacity: 0.2;
-  }
+.login__error {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--status-bad-bg);
+  border: 1px solid color-mix(in srgb, var(--status-bad) 26%, transparent);
+  color: var(--status-bad-fg);
+  font-size: var(--text-sm);
+  font-weight: 500;
 }
+.login__error .icon {
+  flex: none;
+}
+
+/* ── Quadro da câmera ────────────────────────────────────────────────── */
 .face-frame {
   position: relative;
   width: min(220px, 62vw);
   aspect-ratio: 200 / 236;
   border-radius: var(--radius-lg);
   overflow: hidden;
-  background: rgba(9, 17, 26, 0.55);
+  background: var(--color-accent-900);
   box-shadow:
-    0 0 0 1px rgba(238, 242, 246, 0.16),
-    var(--shadow-lg);
+    0 0 0 1px var(--border-default),
+    var(--shadow-md);
 }
 .face-frame__grid {
   position: absolute;
   inset: 0;
   background: repeating-linear-gradient(
     45deg,
-    rgba(238, 242, 246, 0.08) 0 8px,
-    rgba(238, 242, 246, 0.02) 8px 16px
+    rgba(242, 247, 250, 0.08) 0 8px,
+    rgba(242, 247, 250, 0.02) 8px 16px
   );
 }
 .face-frame__video {
@@ -241,14 +287,14 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  /* Espelhado: a câmera frontal precisa parecer um espelho para o técnico
+  /* Espelhado: a câmera frontal precisa parecer um espelho para a pessoa
      conseguir se centralizar. */
   transform: scaleX(-1);
 }
 .face-frame__border {
   position: absolute;
   inset: 0;
-  border: 1px solid rgba(238, 242, 246, 0.22);
+  border: 1px solid rgba(242, 247, 250, 0.22);
   border-radius: inherit;
   pointer-events: none;
 }
@@ -282,7 +328,7 @@
   text-align: center;
   font-family: var(--font-mono);
   font-size: var(--text-xs);
-  color: rgba(238, 242, 246, 0.72);
+  color: rgba(242, 247, 250, 0.78);
   padding: 0 var(--space-2);
 }
 
@@ -291,42 +337,48 @@
   max-width: 34ch;
 }
 .login__title {
-  font-family: var(--font-heading);
-  font-weight: 600;
+  font-weight: 700;
   font-size: var(--text-2xl);
-  line-height: 1.15;
+  line-height: 1.2;
+  color: var(--text-strong);
 }
 .login__text {
   font-size: var(--text-base);
-  opacity: 0.78;
+  color: var(--text-muted);
   line-height: 1.5;
   margin-top: var(--space-1);
 }
+
 .login__btn {
   width: 100%;
   min-height: 48px;
-  font-size: var(--text-lg);
-  background: var(--text-on-dark);
-  color: var(--color-accent-900);
-  border-color: var(--text-on-dark);
+  font-size: var(--text-md);
+  font-weight: 600;
+  background: var(--color-accent-900);
+  color: var(--text-on-dark);
+  border-color: var(--color-accent-900);
 }
 .login__btn:hover:not(:disabled) {
-  background: #fff;
-  border-color: #fff;
+  background: var(--color-accent-800);
+  border-color: var(--color-accent-800);
 }
-.login__disclaimer {
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  text-align: center;
-  opacity: 0.55;
-  line-height: 1.7;
+.login__btn:disabled {
+  background: var(--surface-3);
+  border-color: var(--border-default);
+  color: var(--text-faint);
 }
 
-/* Alvos de toque da tela de acesso: abas e o "mostrar" da senha são
-   tocados com luva, na portaria. */
+.login__disclaimer {
+  font-size: var(--text-xs);
+  text-align: center;
+  color: var(--text-faint);
+  line-height: 1.65;
+}
+
+/* Alvos de toque: abas e o "mostrar" da senha são tocados com luva. */
 @media (pointer: coarse) {
   .login__method {
-    min-height: 44px;
+    min-height: 46px;
   }
 }
 
@@ -336,4 +388,156 @@
 }
 .enroll-face__frame {
   margin: var(--space-3) auto;
+}
+
+/* ═══ Tablet e acima: o acesso vira um cartão ═══════════════════════════ */
+@media (min-width: 560px) {
+  .field-stage--login .login__body {
+    padding: var(--space-6);
+    justify-content: center;
+  }
+  /* A faixa encolhe: em tela maior ela situa, não ocupa. */
+  .field-stage--login .login__visual {
+    min-height: 180px;
+  }
+}
+
+/* ═══ Computador: duas colunas ══════════════════════════════════════════
+   A foto ocupa a esquerda e o acesso a direita. É aqui que o produto ganha
+   cara de software de empresa em vez de formulário solto no meio da tela. */
+@media (min-width: 980px) {
+  .field-stage--login .screen--login {
+    display: grid;
+    /* 45% imagem / 55% acesso, sobre a janela inteira. */
+    grid-template-columns: 45% 55%;
+    align-items: stretch;
+    height: 100dvh;
+  }
+
+  .field-stage--login .login__visual {
+    min-height: 0;
+    height: 100%;
+    align-items: flex-end;
+    /* Coluna alta e estreita: aqui o recorte retrato é o que enquadra a
+       pessoa sem cortar a cabeça. */
+    background-image: url('/assets/login-industrial.jpg');
+    background-position: center;
+  }
+  .field-stage--login .login__claim {
+    padding: var(--space-6);
+  }
+  .field-stage--login .login__claim-text {
+    font-size: var(--text-2xl);
+  }
+  .field-stage--login .login__art {
+    bottom: -8%;
+    width: 120%;
+    opacity: 0.26;
+  }
+
+  .field-stage--login .login__body {
+    justify-content: center;
+    padding: var(--space-8);
+    gap: var(--space-5);
+    /* Notebook baixo (768px de altura): o miolo rola por dentro em vez de
+       empurrar o botão Entrar para fora da janela. */
+    height: 100dvh;
+    overflow-y: auto;
+  }
+  /* Campo largo demais é campo difícil de ler. */
+  .field-stage--login .login__form,
+  .field-stage--login .login__methods,
+  .field-stage--login .login__btn {
+    max-width: 380px;
+    margin-inline: auto;
+  }
+  .field-stage--login .login__logo {
+    width: min(180px, 52%);
+  }
+}
+
+/* ═══ Celular: tudo dentro de uma tela ══════════════════════════════════
+   A aba de reconhecimento facial carrega mais coisa que a de senha — quadro
+   da câmera, situação, botão e o aviso sobre o que é guardado. Somado à
+   faixa da foto, isso passava da altura do aparelho e cortava o rodapé.
+
+   Duas medidas: a tela passa a ter exatamente a altura da janela (o que
+   rola é o miolo, nunca a página inteira, então a faixa não empurra nada
+   para fora), e as peças encolhem o suficiente para o botão aparecer sem
+   rolagem num aparelho comum. */
+@media (max-width: 559px) {
+  /* O teto tem que ser posto acima, e não na própria tela: `.screen` é um
+     item flex com `flex-basis: 0` e `flex-grow: 1`, então ele estica até a
+     altura do container e ignora o `height` que se ponha nele. Limitando o
+     quadro, a tela recebe exatamente a janela e é o miolo que rola. */
+  .field-stage--login,
+  .field-stage--login .field-app {
+    max-height: 100dvh;
+  }
+  .screen--login {
+    height: 100dvh;
+  }
+  .field-stage--login .login__body {
+    overflow-y: auto;
+  }
+  .login__visual {
+    min-height: 96px;
+  }
+  .login__claim {
+    padding: var(--space-3) var(--space-4);
+  }
+  .login__claim-text {
+    font-size: var(--text-md);
+  }
+  .login__body {
+    padding: var(--space-4) var(--space-5) var(--space-5);
+    gap: var(--space-3);
+  }
+  .login__logo {
+    width: min(132px, 40%);
+  }
+  .login__center {
+    gap: var(--space-3);
+  }
+  /* "Reconhecimento facial" não cabe numa linha a 12,5px em tela de 375px,
+     e a aba ficava com o dobro da altura da vizinha. */
+  .login__method {
+    font-size: 11.5px;
+    gap: var(--space-1);
+    padding: 0 var(--space-1);
+  }
+  /* O quadro da câmera continua grande o bastante para a pessoa se
+     enquadrar, mas para de mandar na altura da tela. */
+  .face-frame {
+    width: min(168px, 46vw);
+  }
+  .login__title {
+    font-size: var(--text-xl);
+  }
+  .login__disclaimer {
+    font-size: 10px;
+    line-height: 1.5;
+  }
+}
+
+/* Telas bem estreitas: o ícone da aba dá lugar ao rótulo, que é o que
+   precisa ser lido. Continuar encolhendo a fonte deixaria o texto pequeno
+   demais para quem está de luva na portaria. */
+@media (max-width: 384px) {
+  /* Alvo é o elemento `app-icon`, não o `.icon` que vive dentro dele: o
+     estilo deste componente não atravessa a fronteira do outro. */
+  .login__method app-icon {
+    display: none;
+  }
+}
+
+/* Aparelho baixo (ou teclado aberto): o miolo rola por dentro e o botão
+   nunca fica inalcançável. */
+@media (max-width: 559px) and (max-height: 720px) {
+  .login__visual {
+    min-height: 72px;
+  }
+  .face-frame {
+    width: min(140px, 40vw);
+  }
 }
