@@ -41,6 +41,16 @@ export class TeamMember {
   @Column({ type: 'jsonb', default: {} })
   documents!: Record<string, string>;
 
+  /**
+   * Funcoes de seguranca habilitadas: 'vigia', 'socorrista'.
+   *
+   * Nao confundir com `role`, que e o cargo profissional. Cargo e a
+   * profissao da pessoa; funcao de seguranca e o que ela pode exercer
+   * dentro de uma atividade, e uma pessoa pode acumular as duas.
+   */
+  @Column({ name: 'safety_roles', type: 'text', array: true, default: () => "'{}'" })
+  safetyRoles!: string[];
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt!: Date;
 }

@@ -524,14 +524,37 @@ export const DOCUMENT_TYPES: DocumentType[] = [
   { code: 'NR-13', description: 'Caldeiras e vasos de pressão' },
 ];
 
+/**
+ * Funções de segurança que um funcionário pode exercer numa atividade.
+ *
+ * Lista fechada, igual à do servidor (`safety-roles.ts`): habilitar alguém
+ * como vigia é decisão do SESMT com capacitação por trás, não digitação
+ * numa tela.
+ */
+export const SAFETY_ROLES = [
+  { id: 'vigia', label: 'Vigia', icon: '👁️', requires: 'NR-33' },
+  { id: 'socorrista', label: 'Socorrista', icon: '🚑', requires: null },
+] as const;
+
+export type SafetyRole = (typeof SAFETY_ROLES)[number]['id'];
+
 export interface TeamMember {
   name: string;
   registration: string;
+  /** Cargo profissional — a profissão da pessoa. */
   role: string;
   company: string;
   unit: string;
   isThirdParty?: boolean;
   documents: Record<string, string>;
+  /**
+   * Funções de segurança habilitadas.
+   *
+   * Não confundir com `role`: o cargo é o que a pessoa é, a função de
+   * segurança é o papel que ela pode assumir dentro de uma PET. Uma pessoa
+   * pode acumular as duas, e isso muda sem a profissão mudar.
+   */
+  safetyRoles?: SafetyRole[];
 }
 
 export const TEAM_MEMBERS: TeamMember[] = [
@@ -567,6 +590,63 @@ function documentStatus(days: number): BadgeItemStatus {
 // permissão" do assistente usa o resultado das duas origens do mesmo jeito
 // dali em diante (preview, ressalva por documento vencido, "+ Equipe/
 // Vigia/Resgatista").
+/**
+ * Qual função de segurança cada papel da PET exige.
+ *
+ * `equipe` não exige nenhuma: ali entra quem executa o serviço, e isso é
+ * outra coisa.
+ */
+export const SAFETY_ROLE_BY_PET_ROLE: Record<PetTeamRole, SafetyRole | null> = {
+  equipe: null,
+  vigia: 'vigia',
+  resgate: 'socorrista',
+};
+
+/** Um funcionário na lista de escolha, com o veredito já resolvido. */
+export interface EmployeeOption {
+  member: TeamMember;
+  /** Pode ser escolhido para este papel agora? */
+  eligible: boolean;
+  /** Por que não, quando não. Vazio quando está apto. */
+  blockReason: string;
+}
+
+/**
+ * A pessoa está apta a assumir esta função na PET?
+ *
+ * Ter a função habilitada é condição necessária, não suficiente: a
+ * capacitação que a sustenta precisa estar em dia. Para o vigia de espaço
+ * confinado isso é a NR-33 — é o que a norma exige de quem fica do lado de
+ * fora vigiando quem entrou.
+ *
+ * Socorrista ainda não tem capacitação obrigatória definida no sistema
+ * (`requires: null`): a função já é atribuível e a checagem entra aqui
+ * quando o requisito for definido, sem mexer em mais nada.
+ */
+export function eligibilityFor(
+  member: TeamMember,
+  role: SafetyRole | null,
+): { eligible: boolean; blockReason: string } {
+  if (!role) return { eligible: true, blockReason: '' };
+
+  const definicao = SAFETY_ROLES.find((f) => f.id === role);
+  const exigido = definicao?.requires ?? null;
+  if (!exigido) return { eligible: true, blockReason: '' };
+
+  const validade = member.documents[exigido];
+  if (!validade) {
+    return { eligible: false, blockReason: `sem ${exigido} cadastrada` };
+  }
+  const dias = daysUntil(validade);
+  if (dias < 0) {
+    return {
+      eligible: false,
+      blockReason: `${exigido} vencida há ${-dias} d`,
+    };
+  }
+  return { eligible: true, blockReason: '' };
+}
+
 export function teamMemberToBadge(member: TeamMember): Badge {
   const items: BadgeItem[] = Object.keys(member.documents)
     .map((code) => {

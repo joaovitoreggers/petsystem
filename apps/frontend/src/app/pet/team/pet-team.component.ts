@@ -1,7 +1,10 @@
 import { Component, computed, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { PetStateService } from '../pet-state.service';
+import { AccessService } from '../services/access.service';
 import {
+  SAFETY_ROLES,
+  SafetyRole,
   BADGE_STATUS,
   BadgeItemStatus,
   DOCUMENT_TYPES,
@@ -91,6 +94,16 @@ export class PetTeamComponent {
   readonly cadVinculo = signal<'Próprio' | 'Terceiro'>('Próprio');
   readonly cadDocDates = signal<Record<string, string>>({ ASO: '' });
 
+  /**
+   * Funções de segurança marcadas no formulário.
+   *
+   * Separado do cargo de propósito: cargo é a profissão (campo "Função"),
+   * isto é o que a pessoa pode exercer dentro de uma PET. Um soldador pode
+   * ser vigia; ser vigia não muda a profissão dele.
+   */
+  readonly cadSafetyRoles = signal<SafetyRole[]>([]);
+  readonly safetyRoles = SAFETY_ROLES;
+
   readonly deleteTarget = signal<TeamMember | null>(null);
   readonly deleting = signal(false);
   readonly deleteError = signal<string | null>(null);
@@ -100,8 +113,30 @@ export class PetTeamComponent {
   // pelas filiais reais do grupo assim que carregam.
   readonly unitOptions = signal<string[]>(FALLBACK_UNITS);
 
+  /**
+   * Quem pode cadastrar um funcionario, segundo o servidor.
+   *
+   * A permissao vem de /auth/me, nao do cargo deduzido aqui. Esconder o
+   * botao e so cortesia — quem chamar a rota direto leva 403 do
+   * PermissionsGuard —, mas oferecer um botao que a API vai recusar e pior
+   * do que nao oferecer.
+   */
+  readonly podeCadastrar = computed(() => this.access.pode()('criar_funcionario'));
+  readonly podeEditar = computed(() => this.access.pode()('editar_funcionario'));
+  readonly podeExcluir = computed(() => this.access.pode()('desativar_funcionario'));
+
+  /**
+   * A industria da pessoa que esta cadastrando, quando ela tem uma.
+   *
+   * Quem e de Ceu Azul cadastra em Ceu Azul: nao ha escolha a fazer, entao
+   * nao ha seletor. Oferecer as outras unidades sugeriria um alcance que a
+   * pessoa nao tem.
+   */
+  readonly unidadeFixa = computed(() => this.state.currentBranchName());
+
   constructor(
     readonly state: PetStateService,
+    readonly access: AccessService,
     private readonly tenancyApi: TenancyApiService,
   ) {
     const companyGroupId = this.state.session()?.user.companyGroupId;
@@ -258,9 +293,10 @@ export class PetTeamComponent {
     this.cadRegistration.set('');
     this.cadRole.set('');
     this.cadCompany.set('Lar · Manutenção');
-    this.cadUnit.set(this.unitOptions()[0] ?? 'Matelândia');
+    this.cadUnit.set(this.unidadeFixa() ?? this.unitOptions()[0] ?? 'Matelândia');
     this.cadVinculo.set('Próprio');
     this.cadDocDates.set({ ASO: '' });
+    this.cadSafetyRoles.set([]);
     this.modalOpen.set(true);
   }
 
@@ -275,6 +311,7 @@ export class PetTeamComponent {
     this.cadUnit.set(member.unit);
     this.cadVinculo.set(member.isThirdParty ? 'Terceiro' : 'Próprio');
     this.cadDocDates.set({ ...member.documents });
+    this.cadSafetyRoles.set([...(member.safetyRoles ?? [])]);
     this.modalOpen.set(true);
   }
 
@@ -313,6 +350,23 @@ export class PetTeamComponent {
       else next[code] = '';
       return next;
     });
+  }
+
+  /** Marca ou desmarca uma função de segurança no formulário. */
+  toggleSafetyRole(id: SafetyRole): void {
+    this.cadSafetyRoles.update((atual) =>
+      atual.includes(id) ? atual.filter((r) => r !== id) : [...atual, id],
+    );
+  }
+
+  /** As funções de segurança de um funcionário, prontas para exibir. */
+  safetyTagsOf(member: TeamMember) {
+    const ids = member.safetyRoles ?? [];
+    return SAFETY_ROLES.filter((fn) => ids.includes(fn.id));
+  }
+
+  hasSafetyRole(id: SafetyRole): boolean {
+    return this.cadSafetyRoles().includes(id);
   }
 
   setCadDocDate(code: string, iso: string): void {
@@ -371,6 +425,7 @@ export class PetTeamComponent {
           unit: this.cadUnit(),
           isThirdParty: this.cadVinculo() === 'Terceiro',
           documents,
+          safetyRoles: this.cadSafetyRoles(),
         });
         this.modalOpen.set(false);
       } catch (err) {
@@ -393,6 +448,7 @@ export class PetTeamComponent {
       unit: this.cadUnit(),
       isThirdParty: this.cadVinculo() === 'Terceiro',
       documents,
+      safetyRoles: this.cadSafetyRoles(),
     });
     this.modalOpen.set(false);
     this.filter.set('todos');
@@ -400,9 +456,10 @@ export class PetTeamComponent {
     this.cadRegistration.set('');
     this.cadRole.set('');
     this.cadCompany.set('Lar · Manutenção');
-    this.cadUnit.set(this.unitOptions()[0] ?? 'Matelândia');
+    this.cadUnit.set(this.unidadeFixa() ?? this.unitOptions()[0] ?? 'Matelândia');
     this.cadVinculo.set('Próprio');
     this.cadDocDates.set({ ASO: '' });
+    this.cadSafetyRoles.set([]);
   }
 
   openDeleteDialog(member: TeamMember): void {

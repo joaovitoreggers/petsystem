@@ -10,6 +10,7 @@ export interface CreateTeamMemberData {
   branchId?: string | null;
   isThirdParty?: boolean;
   documents: Record<string, string>;
+  safetyRoles?: string[];
 }
 
 export interface UpdateTeamMemberData {
@@ -21,6 +22,7 @@ export interface UpdateTeamMemberData {
   branchId?: string | null;
   isThirdParty?: boolean;
   documents?: Record<string, string>;
+  safetyRoles?: string[];
 }
 
 /**

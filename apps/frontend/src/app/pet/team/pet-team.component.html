@@ -11,35 +11,18 @@
         histórico da PET; vencimento em até 30 dias libera com aviso de
         renovação.
       </div>
-      <button
-        type="button"
-        class="btn btn-primary team__new"
-        (click)="openModal()"
-      >
-        <app-icon name="plus" [size]="17" />
-        Cadastrar funcionário
-      </button>
+      @if (podeCadastrar()) {
+        <button
+          type="button"
+          class="btn btn-primary team__new"
+          (click)="openModal()"
+        >
+          <app-icon name="plus" [size]="17" />
+          Cadastrar funcionário
+        </button>
+      }
     </div>
   </div>
-
-  @if (state.demoMode()) {
-    <!-- Sem servidor, editar grava no aparelho. Dizer isso é o que separa
-         uma demonstração honesta de um cadastro que parece ter sido salvo
-         e não foi. -->
-    <div class="team__demo">
-      <span>
-        <strong>Modo demonstração</strong> — sem servidor. As alterações no
-        cadastro ficam gravadas neste aparelho e não chegam à base da empresa.
-      </span>
-      <button
-        type="button"
-        class="btn btn-secondary btn-sm"
-        (click)="state.resetRoster()"
-      >
-        Restaurar dados de exemplo
-      </button>
-    </div>
-  }
 
   <div class="kpi-grid">
     @for (k of kpis(); track k.label) {
@@ -99,7 +82,7 @@
           <th style="width: 30%">Normas e vencimentos</th>
           <th>Próximo vencimento</th>
           <th>Situação</th>
-          @if (state.canEditRoster()) {
+          @if (podeEditar() || podeExcluir()) {
             <th style="width: 90px">Ações</th>
           }
         </tr>
@@ -116,6 +99,17 @@
                     >{{ row.member.role }} · mat.
                     {{ row.member.registration }}</span
                   >
+                  <!-- Funções de segurança: o que a pessoa pode assumir numa
+                       PET, ao lado de quem ela é profissionalmente. -->
+                  @if (safetyTagsOf(row.member); as tags) {
+                    @if (tags.length) {
+                      <span class="team__safety-tags">
+                        @for (t of tags; track t.id) {
+                          <span class="team__safety-tag">{{ t.icon }} {{ t.label }}</span>
+                        }
+                      </span>
+                    }
+                  }
                 </span>
               </div>
             </td>
@@ -159,24 +153,28 @@
                 {{ row.situationLabel }}
               </span>
             </td>
-            @if (state.canEditRoster()) {
+            @if (podeEditar() || podeExcluir()) {
               <td data-label="Ações" class="team__actions">
-                <button
-                  type="button"
-                  class="btn-icon-ghost"
-                  title="Editar funcionário"
-                  (click)="openEditModal(row.member)"
-                >
-                  <app-icon name="pencil" [size]="16" />
-                </button>
-                <button
-                  type="button"
-                  class="btn-icon-ghost btn-icon-ghost--danger"
-                  title="Excluir funcionário"
-                  (click)="openDeleteDialog(row.member)"
-                >
-                  <app-icon name="trash" [size]="16" />
-                </button>
+                @if (podeEditar()) {
+                  <button
+                    type="button"
+                    class="btn-icon-ghost"
+                    title="Editar funcionário"
+                    (click)="openEditModal(row.member)"
+                  >
+                    <app-icon name="pencil" [size]="16" />
+                  </button>
+                }
+                @if (podeExcluir()) {
+                  <button
+                    type="button"
+                    class="btn-icon-ghost btn-icon-ghost--danger"
+                    title="Excluir funcionário"
+                    (click)="openDeleteDialog(row.member)"
+                  >
+                    <app-icon name="trash" [size]="16" />
+                  </button>
+                }
               </td>
             }
           </tr>
@@ -190,13 +188,19 @@
       <app-industrial-art class="empty-state__art" scene="clipboard" />
       <div class="empty-state__title">Nenhum funcionário nesse filtro</div>
       <div class="empty-state__text">
-        Troque o filtro acima ou cadastre um novo trabalhador para liberar a
-        entrada dele em campo.
+        @if (podeCadastrar()) {
+          Troque o filtro acima ou cadastre um novo trabalhador para liberar a
+          entrada dele em campo.
+        } @else {
+          Troque o filtro acima para ver outros trabalhadores.
+        }
       </div>
-      <button type="button" class="btn btn-secondary" (click)="openModal()">
-        <app-icon name="plus" [size]="17" />
-        Cadastrar funcionário
-      </button>
+      @if (podeCadastrar()) {
+        <button type="button" class="btn btn-secondary" (click)="openModal()">
+          <app-icon name="plus" [size]="17" />
+          Cadastrar funcionário
+        </button>
+      }
     </div>
   }
 </div>
@@ -257,15 +261,25 @@
       <div class="team__form-row">
         <div class="field" style="flex: 1; min-width: 180px">
           <label>Unidade</label>
-          <select
-            class="input"
-            [value]="cadUnit()"
-            (change)="cadUnit.set($any($event.target).value)"
-          >
-            @for (u of unitOptions(); track u) {
-              <option>{{ u }}</option>
-            }
-          </select>
+          <!--
+            Quem está lotado numa indústria cadastra nela e só nela — então
+            não há escolha a fazer, e o campo mostra a unidade em vez de
+            oferecer as outras. O servidor aplica a mesma regra: o branchId
+            enviado por uma sessão presa a uma indústria é ignorado.
+          -->
+          @if (unidadeFixa(); as unidade) {
+            <input class="input" [value]="unidade" disabled />
+          } @else {
+            <select
+              class="input"
+              [value]="cadUnit()"
+              (change)="cadUnit.set($any($event.target).value)"
+            >
+              @for (u of unitOptions(); track u) {
+                <option [selected]="cadUnit() === u">{{ u }}</option>
+              }
+            </select>
+          }
         </div>
         <div class="field" style="flex: 1; min-width: 180px">
           <label>Vínculo</label>
@@ -278,6 +292,35 @@
             <option>Terceiro</option>
           </select>
         </div>
+      </div>
+
+      <!--
+        Funções de segurança ≠ cargo. O campo "Função" acima é a profissão;
+        isto é o que a pessoa pode assumir dentro de uma PET. Um soldador
+        pode ser vigia — e continua soldador.
+      -->
+      <div class="section-kicker team__docs-kicker">Funções de segurança</div>
+      <div class="team__safety-list">
+        @for (fn of safetyRoles; track fn.id) {
+          <label class="team__safety-row">
+            <input
+              type="checkbox"
+              [checked]="hasSafetyRole(fn.id)"
+              (change)="toggleSafetyRole(fn.id)"
+            />
+            <span class="team__safety-icon" aria-hidden="true">{{ fn.icon }}</span>
+            <span class="team__safety-text">
+              <span class="team__safety-name">{{ fn.label }}</span>
+              @if (fn.requires) {
+                <span class="team__safety-req">
+                  exige {{ fn.requires }} em dia para atuar na PET
+                </span>
+              } @else {
+                <span class="team__safety-req">sem capacitação obrigatória definida</span>
+              }
+            </span>
+          </label>
+        }
       </div>
 
       <div class="section-kicker team__docs-kicker">
