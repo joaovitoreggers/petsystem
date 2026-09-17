@@ -98,8 +98,8 @@ export class PetWizardComponent {
 
   // Lista de unidades do seletor "Unidade" — parte de PET_UNITS (mock) e
   // troca pelas filiais reais do grupo da sessão assim que carregam. Sem
-  // sessão (reconhecimento facial, simulação) ou se a chamada falhar, fica
-  // no mock — mesmo padrão de fallback do resto do app.
+  // sessão ou se a chamada falhar, fica no mock — mesmo padrão de fallback
+  // do resto do app.
   readonly unitOptions = signal<string[]>(PET_UNITS);
 
   constructor(

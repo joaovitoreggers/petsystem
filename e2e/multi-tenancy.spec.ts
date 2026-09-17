@@ -15,11 +15,11 @@ async function loginAs(page: Page, email: string): Promise<void> {
   await page.getByPlaceholder('nome@petsystem.local').fill(email);
   await page.getByPlaceholder('Sua senha').fill(PASSWORD);
   await page.getByRole('button', { name: 'Entrar' }).click();
-  // Todo primeiro login por senha num aparelho novo (sem rosto cadastrado
+  // Todo primeiro login por senha num aparelho novo (sem passkey cadastrada
   // ainda, como é o caso de todo contexto novo do Playwright) oferece
-  // habilitar o reconhecimento facial antes de seguir — ver
-  // e2e/reconhecimento-facial.spec.ts. Este arquivo não testa esse fluxo,
-  // então só dispensa o convite pra continuar como antes.
+  // habilitar a biometria nativa antes de seguir — ver
+  // e2e/biometria-nativa.spec.ts. Este arquivo não testa esse fluxo, então
+  // só dispensa o convite pra continuar como antes.
   await page.getByRole('button', { name: 'Agora não' }).click();
   await expect(page.getByRole('button', { name: 'Sair' })).toBeVisible();
 }
@@ -215,14 +215,14 @@ test.describe('Filial real no formulário de funcionário (não mockada)', () =>
   });
 });
 
-test.describe('Sessão não autenticada (reconhecimento facial simulado)', () => {
+test.describe('Sessão não autenticada (fallback local)', () => {
   test('the field screen still renders PETs via the local mock fallback, no crash', async ({ page }) => {
     await page.goto('/');
 
     // Sem login, a tela de Campo (home por padrão) precisa continuar de pé
     // com os dados mockados locais — é o fallback que absorve o 401 das
     // rotas agora protegidas por JwtAuthGuard.
-    await expect(page.getByRole('tab', { name: 'Reconhecimento facial' })).toBeVisible();
+    await expect(page.getByRole('tab', { name: 'Biometria do aparelho' })).toBeVisible();
     await expect(navButton(page, 'Campo')).toBeVisible();
   });
 });

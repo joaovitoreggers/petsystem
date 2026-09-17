@@ -2,9 +2,9 @@
 
 Fatia vertical do Desafio 8 (PET Digital / Inova Marechal Challenge): emissão e
 gestão de Permissões de Entrada e Trabalho (PETs) em áreas de risco, com o
-design entregue pelo cliente (fluxo do técnico no celular, incluindo
-reconhecimento facial pela câmera frontal do dispositivo, e painel do gestor
-no desktop). Monorepo Nx com back-end NestJS e front-end Angular.
+design entregue pelo cliente (fluxo do técnico no celular, incluindo entrada
+por biometria nativa do aparelho, e painel do gestor no desktop). Monorepo Nx
+com back-end NestJS e front-end Angular.
 
 O back-end também carrega, sem uso pelo front-end atual, o `AuthModule` e o
 `QrValidationModule` da fatia original do desafio (login por
@@ -36,12 +36,12 @@ apps/
 > deles. PETs e Funcionários (`WorkPermitsModule`/`TeamMembersModule`, abaixo)
 > são funcionais de verdade: a lista inicial carrega da API, e emitir/encerrar
 > uma PET ou cadastrar um funcionário grava no banco — mas exigem login real
-> (e-mail/senha ou reconhecimento facial, ver "Reconhecimento facial" abaixo)
-> desde a introdução de multi-tenancy; sem sessão não dá para saber a qual
-> tenant um registro pertence. Sem nenhuma sessão (aparelho novo, sem rosto
-> cadastrado, e ainda sem ter feito login por e-mail/senha) a tela cai nos
-> dados mockados locais em vez de quebrar, então continua demonstrável
-> sozinha mesmo sem back-end no ar. O restante (áreas de risco, checklist,
+> (e-mail/senha ou biometria nativa do aparelho, ver "Biometria nativa do
+> aparelho" abaixo) desde a introdução de multi-tenancy; sem sessão não dá
+> para saber a qual tenant um registro pertence. Sem nenhuma sessão (aparelho
+> novo, sem passkey cadastrada, e ainda sem ter feito login por e-mail/senha)
+> a tela cai nos dados mockados locais em vez de quebrar, então continua
+> demonstrável sozinha mesmo sem back-end no ar. O restante (áreas de risco, checklist,
 > limites de gás, crachás simulados no scanner de QR, histórico de 30 dias)
 > continua com dados de referência fixos no front-end — não são entidades do
 > banco.
@@ -384,10 +384,10 @@ mas ainda não é verificada por nenhum fluxo — não existe, nesta fase, um
 Back-end que sustenta as telas em `/pet` (design do PET Digital). Toda a rota
 **exige** `JwtAuthGuard` — sem sessão não dá para saber a qual tenant o
 registro pertence. A tela tem login real por e-mail/senha (mesmo
-`POST /api/auth/login` da tabela acima) — quando autenticado assim, o token
-fica disponível e alimenta essas rotas; o caminho de reconhecimento facial
-(simulação, sem credencial) não gera token, então cai no fallback de dados
-mockados que o front-end já tinha antes de existir back-end nenhum (ver
+`POST /api/auth/login` da tabela acima) ou por biometria nativa do aparelho
+(ver "Biometria nativa do aparelho" abaixo, que também devolve um JWT de
+verdade) — sem nenhuma das duas, cai no fallback de dados mockados que o
+front-end já tinha antes de existir back-end nenhum (ver
 `PetStateService.loadFromBackend()`/`registerTeamMember()`) — a tela continua
 funcionando, só não persiste.
 `npm run backend:seed` popula as tabelas com o mesmo conteúdo que já existia
@@ -440,8 +440,8 @@ assistente "Nova PET" e no cadastro de funcionário (`PetWizardComponent`/
 `PetTeamComponent`) já não é mais uma lista fixa: carrega as filiais de
 verdade do grupo da sessão via `GET /api/company-groups/:groupId/branches`
 assim que o componente monta, e só cai na lista mockada de antes
-(Matelândia/Medianeira/Céu Azul/Itaipulândia/Missal) sem sessão (caminho de
-reconhecimento facial) ou se a chamada falhar. O back-end tenta casar o
+(Matelândia/Medianeira/Céu Azul/Itaipulândia/Missal) sem sessão ou se a
+chamada falhar. O back-end tenta casar o
 `unit` recebido com o nome de uma filial do grupo de quem está autenticado
 e preenche `branchId` automaticamente; sem match, o registro fica sem
 filial mesmo assim pertencendo ao grupo (funcionário de crachá, sem `unit`,
@@ -505,57 +505,61 @@ preenche `companyGroupId`/`branchId` em usuários/PETs/funcionários/
 funcionários-de-crachá que já existiam no banco antes dessas colunas
 existirem (rode de novo com segurança depois de atualizar).
 
-## Reconhecimento facial
+## Biometria nativa do aparelho
 
-Reconhecimento de verdade — câmera + biometria, rodando inteiro no
-navegador via [`@vladmandic/face-api`](https://github.com/vladmandic/face-api)
-(TensorFlow.js; modelos em `apps/frontend/public/assets/face-models/`,
-baixados uma vez e cacheados pelo navegador) — mas só **facilita o acesso
-de quem já tem conta**: não é um método de cadastro, é um atalho pra pular
-a senha num aparelho pessoal já usado antes.
+Entrada via **WebAuthn** — Face ID, Touch ID, Windows Hello ou impressão
+digital, o que o aparelho já oferecer, através de
+[`@simplewebauthn/browser`](https://simplewebauthn.dev/) no front-end e
+[`@simplewebauthn/server`](https://simplewebauthn.dev/) no back-end — usada
+da mesma forma que um navegador ou gerenciador de senhas usa a biometria do
+sistema: só pra **guardar o acesso de quem já tem conta**, não é um método
+de cadastro nem substitui o login por e-mail/senha. A chave privada nunca
+sai do hardware seguro do aparelho; o servidor só guarda a chave pública e
+verifica a assinatura de cada tentativa (`WebAuthnCredential`).
 
 1. Primeiro acesso num aparelho é sempre por e-mail/senha
-   (`POST /api/auth/login`). Sem nenhum rosto cadastrado ainda, a aba
-   "Reconhecimento facial" da tela de login mostra isso e não deixa
-   iniciar o scan.
+   (`POST /api/auth/login`). Sem nenhuma passkey cadastrada ainda, a aba
+   "Biometria do aparelho" da tela de login explica isso e não deixa
+   iniciar a cerimônia.
 2. Logo depois de um login por senha bem-sucedido, se este aparelho ainda
-   não tem um rosto cadastrado, a tela oferece habilitar (opt-in, sempre
-   com "Agora não" como opção). Aceitando: a câmera captura um frame, o
-   `face-api.js` extrai um **descritor** (vetor de 128 números — nunca a
-   imagem em si, e nada sai do navegador) e o front-end pede um **token de
-   aparelho** ao back-end (`POST /api/auth/device-token`, exige a sessão
-   real que acabou de logar). Descritor + token ficam só no `localStorage`
-   deste navegador (`DeviceAuthService`).
-3. Nas próximas vezes, escolher "Reconhecimento facial" captura um novo
-   frame, compara o descritor contra o guardado localmente (distância
-   euclidiana, limiar padrão do `face-api.js`) e, se bater, troca o token
-   de aparelho guardado por uma sessão de verdade
-   (`POST /api/auth/device-login`) — mesmo formato de resposta de
-   `POST /api/auth/login`, claims incluídos.
-4. **Sair sempre revoga o aparelho** (`DELETE /api/auth/device-token`) —
-   "lembrada até clicar em Sair", não além disso: sem revogar de verdade
-   no back-end, o descritor + token sozinhos no `localStorage` (ex.
-   copiados por alguém) continuariam entrando depois do logout.
-
-O token de aparelho é um segredo opaco (`id.segredo`, gerado com
-`crypto.randomBytes`, guardado com hash bcrypt via `DeviceCredential` —
-mesma tabela nova, mesmo tratamento que a senha) — nunca a senha em si, e
-sozinho não abre nada sem o rosto batendo primeiro. Revogar o token de
-outra conta é um no-op silencioso (`204` sem revogar nada), não um erro,
-pra não vazar se aquele token existe.
+   não tem uma passkey cadastrada, a tela oferece habilitar (opt-in,
+   sempre com "Agora não" como opção). Aceitando: o front-end pede opções
+   de cadastro ao back-end (`POST /api/auth/webauthn/register/options`,
+   exige a sessão real que acabou de logar — resident key + verificação de
+   usuário obrigatórias), o navegador mostra o prompt nativo do sistema
+   operacional, e a assinatura resultante é verificada no servidor
+   (`POST /api/auth/webauthn/register/verify`) antes de ser aceita. Só o
+   `credentialId` (não um segredo) fica guardado no `localStorage` deste
+   navegador (`DeviceAuthService`), como dica de qual aba abrir por
+   padrão — quem decide se a passkey ainda vale é sempre o servidor.
+3. Nas próximas vezes, escolher "Biometria do aparelho" pede opções de
+   login ao back-end (`POST /api/auth/webauthn/login/options`, **sem**
+   restringir de antemão qual credencial serve — é o próprio autenticador
+   da plataforma quem oferece a passkey certa, sem digitar nada antes),
+   confirma no aparelho e troca a assinatura por uma sessão de verdade
+   (`POST /api/auth/webauthn/login/verify`) — mesmo formato de resposta de
+   `POST /api/auth/login`, claims incluídos. Um contador anticlonagem
+   (`counter`) é atualizado a cada login bem-sucedido, como o próprio
+   `@simplewebauthn/server` exige.
+4. **Sair NÃO revoga a passkey** — diferente do antigo token de aparelho
+   desta fase, uma passkey de verdade sobrevive ao logout, exatamente como
+   um Face ID salvo num navegador continua lá depois de sair de um site.
+   Esquecer a biometria deste aparelho é uma ação separada e explícita
+   (`DELETE /api/auth/webauthn/credentials/:id`).
 
 | Rota | Descrição |
 |------|-----------|
-| `POST /api/auth/device-token` | Emite um token de aparelho pro usuário autenticado — exige `JwtAuthGuard` |
-| `POST /api/auth/device-login` | Troca um token de aparelho válido por uma sessão real (mesmo formato de `/auth/login`) |
-| `DELETE /api/auth/device-token` | Revoga um token — exige `JwtAuthGuard`; só revoga se pertencer a quem está pedindo |
+| `POST /api/auth/webauthn/register/options` | Opções de cadastro pro usuário autenticado — exige `JwtAuthGuard` |
+| `POST /api/auth/webauthn/register/verify` | Verifica a cerimônia de cadastro e salva a credencial — exige `JwtAuthGuard` |
+| `POST /api/auth/webauthn/login/options` | Opções de login — pública, sem `allowCredentials` (discoverable credential) |
+| `POST /api/auth/webauthn/login/verify` | Verifica a cerimônia de login e devolve uma sessão real (mesmo formato de `/auth/login`) |
+| `DELETE /api/auth/webauthn/credentials/:id` | Esquece uma passkey — exige `JwtAuthGuard`; no-op silencioso (`204`) se o id não pertencer a quem pediu |
 
 Fora do escopo desta fase (avaliado e descartado de propósito, ver
-histórico da conversa): reconhecimento biométrico contra um cadastro
-central no servidor, aparelho compartilhado com múltiplas contas
-reconhecíveis, detecção de vivacidade (anti-spoofing — uma foto impressa
-mostrada à câmera não é hoje distinguida de um rosto real), e múltiplas
-amostras de cadastro por pessoa (só uma captura por enrollment).
+histórico da conversa): múltiplas passkeys por conta gerenciadas na UI,
+sincronização entre aparelhos (fica a critério do gerenciador de credenciais
+do sistema operacional/navegador de quem usa), e recuperação de conta
+apenas por biometria sem volta pra e-mail/senha.
 
 ## Análise de causas por IA (OpenAI)
 
