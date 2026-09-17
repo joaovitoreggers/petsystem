@@ -406,6 +406,50 @@
             </div>
 
             <div class="detalhe__body petscroll">
+              @if (pet.description || pet.serviceType || pet.executingCompany || pet.plannedStart || pet.plannedEnd) {
+                <div>
+                  <div class="section-kicker">Dados da abertura</div>
+                  <div class="detalhe__fields">
+                    @if (pet.serviceType) {
+                      <div class="detalhe__field">
+                        <span class="detalhe__field-label">Tipo de intervenção</span>
+                        <span>{{ pet.serviceType }}</span>
+                      </div>
+                    }
+                    @if (pet.executingCompany) {
+                      <div class="detalhe__field">
+                        <span class="detalhe__field-label">Empresa executante</span>
+                        <span>{{ pet.executingCompany }}</span>
+                      </div>
+                    }
+                    @if (pet.plannedStart) {
+                      <div class="detalhe__field">
+                        <span class="detalhe__field-label">Início previsto</span>
+                        <span>{{ pet.plannedStart }}</span>
+                      </div>
+                    }
+                    @if (pet.plannedEnd) {
+                      <div class="detalhe__field">
+                        <span class="detalhe__field-label">Término previsto</span>
+                        <span>{{ pet.plannedEnd }}</span>
+                      </div>
+                    }
+                    @if (pet.companyPhone) {
+                      <div class="detalhe__field">
+                        <span class="detalhe__field-label">Telefone</span>
+                        <span>{{ pet.companyPhone }}</span>
+                      </div>
+                    }
+                    @if (pet.description) {
+                      <div class="detalhe__field detalhe__field--wide">
+                        <span class="detalhe__field-label">Descrição do serviço</span>
+                        <span>{{ pet.description }}</span>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+
               @if (pet.gas) {
                 <div>
                   <div class="section-kicker">Última medição atmosférica</div>
@@ -449,6 +493,52 @@
                   </div>
                 </div>
               }
+              @if (pet.team && pet.team.length > 0) {
+                <div>
+                  <div class="section-kicker">Equipe</div>
+                  <div class="detalhe__team">
+                    @for (m of pet.team; track m.registration) {
+                      <span class="tag tag-neutral">{{ m.name }} · {{ teamRoleLabel[m.petRole] }}</span>
+                    }
+                  </div>
+                </div>
+              }
+
+              @if (detailChecklistGroups().length > 0) {
+                <div>
+                  <div class="section-kicker">Checklist</div>
+                  <div class="detalhe__checklist">
+                    @for (group of detailChecklistGroups(); track group.title) {
+                      <div class="detalhe__checklist-group">
+                        <div class="detalhe__checklist-title">{{ group.title }}</div>
+                        @for (item of group.items; track item.key) {
+                          <div class="detalhe__checklist-item">
+                            <span
+                              class="detalhe__checklist-answer"
+                              [class.detalhe__checklist-answer--nao]="item.answer === 'nao'"
+                              [class.detalhe__checklist-answer--na]="item.answer === 'na'"
+                              >{{ checklistAnswerLabel[item.answer] }}</span
+                            >
+                            <span>{{ item.label }}</span>
+                          </div>
+                        }
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+
+              @if (detailFireWatchRounds().length > 0) {
+                <div>
+                  <div class="section-kicker">Rondas de vigia (trabalho a quente)</div>
+                  <div class="detalhe__team">
+                    @for (round of detailFireWatchRounds(); track round.hora + round.nome) {
+                      <span class="tag tag-neutral">{{ round.hora }} · {{ round.nome }}</span>
+                    }
+                  </div>
+                </div>
+              }
+
               <div>
                 <div class="section-kicker">Histórico da permissão</div>
                 <div class="timeline">
