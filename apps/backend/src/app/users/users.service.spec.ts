@@ -22,6 +22,8 @@ function user(overrides: Partial<User>): User {
 describe('UsersService', () => {
   let service: UsersService;
   let repository: jest.Mocked<IUserRepository>;
+  let branchesService: { findById: jest.Mock };
+  let accessControl: { sincronizarCargo: jest.Mock };
 
   beforeEach(() => {
     repository = {
@@ -31,8 +33,18 @@ describe('UsersService', () => {
       create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
+      touchLastAccess: jest.fn(),
+      findAllScoped: jest.fn().mockResolvedValue([]),
     };
-    service = new UsersService(repository);
+    branchesService = { findById: jest.fn() };
+    // Cadastrar alguem e, alem de gravar a conta, dar a ela o cargo do papel
+    // escolhido — sem isso a conta nasce sem permissao nenhuma.
+    accessControl = { sincronizarCargo: jest.fn().mockResolvedValue(undefined) };
+    service = new UsersService(
+      repository,
+      branchesService as never,
+      accessControl as never,
+    );
   });
 
   describe('create', () => {
@@ -274,47 +286,124 @@ describe('UsersService', () => {
     });
   });
 
-  describe('findAll (tenant scoping)', () => {
-    it('returns every user when there is no scope', async () => {
-      const users = [user({ id: '1' }), user({ id: '2', companyGroupId: 'other-group' })];
-      repository.findAll.mockResolvedValue(users);
+  describe('findAll (recorte por industria)', () => {
+    // O recorte deixou de acontecer aqui: quem filtra e o SQL, em
+    // UserRepository.findAllScoped — recortar depois significaria carregar
+    // antes o cadastro das outras empresas. O que este nivel garante e que o
+    // escopo de quem pediu chega intacto ate la.
+    it('entrega o escopo de quem pediu para a consulta', async () => {
+      const escopo = { role: 'gestor', companyGroupId: GROUP_ID, branchId: null };
+      repository.findAllScoped.mockResolvedValue([]);
 
-      await expect(service.findAll()).resolves.toEqual(users);
+      await service.findAll(escopo);
+
+      expect(repository.findAllScoped).toHaveBeenCalledWith(escopo);
+      // Se isto fosse chamado, a lista inteira da plataforma teria saido do
+      // banco antes de qualquer filtro.
+      expect(repository.findAll).not.toHaveBeenCalled();
     });
 
-    it('returns every user for platform-admin, across every group', async () => {
-      const users = [user({ id: '1' }), user({ id: '2', companyGroupId: 'other-group' })];
-      repository.findAll.mockResolvedValue(users);
+    it('nao inventa escopo quando nao ha sessao', async () => {
+      repository.findAllScoped.mockResolvedValue([]);
+
+      await service.findAll();
+
+      expect(repository.findAllScoped).toHaveBeenCalledWith(undefined);
+    });
+  });
+
+  describe('resolveTenancy (onde a conta e lotada)', () => {
+    it('recusa lotar alguem numa industria de outro grupo', async () => {
+      // O gestor da Lar mandando o id de uma industria da outra empresa: sem
+      // esta checagem a conta nasceria la dentro.
+      branchesService.findById.mockResolvedValue({
+        id: 'ind-de-outra-empresa',
+        companyGroupId: 'outro-grupo',
+      });
 
       await expect(
-        service.findAll({ role: 'platform-admin', companyGroupId: null, branchId: null }),
-      ).resolves.toEqual(users);
+        service.create(
+          { name: 'X', email: 'x@y.z', password: 'p', role: 'porteiro', branchId: 'ind-de-outra-empresa' },
+          { role: 'gestor', companyGroupId: GROUP_ID, branchId: null },
+        ),
+      ).rejects.toThrow('Indústria inválida para este grupo de empresas');
     });
 
-    it('restricts a branch-scoped caller to users of that exact branch', async () => {
-      const users = [
-        user({ id: '1', branchId: 'b1' }),
-        user({ id: '2', branchId: 'b2' }),
-        user({ id: '3', branchId: null }),
-      ];
-      repository.findAll.mockResolvedValue(users);
+    it('aceita industria do proprio grupo', async () => {
+      branchesService.findById.mockResolvedValue({ id: 'ind-1', companyGroupId: GROUP_ID });
+      repository.findByEmail.mockResolvedValue(null);
+      repository.create.mockImplementation(async (d: unknown) => d as User);
 
-      const result = await service.findAll({ role: 'admin', companyGroupId: GROUP_ID, branchId: 'b1' });
+      const criado = await service.create(
+        { name: 'X', email: 'x@y.z', password: 'p', role: 'porteiro', branchId: 'ind-1' },
+        { role: 'gestor', companyGroupId: GROUP_ID, branchId: null },
+      );
 
-      expect(result.map((u: User) => u.id)).toEqual(['1']);
+      expect(criado.branchId).toBe('ind-1');
     });
 
-    it('restricts a group-wide caller to users of their own company group, regardless of branch', async () => {
-      const users = [
-        user({ id: '1', companyGroupId: GROUP_ID, branchId: 'b1' }),
-        user({ id: '2', companyGroupId: GROUP_ID, branchId: null }),
-        user({ id: '3', companyGroupId: 'other-group', branchId: null }),
-      ];
-      repository.findAll.mockResolvedValue(users);
+    it('prende quem e lotado numa industria a propria industria', async () => {
+      repository.findByEmail.mockResolvedValue(null);
+      repository.create.mockImplementation(async (d: unknown) => d as User);
 
-      const result = await service.findAll({ role: 'gestor', companyGroupId: GROUP_ID, branchId: null });
+      const criado = await service.create(
+        { name: 'X', email: 'x@y.z', password: 'p', role: 'porteiro', branchId: 'outra-industria' },
+        { role: 'admin', companyGroupId: GROUP_ID, branchId: 'minha-industria' },
+      );
 
-      expect(result.map((u: User) => u.id)).toEqual(['1', '2']);
+      // O campo enviado foi ignorado de proposito.
+      expect(criado.branchId).toBe('minha-industria');
+    });
+
+    it('a conta de plataforma nao pertence a empresa nenhuma', async () => {
+      repository.findByEmail.mockResolvedValue(null);
+      repository.create.mockImplementation(async (d: unknown) => d as User);
+
+      const criado = await service.create({
+        name: 'CEO',
+        email: 'ceo@artech.local',
+        password: 'p',
+        role: 'platform-admin',
+      });
+
+      expect(criado.companyGroupId).toBeNull();
+      expect(criado.branchId).toBeNull();
+    });
+  });
+  describe('cargo da conta nova', () => {
+    it('da a conta o cargo do papel escolhido', async () => {
+      repository.findByEmail.mockResolvedValue(null);
+      repository.create.mockResolvedValue(user({ id: 'novo', role: 'gestor' }));
+
+      await service.create({
+        name: 'X',
+        email: 'x@y.z',
+        password: 'p',
+        role: 'gestor',
+        companyGroupId: GROUP_ID,
+      });
+
+      // Sem esta linha a conta entra sem permissao nenhuma: o papel fica
+      // gravado em users.role, mas nada liga esse papel as permissoes.
+      expect(accessControl.sincronizarCargo).toHaveBeenCalledWith('novo', 'gestor');
+    });
+
+    it('troca o cargo quando o papel muda', async () => {
+      repository.findById.mockResolvedValue(user({ id: 'u1', role: 'gestor' }));
+      repository.update.mockResolvedValue(user({ id: 'u1', role: 'porteiro' }));
+
+      await service.update('u1', { role: 'porteiro' });
+
+      expect(accessControl.sincronizarCargo).toHaveBeenCalledWith('u1', 'porteiro');
+    });
+
+    it('nao mexe no cargo quando o papel nao muda', async () => {
+      repository.findById.mockResolvedValue(user({ id: 'u1', role: 'gestor' }));
+      repository.update.mockResolvedValue(user({ id: 'u1', role: 'gestor' }));
+
+      await service.update('u1', { name: 'Nome novo' });
+
+      expect(accessControl.sincronizarCargo).not.toHaveBeenCalled();
     });
   });
 });

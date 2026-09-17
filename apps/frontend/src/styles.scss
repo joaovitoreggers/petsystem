@@ -11,83 +11,103 @@
    ARTECH como acento e a moldura "blueprint" de canto como motivo.
    ═══════════════════════════════════════════════════════════════════════ */
 
-@import url('https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 :root {
-  /* ── Marca (inalterada) ────────────────────────────────────────────── */
-  --color-bg: #f2f2f3;
-  --color-surface: #e9e9ea;
-  --color-text: #1d1f20;
-  --color-accent: #5980a6;
-  --color-accent-2: #728fab;
-  --color-divider: color-mix(in srgb, #1d1f20 16%, transparent);
+  /* ── Marca ARTECH ──────────────────────────────────────────────────
+     Os valores vêm da especificação do redesign. O azul profundo é a cor
+     institucional; o ciano é o acento de tecnologia, usado com parcimônia.
+     Amarelo, laranja e vermelho não decoram nada — ver "Estados". */
+  --color-bg: #f5f7f9;
+  --color-surface: #eef2f5;
+  --color-text: #142b3d;
+  --color-accent: #0b3558;
+  --color-accent-2: #176b9c;
+  --color-cyan: #00b8c8;
+  --color-cyan-soft: #ddf7f9;
+  --color-divider: #d9e2e8;
 
-  --color-neutral-100: #f5f5f8;
-  --color-neutral-200: #e7e7ea;
-  --color-neutral-300: #d4d4d7;
-  --color-neutral-400: #b7b7ba;
-  --color-neutral-500: #98989b;
-  --color-neutral-600: #68686b;
-  --color-neutral-700: #4a4a4d;
-  --color-neutral-800: #424244;
-  --color-neutral-900: #2b2b2d;
+  --color-neutral-100: #f5f7f9;
+  --color-neutral-200: #eef2f5;
+  --color-neutral-300: #d9e2e8;
+  --color-neutral-400: #b8c6d0;
+  --color-neutral-500: #93a3b1;
+  --color-neutral-600: #64748b;
+  --color-neutral-700: #47586c;
+  --color-neutral-800: #2c4055;
+  --color-neutral-900: #142b3d;
 
-  --color-accent-100: #eef6ff;
-  --color-accent-200: #d6ebff;
-  --color-accent-300: #b5d9fd;
-  --color-accent-400: #94bce3;
-  --color-accent-500: #749dc4;
-  --color-accent-600: #597ea3;
-  --color-accent-700: #416180;
-  --color-accent-800: #2c455d;
-  --color-accent-900: #1d2d3d;
+  --color-accent-100: #e9f1f8;
+  --color-accent-200: #cfe2f0;
+  --color-accent-300: #a6c6de;
+  --color-accent-400: #6fa1c6;
+  --color-accent-500: #3c7ca9;
+  --color-accent-600: #176b9c;
+  --color-accent-700: #125a85;
+  --color-accent-800: #0e4372;
+  --color-accent-900: #0b3558;
 
-  --color-accent-2-100: #eef6ff;
-  --color-accent-2-200: #d6ebff;
-  --color-accent-2-300: #bdd8f2;
-  --color-accent-2-400: #9ebbd8;
-  --color-accent-2-500: #7e9cb8;
-  --color-accent-2-600: #627d98;
-  --color-accent-2-700: #486077;
-  --color-accent-2-800: #314457;
-  --color-accent-2-900: #1f2d3a;
+  /* Ciano: tecnologia e informação, sempre como acento. */
+  --color-accent-2-100: #ddf7f9;
+  --color-accent-2-200: #b4edf1;
+  --color-accent-2-300: #7fdfe7;
+  --color-accent-2-400: #40cdd9;
+  --color-accent-2-500: #00b8c8;
+  --color-accent-2-600: #009aa8;
+  --color-accent-2-700: #017b86;
+  --color-accent-2-800: #065c65;
+  --color-accent-2-900: #084a51;
 
-  /* ── Superfícies e traços ──────────────────────────────────────────── */
-  /* Camadas explícitas em vez de "transparente sobre transparente": dá
-     profundidade sem sombra pesada e mantém o cinza da marca. */
-  --surface-0: #ececed; /* fundo da aplicação */
+  /* ── Superfícies e traços ──────────────────────────────────────────
+     Camadas explícitas em vez de "transparente sobre transparente": dá
+     profundidade sem sombra pesada. Tema claro em todo o sistema. */
+  --surface-0: #f5f7f9; /* fundo da aplicação */
   --surface-1: #ffffff; /* painel/card */
-  --surface-2: #f6f6f7; /* área interna, cabeçalho de tabela */
-  --surface-3: #e7e7ea; /* inset, trilhos, campos */
-  --surface-inverse: #1b2836; /* barras escuras, login, emergência */
+  --surface-2: #eef2f5; /* área interna, cabeçalho de tabela */
+  --surface-3: #e4eaf0; /* inset, trilhos, campos */
+  --surface-inverse: #0b3558; /* faixas escuras e tela de emergência */
 
-  --border-subtle: color-mix(in srgb, #1d1f20 10%, transparent);
-  --border-default: color-mix(in srgb, #1d1f20 16%, transparent);
-  --border-strong: color-mix(in srgb, #1d1f20 30%, transparent);
+  --border-subtle: #e2e9ee;
+  --border-default: #d9e2e8;
+  --border-strong: #b8c6d0;
 
-  --text-strong: #14181c;
-  --text-default: #1d1f20;
-  --text-muted: #5c6167;
-  --text-faint: #83898f;
-  --text-on-dark: #eef2f6;
+  --text-strong: #0d1f2c;
+  --text-default: #142b3d;
+  --text-muted: #64748b;
+  --text-faint: #93a3b1;
+  --text-on-dark: #f2f7fa;
 
-  /* ── Estados operacionais (os 5 estados críticos da PET) ───────────── */
-  --status-ok: #2f8f5b; /* 🟢 seguro */
-  --status-warn: #8a5a00; /* 🟡 atenção */
-  --status-pending: #a35a17; /* 🟠 pendente */
-  --status-bad: #8e2020; /* 🔴 bloqueado */
-  --status-info: #2f6ea3; /* 🔵 em análise */
+  /* ── Estados operacionais ──────────────────────────────────────────
+     Cor aqui é informação, não enfeite: verde é conforme, amarelo é
+     atenção, laranja é risco, vermelho é crítico, azul é informação.
+     Nenhuma delas aparece por decoração em lugar nenhum. */
+  --status-ok: #159a68; /* 🟢 seguro/conforme */
+  --status-warn: #d99a00; /* 🟡 atenção */
+  --status-pending: #e56b16; /* 🟠 risco/alerta */
+  --status-bad: #c62828; /* 🔴 crítico/emergência */
+  --status-info: #176b9c; /* 🔵 informação */
 
-  --status-ok-bg: #e3f2e9;
-  --status-warn-bg: #f8ecd2;
-  --status-pending-bg: #fae7d6;
-  --status-bad-bg: #f8e3e3;
-  --status-info-bg: #e2eefa;
+  --status-ok-bg: #e4f6ee;
+  --status-warn-bg: #fdf3da;
+  --status-pending-bg: #fdeade;
+  --status-bad-bg: #fbe6e6;
+  --status-info-bg: #e9f1f8;
+
+  /* Texto sobre os fundos acima: os tons puros não têm contraste
+     suficiente sobre o próprio fundo claro em texto pequeno. */
+  --status-ok-fg: #0f7350;
+  --status-warn-fg: #8a6200;
+  --status-pending-fg: #b2500d;
+  --status-bad-fg: #a01f1f;
+  --status-info-fg: #0e4372;
 
   /* ── Tipografia ────────────────────────────────────────────────────── */
-  --font-heading: 'Barlow Condensed', system-ui, sans-serif;
-  --font-heading-weight: 600;
-  --font-body: 'Barlow', system-ui, sans-serif;
+  /* Uma família só, em pesos diferentes: título e texto na mesma voz.
+     Barlow Condensed dava ao produto um ar de cartaz; Inter é a fonte de
+     interface que o mercado de software industrial usa. */
+  --font-heading: 'Inter', system-ui, sans-serif;
+  --font-heading-weight: 700;
+  --font-body: 'Inter', system-ui, sans-serif;
   --font-mono: ui-monospace, 'SFMono-Regular', 'Roboto Mono', monospace;
 
   --text-xs: 11px;
@@ -112,26 +132,28 @@
   --space-12: 48px;
 
   /* ── Raio ──────────────────────────────────────────────────────────── */
-  --radius-xs: 3px;
-  --radius-sm: 5px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
   --radius-pill: 999px;
 
-  /* ── Elevação (sutil — profundidade, não sombra pesada) ────────────── */
-  --shadow-xs: 0 1px 2px color-mix(in srgb, #101418 8%, transparent);
+  /* ── Elevação ──────────────────────────────────────────────────────
+     Sombra aqui é profundidade, não peso: o cartão se separa do fundo por
+     um fio de borda e uma sombra quase imperceptível. Sombra pesada em
+     tema claro envelhece a interface na hora. */
+  --shadow-xs: 0 1px 2px rgba(20, 43, 61, 0.04);
   --shadow-sm:
-    0 1px 2px color-mix(in srgb, #101418 6%, transparent),
-    0 1px 1px color-mix(in srgb, #101418 4%, transparent);
+    0 1px 2px rgba(20, 43, 61, 0.04),
+    0 1px 3px rgba(20, 43, 61, 0.03);
   --shadow-md:
-    0 2px 4px color-mix(in srgb, #101418 6%, transparent),
-    0 6px 16px color-mix(in srgb, #101418 8%, transparent);
+    0 2px 4px rgba(20, 43, 61, 0.04),
+    0 8px 20px rgba(20, 43, 61, 0.06);
   --shadow-lg:
-    0 4px 8px color-mix(in srgb, #101418 6%, transparent),
-    0 18px 40px color-mix(in srgb, #101418 12%, transparent);
-  --ring-accent: 0 0 0 3px
-    color-mix(in srgb, var(--color-accent) 26%, transparent);
+    0 4px 10px rgba(20, 43, 61, 0.05),
+    0 20px 44px rgba(20, 43, 61, 0.09);
+  --ring-accent: 0 0 0 3px rgba(23, 107, 156, 0.18);
 
   /* ── Movimento ─────────────────────────────────────────────────────── */
   --ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);

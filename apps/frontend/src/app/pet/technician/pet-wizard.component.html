@@ -334,17 +334,43 @@
                     [value]="state.employeeSearchQuery()"
                     (input)="onEmployeeSearchChange($event)"
                   />
+                  <!--
+                    A lista já vem recortada pela função de segurança do papel
+                    que está sendo preenchido. Quem está habilitado mas com a
+                    capacitação vencida aparece bloqueado, com o motivo à
+                    vista: sumir com ele faria o técnico procurar por alguém
+                    que "não existe", em vez de saber que existe e está com
+                    documento vencido.
+                  -->
                   @if (state.employeeSearchResults().length > 0) {
                     <div class="employee-search__results">
-                      @for (m of state.employeeSearchResults(); track m.registration) {
-                        <button type="button" class="team-row employee-search__result" (click)="selectEmployee(m)">
-                          <span>{{ m.name }}</span>
-                          <span class="employee-search__result-meta">mat. {{ m.registration }} · {{ m.role }}</span>
+                      @for (op of state.employeeSearchResults(); track op.member.registration) {
+                        <button
+                          type="button"
+                          class="team-row employee-search__result"
+                          [class.employee-search__result--blocked]="!op.eligible"
+                          [disabled]="!op.eligible"
+                          [attr.title]="op.blockReason || null"
+                          (click)="selectEmployee(op.member)"
+                        >
+                          <span>{{ op.member.name }}</span>
+                          <span class="employee-search__result-meta">
+                            mat. {{ op.member.registration }} · {{ op.member.role }}
+                          </span>
+                          @if (op.eligible) {
+                            <span class="employee-search__status employee-search__status--ok">APTO</span>
+                          } @else {
+                            <span class="employee-search__status employee-search__status--blocked">
+                              {{ op.blockReason }}
+                            </span>
+                          }
                         </button>
                       }
                     </div>
                   } @else if (state.employeeSearchQuery().trim().length > 0) {
-                    <div class="team-row__empty">Nenhum funcionário encontrado.</div>
+                    <div class="team-row__empty">
+                      {{ state.emptySearchMessage() }}
+                    </div>
                   }
 
                   <div class="step-hint step-hint--center">ou leia o crachá</div>

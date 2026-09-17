@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { AccessControlModule } from '../auth/access-control.module';
 import { TenancyModule } from '../tenancy/tenancy.module';
 import { WorkPermit } from './entities/work-permit.entity';
 import { WORK_PERMIT_REPOSITORY } from './repositories/work-permit-repository.interface';
@@ -8,7 +9,8 @@ import { WorkPermitsController } from './work-permits.controller';
 import { WorkPermitsService } from './work-permits.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([WorkPermit]), TenancyModule],
+  // AccessControlModule entra pelo PermissionsGuard da rota de emissao.
+  imports: [TypeOrmModule.forFeature([WorkPermit]), TenancyModule, AccessControlModule],
   controllers: [WorkPermitsController],
   providers: [
     { provide: WORK_PERMIT_REPOSITORY, useClass: WorkPermitRepository },

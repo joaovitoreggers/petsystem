@@ -74,7 +74,12 @@ describe('AuthService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    usersService = { findByEmail: jest.fn(), validatePassword: jest.fn(), findById: jest.fn() };
+    usersService = {
+      findByEmail: jest.fn(),
+      validatePassword: jest.fn(),
+      findById: jest.fn(),
+      registrarAcesso: jest.fn().mockResolvedValue(undefined),
+    };
     jwtService = { sign: jest.fn().mockReturnValue('signed-jwt') };
     configService = { get: jest.fn((_key: string, def?: unknown) => def) };
     companyGroupsService = { findById: jest.fn() };

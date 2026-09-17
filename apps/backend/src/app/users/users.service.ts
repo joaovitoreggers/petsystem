@@ -6,7 +6,9 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
-import { assertOwnedByScope, filterOwnedByScope, TenantScope } from '../auth/tenant-scope';
+import { AccessControlService } from '../auth/access-control.service';
+import { BranchesService } from '../tenancy/branches.service';
+import { assertOwnedByScope, TenantScope } from '../auth/tenant-scope';
 import { User } from './entities/user.entity';
 import {
   IUserRepository,
@@ -43,11 +45,31 @@ export class UsersService {
   constructor(
     @Inject(USER_REPOSITORY)
     private readonly userRepository: IUserRepository,
+    // Entra so para conferir a que grupo uma industria pertence antes de
+    // lotar alguem nela — ver resolveTenancy.
+    private readonly branchesService: BranchesService,
+    private readonly accessControl: AccessControlService,
   ) {}
 
-  async findAll(scope?: TenantScope): Promise<User[]> {
-    const users = await this.userRepository.findAll();
-    return filterOwnedByScope(users, scope);
+  /**
+   * Registra que a conta acabou de entrar.
+   *
+   * Melhor esforco: se o carimbo falhar, quem esta entrando entra do mesmo
+   * jeito. Bloquear um login porque a coluna de "ultimo acesso" nao gravou
+   * seria deixar o porteiro na portaria por causa de um detalhe de relatorio.
+   */
+  async registrarAcesso(id: string): Promise<void> {
+    await this.userRepository.touchLastAccess(id);
+  }
+
+  /**
+   * O cadastro de usuarios de quem esta pedindo.
+   *
+   * O recorte por industria e a omissao da conta de plataforma acontecem no
+   * SQL (ver UserRepository.findAllScoped), nao aqui.
+   */
+  findAll(scope?: TenantScope): Promise<User[]> {
+    return this.userRepository.findAllScoped(scope);
   }
 
   async findById(id: string, scope?: TenantScope): Promise<User | null> {
@@ -73,10 +95,15 @@ export class UsersService {
       throw new ConflictException('Este email já está em uso');
     }
 
-    const { companyGroupId, branchId } = resolveTenancy(data.role, data.companyGroupId, data.branchId, scope);
+    const { companyGroupId, branchId } = await this.resolveTenancy(
+      data.role,
+      data.companyGroupId,
+      data.branchId,
+      scope,
+    );
 
     const passwordHash = await bcrypt.hash(data.password, SALT_ROUNDS);
-    return this.userRepository.create({
+    const criado = await this.userRepository.create({
       name: data.name,
       email: data.email,
       passwordHash,
@@ -84,6 +111,12 @@ export class UsersService {
       companyGroupId,
       branchId,
     });
+
+    // Sem isto a conta nasce sem cargo — e sem cargo nao ha permissao
+    // nenhuma, entao a pessoa entra num sistema onde nada aparece e nada
+    // funciona. O papel escolhido no cadastro tem que virar cargo de fato.
+    await this.accessControl.sincronizarCargo(criado.id, criado.role);
+    return criado;
   }
 
   async update(id: string, data: UpdateUserInput, scope?: TenantScope): Promise<User> {
@@ -101,7 +134,7 @@ export class UsersService {
     }
 
     const nextRole = data.role ?? current.role;
-    const { companyGroupId, branchId } = resolveTenancy(
+    const { companyGroupId, branchId } = await this.resolveTenancy(
       nextRole,
       data.companyGroupId ?? current.companyGroupId ?? undefined,
       data.branchId !== undefined ? data.branchId : current.branchId ?? undefined,
@@ -124,6 +157,13 @@ export class UsersService {
     if (!updated) {
       throw new NotFoundException(NOT_FOUND_MESSAGE);
     }
+
+    // Mudou de papel, muda de cargo junto: um gestor rebaixado a porteiro
+    // que continuasse com as permissoes de gestor teria sido rebaixado so
+    // no rotulo.
+    if (data.role !== undefined && data.role !== current.role) {
+      await this.accessControl.sincronizarCargo(updated.id, updated.role);
+    }
     return updated;
   }
 
@@ -143,41 +183,60 @@ export class UsersService {
   validatePassword(plainTextPassword: string, passwordHash: string): Promise<boolean> {
     return bcrypt.compare(plainTextPassword, passwordHash);
   }
-}
 
-// platform-admin nunca tem grupo/filial; qualquer outro papel precisa de um
-// grupo — do DTO, ou (padrão) o do próprio admin/gestor que está
-// cadastrando/editando. Um admin/gestor não-platform-admin nunca pode
-// escolher um `companyGroupId` diferente do próprio — isso moveria o
-// usuário pra outro tenant, exatamente a relação entre tenants que este
-// sistema não permite; só platform-admin pode apontar pra um grupo
-// qualquer (é o único papel sem um grupo "próprio" pra comparar).
-function resolveTenancy(
-  role: string,
-  requestedCompanyGroupId: string | undefined,
-  requestedBranchId: string | null | undefined,
-  scope: TenantScope | undefined,
-): { companyGroupId: string | null; branchId: string | null } {
-  if (role === 'platform-admin') {
-    return { companyGroupId: null, branchId: null };
-  }
+  /**
+   * Onde a conta vai morar: grupo e industria.
+   *
+   * Nada aqui aceita o que o cliente mandou sem conferir. Sao tres portas:
+   *
+   * - o grupo tem que ser o de quem esta cadastrando (so a conta de
+   *   plataforma escapa disso);
+   * - a industria tem que pertencer a esse grupo — sem esta checagem, um
+   *   gestor da Lar poderia lotar alguem numa industria da outra empresa so
+   *   trocando um id no corpo do pedido, e a conta apareceria la;
+   * - quem e lotado numa industria so cadastra na propria: o campo enviado
+   *   e ignorado de proposito, como acontece no resto do sistema.
+   */
+  private async resolveTenancy(
+    role: string,
+    requestedCompanyGroupId: string | undefined,
+    requestedBranchId: string | null | undefined,
+    scope: TenantScope | undefined,
+  ): Promise<{ companyGroupId: string | null; branchId: string | null }> {
+    // A conta de plataforma (dona do sistema) nao pertence a empresa
+    // nenhuma — e por isso que ela nao aparece em cadastro de industria.
+    if (role === 'platform-admin') {
+      return { companyGroupId: null, branchId: null };
+    }
 
-  if (
-    scope &&
-    scope.role !== 'platform-admin' &&
-    requestedCompanyGroupId !== undefined &&
-    requestedCompanyGroupId !== scope.companyGroupId
-  ) {
-    throw new BadRequestException(
-      'Você não pode atribuir um usuário a outro grupo de empresas',
-    );
-  }
+    if (
+      scope &&
+      scope.role !== 'platform-admin' &&
+      requestedCompanyGroupId !== undefined &&
+      requestedCompanyGroupId !== scope.companyGroupId
+    ) {
+      throw new BadRequestException(
+        'Você não pode atribuir um usuário a outro grupo de empresas',
+      );
+    }
 
-  const companyGroupId = requestedCompanyGroupId ?? scope?.companyGroupId ?? null;
-  if (!companyGroupId) {
-    throw new BadRequestException(
-      'Informe o grupo de empresas para este usuário',
-    );
+    const companyGroupId = requestedCompanyGroupId ?? scope?.companyGroupId ?? null;
+    if (!companyGroupId) {
+      throw new BadRequestException('Informe o grupo de empresas para este usuário');
+    }
+
+    // Sessão presa a uma indústria cadastra nela e só nela.
+    if (scope?.branchId) {
+      return { companyGroupId, branchId: scope.branchId };
+    }
+
+    const branchId = requestedBranchId ?? null;
+    if (branchId) {
+      const branch = await this.branchesService.findById(branchId);
+      if (!branch || branch.companyGroupId !== companyGroupId) {
+        throw new BadRequestException('Indústria inválida para este grupo de empresas');
+      }
+    }
+    return { companyGroupId, branchId };
   }
-  return { companyGroupId, branchId: requestedBranchId ?? null };
 }

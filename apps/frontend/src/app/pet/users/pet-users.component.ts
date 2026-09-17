@@ -20,7 +20,7 @@ export const ROLE_OPTIONS: { value: string; label: string; description: string }
   {
     value: 'gestor',
     label: 'Gestor',
-    description: 'Painel de gestão, funcionários e usuários',
+    description: 'Painel de gestão e cadastro de funcionários',
   },
   {
     value: 'tecnico',
@@ -89,6 +89,40 @@ export class PetUsersComponent implements OnInit {
     });
   }
 
+  /**
+   * A industria de quem esta cadastrando, quando ela tem uma.
+   *
+   * Um administrador lotado em Ceu Azul cria contas de Ceu Azul — nao ha
+   * escolha a fazer, entao nao ha seletor. O servidor aplica a mesma regra
+   * (ver UsersService.resolveTenancy): o branchId enviado por uma sessao
+   * presa a uma industria e ignorado de proposito.
+   */
+  readonly unidadeFixa = computed(() => this.state.currentBranchName());
+
+  /** A indústria escolhida no formulário, pelo nome. */
+  readonly industriaEscolhida = computed(() => {
+    const fixa = this.unidadeFixa();
+    if (fixa) return fixa;
+    const id = this.formBranchId();
+    return id ? (this.branches().find((b) => b.id === id)?.name ?? null) : null;
+  });
+
+  /**
+   * O que a conta vai ser, em uma frase.
+   *
+   * Papel e indústria são dois campos, mas uma decisão só: "Administrador de
+   * Céu Azul" não é a mesma coisa que "Administrador" e "Céu Azul" lidos
+   * separados, e é fácil escolher o papel e esquecer a indústria. A frase
+   * fecha o combinado antes de salvar.
+   */
+  readonly resumoDoCadastro = computed(() => {
+    const papel = roleLabel(this.formRole());
+    const industria = this.industriaEscolhida();
+    return industria
+      ? `${papel} de ${industria}`
+      : `${papel} de todas as indústrias do grupo`;
+  });
+
   ngOnInit(): void {
     this.reload();
   }
@@ -140,7 +174,7 @@ export class PetUsersComponent implements OnInit {
   );
 
   private branchName(branchId: string | null): string {
-    if (!branchId) return 'Todas as filiais';
+    if (!branchId) return 'Todas as indústrias';
     return this.branches().find((b) => b.id === branchId)?.name ?? '—';
   }
 

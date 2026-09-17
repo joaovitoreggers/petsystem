@@ -1,3 +1,12 @@
+<!--
+  Enquanto ninguém entrou, a tela de acesso é o app inteiro: sem menu, sem
+  barra de cima, sem botão de evacuação. Deixar a moldura à vista sugeriria
+  que há algo para usar antes de entrar — e todo item dela depende de uma
+  sessão que ainda não existe.
+-->
+@if (!state.autenticado()) {
+  <app-pet-technician />
+} @else {
 <div class="shell">
   <!-- ── Sidebar (desktop/notebook) ─────────────────────────────────── -->
   <aside class="shell__sidebar">
@@ -240,3 +249,4 @@
     </div>
   }
 </div>
+}

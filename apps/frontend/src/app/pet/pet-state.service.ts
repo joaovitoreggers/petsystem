@@ -17,6 +17,10 @@ import {
   PetTeamRole,
   RiskAreaId,
   TEAM_MEMBERS,
+  EmployeeOption,
+  SAFETY_ROLES,
+  SAFETY_ROLE_BY_PET_ROLE,
+  eligibilityFor,
   TeamMember,
   WizardStepId,
   emptyFireWatchRounds,
@@ -29,6 +33,7 @@ import {
 } from './pet-mock-data';
 import { WorkPermitsApiService } from './services/work-permits-api.service';
 import { TeamMembersApiService, UpdateTeamMemberPayload } from './services/team-members-api.service';
+import { AccessService } from './services/access.service';
 import { AuthApiService, AuthenticatedUser } from './services/auth-api.service';
 import { AuthTokenService } from './services/auth-token.service';
 import { DeviceAuthService, BiometricEnrollment } from './services/device-auth.service';
@@ -66,25 +71,6 @@ const EMPTY_FIELDS: WizardFields = {
 
 let nextPetSequence = 419;
 
-/** Onde o cadastro editado sem servidor fica guardado no aparelho. */
-const ROSTER_KEY = 'artech.pet.roster';
-
-/**
- * Cadastro guardado no aparelho, se houver; senão, os dados de exemplo.
- *
- * Vem antes de qualquer chamada de rede: assim que o servidor responder,
- * loadFromBackend() substitui tudo pelo que vier de lá.
- */
-function restoreRoster(): TeamMember[] {
-  try {
-    const raw = localStorage.getItem(ROSTER_KEY);
-    const parsed = raw ? JSON.parse(raw) : null;
-    if (Array.isArray(parsed) && parsed.length > 0) return parsed as TeamMember[];
-  } catch {
-    // formato inesperado ou storage bloqueado — cai nos dados de exemplo
-  }
-  return [...TEAM_MEMBERS];
-}
 
 @Injectable({ providedIn: 'root' })
 export class PetStateService {
@@ -224,22 +210,26 @@ export class PetStateService {
     }
   }
 
-  // Estado inicial vem dos dados mockados; loadFromBackend() (chamado no
-  // constructor) tenta substituí-lo pelo conteúdo real da API assim que o
-  // back-end responde. Se a chamada falhar (back-end fora do ar, por
+  // Estado inicial vem dos dados mockados; loadFromBackend() (chamado logo
+  // depois do login) tenta substituí-lo pelo conteúdo real da API assim que
+  // o back-end responde. Se a chamada falhar (back-end fora do ar, por
   // exemplo), a tela continua funcionando normalmente com o mock — é assim
   // que o MVP evita depender do back-end estar de pé para ser demonstrado.
   readonly pets = signal<Pet[]>([...MOCK_PETS]);
-  readonly teamMembers = signal<TeamMember[]>(restoreRoster());
+  readonly teamMembers = signal<TeamMember[]>([...TEAM_MEMBERS]);
 
   constructor(
     private readonly workPermitsApi: WorkPermitsApiService,
     private readonly teamMembersApi: TeamMembersApiService,
     private readonly authApi: AuthApiService,
+    private readonly access: AccessService,
     private readonly authToken: AuthTokenService,
     private readonly deviceAuth: DeviceAuthService,
   ) {
-    this.loadFromBackend();
+    // Nada de carregar dado antes de entrar: sem sessao a API responde 401
+    // de qualquer jeito, e disparar essas chamadas na abertura so enchia o
+    // console de erro. loadFromBackend() passou a ser chamado depois do
+    // login (ver loginWithPassword e authenticateWithFace).
     const enrollment = this.deviceAuth.get();
     this.biometricEnrollment.set(enrollment);
     // Sem passkey cadastrada neste aparelho, a aba de e-mail/senha é o
@@ -275,19 +265,12 @@ export class PetStateService {
   }
 
   /**
-   * Exige sessão real (ver canManageTeam) — o back-end recusa com 401/403
+   * Exige sessão real (ver canManageUsers) — o back-end recusa com 401/403
    * sem o JWT de admin/gestor. Erros ficam para o chamador tratar; ao
    * contrário de registerTeamMember(), não há fallback local aqui, porque
    * "editar sem persistir" esconderia do usuário que a mudança não pegou.
    */
   async updateTeamMember(registration: string, patch: UpdateTeamMemberPayload): Promise<void> {
-    if (this.demoMode()) {
-      this.teamMembers.update((list) =>
-        list.map((m) => (m.registration === registration ? { ...m, ...patch } : m)),
-      );
-      this.persistRoster();
-      return;
-    }
     const updated = await firstValueFrom(this.teamMembersApi.update(registration, patch));
     this.teamMembers.update((list) =>
       list.map((m) => (m.registration === registration ? updated : m)),
@@ -295,39 +278,10 @@ export class PetStateService {
   }
 
   async deleteTeamMember(registration: string): Promise<void> {
-    if (this.demoMode()) {
-      this.teamMembers.update((list) => list.filter((m) => m.registration !== registration));
-      this.persistRoster();
-      return;
-    }
     await firstValueFrom(this.teamMembersApi.remove(registration));
     this.teamMembers.update((list) => list.filter((m) => m.registration !== registration));
   }
 
-  /**
-   * Guarda o cadastro no aparelho, no modo demonstração.
-   *
-   * Sem isso, a edição sumia ao recarregar a página: o estado vivia só na
-   * memória da aba, e o F5 trazia de volta os dados de exemplo. Quando há
-   * servidor, quem guarda é ele, e esta cópia nem é usada.
-   */
-  private persistRoster(): void {
-    try {
-      localStorage.setItem(ROSTER_KEY, JSON.stringify(this.teamMembers()));
-    } catch {
-      // Armazenamento indisponível: vale para esta sessão apenas.
-    }
-  }
-
-  /** Descarta o cadastro local e volta aos dados de exemplo. */
-  resetRoster(): void {
-    try {
-      localStorage.removeItem(ROSTER_KEY);
-    } catch {
-      // nada a fazer
-    }
-    this.teamMembers.set([...TEAM_MEMBERS]);
-  }
 
   // ── Técnico: navegação e autenticação ──────────────────────────────
   readonly screen = signal<TechnicianScreen>('login');
@@ -385,13 +339,49 @@ export class PetStateService {
   // (convertido pelo mesmo formato), então o preview e o botão de confirmar
   // continuam funcionando iguais para as duas origens.
   readonly employeeSearchQuery = signal('');
-  readonly employeeSearchResults = computed(() => {
+  /**
+   * Funcionários que podem assumir o papel que está sendo preenchido.
+   *
+   * Dois cortes, e os dois importam:
+   *
+   * 1. **função de segurança** — no campo Vigia só aparece quem está
+   *    habilitado como vigia; no de Socorrista, só socorrista. Quem não tem
+   *    a função não é opção, e não é escondido depois: nunca entra na lista.
+   * 2. **capacitação** — a função sozinha não basta. O vigia de espaço
+   *    confinado precisa da NR-33 válida; com ela vencida o nome aparece,
+   *    mas bloqueado e com o motivo à vista. Sumir com ele faria o técnico
+   *    procurar por alguém que "não existe" no sistema, em vez de saber que
+   *    existe e está com documento vencido.
+   *
+   * O campo "Técnico" (equipe) não filtra por função: ali entra quem executa
+   * o serviço, que é outra coisa.
+   */
+  readonly employeeSearchResults = computed<EmployeeOption[]>(() => {
     const q = this.employeeSearchQuery().trim().toLowerCase();
     if (!q) return [];
-    return TEAM_MEMBERS.filter(
-      (m) => m.name.toLowerCase().includes(q) || m.registration.includes(q),
-    ).slice(0, 6);
+    const papel = this.addingRole();
+    const exigida = papel ? SAFETY_ROLE_BY_PET_ROLE[papel] : null;
+
+    return this.teamMembers()
+      .filter((m) => m.name.toLowerCase().includes(q) || m.registration.includes(q))
+      .filter((m) => !exigida || (m.safetyRoles ?? []).includes(exigida))
+      .map((m) => ({ member: m, ...eligibilityFor(m, exigida) }))
+      .slice(0, 6);
   });
+  /**
+   * O que dizer quando a busca não devolve ninguém.
+   *
+   * "Nenhum funcionário encontrado" seria mentira quando a pessoa existe mas
+   * não tem a função: o técnico ficaria procurando um cadastro que está lá.
+   */
+  readonly emptySearchMessage = computed(() => {
+    const papel = this.addingRole();
+    const exigida = papel ? SAFETY_ROLE_BY_PET_ROLE[papel] : null;
+    if (!exigida) return 'Nenhum funcionário encontrado.';
+    const rotulo = SAFETY_ROLES.find((f) => f.id === exigida)?.label ?? exigida;
+    return `Nenhum funcionário com a função ${rotulo} encontrado. A função é habilitada no cadastro do funcionário.`;
+  });
+
   readonly authorizedTeam = signal<Badge[]>([]);
   // Vigia e resgatistas: papéis próprios na PET física (blocos de
   // identificação separados da equipe que executa o serviço), preenchidos
@@ -480,6 +470,10 @@ export class PetStateService {
       );
       this.session.set(result);
       this.authToken.setToken(result.accessToken);
+      // Entrar pelo rosto da a mesma sessao que entrar pela senha — logo,
+      // as mesmas permissoes e os mesmos dados precisam vir aqui tambem.
+      await this.access.carregar();
+      void this.loadFromBackend();
       this.authPhase.set('ok');
       setTimeout(() => {
         this.authPhase.set('idle');
@@ -556,8 +550,44 @@ export class PetStateService {
   /** Sessão autenticada (JWT + usuário) enquanto o app estiver aberto. */
   readonly session = signal<{
     accessToken: string;
-    user: AuthenticatedUser & { companyGroupName: string | null; branchName: string | null };
+    user: AuthenticatedUser & {
+      name: string;
+      companyGroupName: string | null;
+      branchName: string | null;
+    };
   } | null>(null);
+
+  /** Quem esta usando o app agora, para a tela dizer o nome certo. */
+  readonly currentUserName = computed(() => this.session()?.user.name ?? '');
+
+  /** Iniciais do nome, para o avatar. */
+  readonly currentUserInitials = computed(() => {
+    const partes = this.currentUserName().trim().split(/\s+/).filter(Boolean);
+    if (partes.length === 0) return '--';
+    const primeira = partes[0][0] ?? '';
+    // Primeira e ultima: "Bárbara M. Garlini" vira BG, e nao BM.
+    const ultima = partes.length > 1 ? (partes[partes.length - 1][0] ?? '') : '';
+    return (primeira + ultima).toUpperCase();
+  });
+
+  /** A industria de quem entrou — nulo para quem cuida do grupo inteiro. */
+  readonly currentBranchName = computed(() => this.session()?.user.branchName ?? null);
+
+  /**
+   * A pessoa ja entrou de verdade?
+   *
+   * Sao duas condicoes, e nao uma: ter sessao no servidor e ja ter saido da
+   * tela de entrada. Depois do login por senha ainda aparece o convite para
+   * cadastrar o rosto — nesse instante a sessao ja existe, mas mostrar o
+   * sistema inteiro atras do convite seria dar a entender que ja da para
+   * usar. So quando `screen` vira 'home' e que o app abre.
+   *
+   * Isto governa o que a tela mostra. Quem protege os dados continua sendo
+   * o servidor, que recusa qualquer rota sem o JWT.
+   */
+  readonly autenticado = computed(
+    () => this.session() !== null && this.screen() !== 'login',
+  );
 
   readonly canSubmitLogin = computed(
     () =>
@@ -566,49 +596,21 @@ export class PetStateService {
       !this.loginLoading(),
   );
 
-  // Edição/exclusão de funcionários (NRs, vínculo) e o módulo inteiro de
-  // Usuários (login, papel de acesso) exigem uma sessão real (JWT) com
-  // papel de admin ou gestor — pouco importa se ela veio de e-mail/senha
-  // ou de biometria nativa, as duas passam pelo mesmo back-end. O
-  // back-end aplica a mesma regra (RolesGuard em cada rota); isto é só
-  // para a UI não oferecer um botão/aba que a API vai recusar.
   /**
-   * Sem sessão no servidor — antes de qualquer login, por qualquer meio.
+   * Quem administra contas de acesso.
    *
-   * Neste estado o app roda inteiro sobre os dados de exemplo. Editar um
-   * funcionário aqui grava no aparelho, e a tela diz isso com todas as
-   * letras: o que não pode acontecer é a pessoa achar que gravou no
-   * servidor quando não gravou.
-   */
-  readonly demoMode = computed(() => this.session() === null);
-
-  /**
-   * Alçada de verdade sobre o cadastro — a que o back-end também exige.
+   * So administrador — e o dono da plataforma, que esta acima de todos os
+   * grupos. Gestor cuida da operacao e do cadastro de funcionarios, mas
+   * quem cria login e decide papel de acesso e quem administra o sistema:
+   * poder criar conta e poder criar a propria substituta com mais alcance.
    *
-   * Não afrouxa fora de sessão, de propósito: é o que decide se a aba
-   * Usuários aparece e o que o servidor vai aceitar. Para a edição do
-   * cadastro na tela, ver canEditRoster().
+   * Isto governa a aba Usuarios na tela. Quem recusa de verdade e o
+   * RolesGuard em cada rota de /users, no servidor.
    */
-  readonly canManageTeam = computed(() => {
+  readonly canManageUsers = computed(() => {
     const role = this.session()?.user.role;
-    return role === 'admin' || role === 'gestor' || role === 'platform-admin';
+    return role === 'admin' || role === 'platform-admin';
   });
-
-  /**
-   * A tela de Funcionários permite editar?
-   *
-   * Sim com alçada real, e sim também no modo demonstração — onde a
-   * alteração fica gravada no aparelho e a tela diz isso. Sem esta
-   * distinção, sem servidor no ar a edição simplesmente não existia para
-   * quem usa o app: os botões nunca apareciam.
-   *
-   * Note que isto é permissão de interface, não de dados: quem decide o que
-   * pode ser gravado no servidor é o back-end, que continua exigindo o JWT
-   * com papel de admin ou gestor.
-   */
-  readonly canEditRoster = computed(
-    () => this.canManageTeam() || this.demoMode(),
-  );
 
   // Grupos de empresas/filiais (tenants) — só o platform-admin gerencia a
   // estrutura em si; ver a aba Empresas.
@@ -651,6 +653,13 @@ export class PetStateService {
       this.session.set(result);
       this.authToken.setToken(result.accessToken);
       this.loginPassword.set('');
+      // As permissoes vem do servidor, nao do papel guardado no JWT: e o
+      // banco que diz o que cada cargo pode, e so ele fica sabendo quando
+      // isso muda.
+      await this.access.carregar();
+      // Agora sim vale buscar PETs e funcionarios: com o token em maos, a
+      // API responde de verdade.
+      void this.loadFromBackend();
       // Sem passkey cadastrada neste aparelho ainda: oferece habilitar
       // antes de seguir pra home — a biometria nativa só facilita quem já
       // tem conta, então o primeiro acesso sempre passa por aqui.
@@ -677,6 +686,7 @@ export class PetStateService {
     this.authPhase.set('idle');
     this.session.set(null);
     this.authToken.setToken(null);
+    this.access.limpar();
     this.loginEmail.set('');
     this.loginPassword.set('');
     this.loginError.set(null);

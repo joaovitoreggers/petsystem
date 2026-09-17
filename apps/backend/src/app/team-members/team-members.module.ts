@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AccessControlModule } from '../auth/access-control.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { TenancyModule } from '../tenancy/tenancy.module';
 import { TeamMember } from './entities/team-member.entity';
@@ -8,7 +9,7 @@ import { TeamMembersController } from './team-members.controller';
 import { TeamMembersService } from './team-members.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([TeamMember]), TenancyModule],
+  imports: [AccessControlModule, TypeOrmModule.forFeature([TeamMember]), TenancyModule],
   controllers: [TeamMembersController],
   providers: [
     { provide: TEAM_MEMBER_REPOSITORY, useClass: TeamMemberRepository },

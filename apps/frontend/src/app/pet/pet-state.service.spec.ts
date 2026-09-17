@@ -78,6 +78,9 @@ function createState(
     forgetBiometricCredential: jest.fn(() => of(undefined)),
   };
   const authToken = { setToken: jest.fn(), getToken: jest.fn() };
+  // As permissões vêm do servidor (`/auth/me`); nestes testes o dublê só
+  // registra que foram pedidas ao entrar e descartadas ao sair.
+  const access = { carregar: jest.fn(async () => undefined), limpar: jest.fn() };
   const deviceAuth = {
     get: jest.fn(() => options.existingEnrollment ?? null),
     save: jest.fn(),
@@ -88,25 +91,38 @@ function createState(
     workPermitsApi as never,
     teamMembersApi as never,
     authApi as never,
+    access as never,
     authToken as never,
     deviceAuth as never,
   );
-  return { state, authApi, authToken, deviceAuth };
+  return {
+    state,
+    authApi,
+    access,
+    authToken,
+    deviceAuth,
+    workPermitsApi,
+    teamMembersApi,
+  };
 }
 
 describe('PetStateService — multi-tenancy session gating', () => {
-  it('canManageTeam and isPlatformAdmin are both false before any login', () => {
+  it('canManageUsers e isPlatformAdmin sao falsos antes de qualquer login', () => {
     const { state } = createState({
       accessToken: 't',
       user: authenticatedUser({ role: 'tecnico' }),
     });
 
-    expect(state.canManageTeam()).toBe(false);
+    expect(state.canManageUsers()).toBe(false);
     expect(state.isPlatformAdmin()).toBe(false);
   });
 
-  it.each(['admin', 'gestor', 'platform-admin'])(
-    'canManageTeam is true for a %s session',
+  // Gestor ficou de fora de propósito: ele cuida da operação e do cadastro
+  // de funcionários, mas criar login e definir papel de acesso é de quem
+  // administra o sistema — poder criar conta é poder criar a própria
+  // substituta com mais alcance.
+  it.each(['admin', 'platform-admin'])(
+    'canManageUsers e verdadeiro numa sessao de %s',
     async (role) => {
       const { state } = createState({
         accessToken: 't',
@@ -117,11 +133,27 @@ describe('PetStateService — multi-tenancy session gating', () => {
 
       await state.loginWithPassword();
 
-      expect(state.canManageTeam()).toBe(true);
+      expect(state.canManageUsers()).toBe(true);
     },
   );
 
-  it('canManageTeam is false for a plain tecnico session', async () => {
+  it.each(['gestor', 'operador', 'porteiro', 'tecnico'])(
+    'canManageUsers e falso numa sessao de %s',
+    async (role) => {
+      const { state } = createState({
+        accessToken: 't',
+        user: authenticatedUser({ role }),
+      });
+      state.setLoginEmail(`${role}@petsystem.local`);
+      state.setLoginPassword('senha123');
+
+      await state.loginWithPassword();
+
+      expect(state.canManageUsers()).toBe(false);
+    },
+  );
+
+  it('canManageUsers is false for a plain tecnico session', async () => {
     const { state } = createState({
       accessToken: 't',
       user: authenticatedUser({ role: 'tecnico' }),
@@ -131,7 +163,7 @@ describe('PetStateService — multi-tenancy session gating', () => {
 
     await state.loginWithPassword();
 
-    expect(state.canManageTeam()).toBe(false);
+    expect(state.canManageUsers()).toBe(false);
     expect(state.isPlatformAdmin()).toBe(false);
   });
 
@@ -146,7 +178,7 @@ describe('PetStateService — multi-tenancy session gating', () => {
     await state.loginWithPassword();
 
     expect(state.isPlatformAdmin()).toBe(true);
-    expect(state.canManageTeam()).toBe(true);
+    expect(state.canManageUsers()).toBe(true);
   });
 
   it('isPlatformAdmin is false for an admin session (has a company group)', async () => {
@@ -160,7 +192,7 @@ describe('PetStateService — multi-tenancy session gating', () => {
     await state.loginWithPassword();
 
     expect(state.isPlatformAdmin()).toBe(false);
-    expect(state.canManageTeam()).toBe(true);
+    expect(state.canManageUsers()).toBe(true);
   });
 
   it('stores the JWT in AuthTokenService on login and clears it on logout', async () => {
@@ -176,7 +208,7 @@ describe('PetStateService — multi-tenancy session gating', () => {
 
     state.logout();
     expect(authToken.setToken).toHaveBeenCalledWith(null);
-    expect(state.canManageTeam()).toBe(false);
+    expect(state.canManageUsers()).toBe(false);
     expect(state.isPlatformAdmin()).toBe(false);
   });
 
@@ -469,5 +501,79 @@ describe('PetStateService — biometria nativa do aparelho (facilita acesso de q
       expect(deviceAuth.clear).toHaveBeenCalled();
       expect(state.hasBiometricEnrollment()).toBe(false);
     });
+  });
+});
+
+/**
+ * A porta de entrada.
+ *
+ * O app nao mostra nada antes de a pessoa se identificar — nem a moldura,
+ * nem dado carregando ao fundo. Estes testes fixam as duas metades disso:
+ * nao chamar a API antes da hora, e so considerar alguem "dentro" quando
+ * realmente esta.
+ */
+describe('PetStateService — entrar antes de tudo', () => {
+  it('nao busca dado nenhum da API enquanto ninguem entrou', () => {
+    const { workPermitsApi, teamMembersApi } = createState({
+      accessToken: 't',
+      user: authenticatedUser({}),
+    });
+
+    // Abrir o app nao e entrar nele. Chamar a API aqui so renderia 401 — e,
+    // pior, daria a entender que ha algo carregando para alguem que ainda
+    // nao se identificou.
+    expect(workPermitsApi.findAll).not.toHaveBeenCalled();
+    expect(teamMembersApi.findAll).not.toHaveBeenCalled();
+  });
+
+  it('comeca deslogado', () => {
+    const { state } = createState({ accessToken: 't', user: authenticatedUser({}) });
+
+    expect(state.autenticado()).toBe(false);
+  });
+
+  it('continua fechado entre o login e a resposta sobre o rosto', async () => {
+    const { state } = createState({ accessToken: 't', user: authenticatedUser({}) });
+    state.setLoginEmail('gestor@petsystem.local');
+    state.setLoginPassword('senha123');
+
+    await state.loginWithPassword();
+
+    // A sessao ja existe, mas o convite para cadastrar o rosto ainda esta na
+    // frente: mostrar o sistema atras dele seria dizer que ja da para usar.
+    expect(state.session()).not.toBeNull();
+    expect(state.autenticado()).toBe(false);
+
+    state.skipBiometricEnrollment();
+
+    expect(state.autenticado()).toBe(true);
+  });
+
+  it('so carrega PETs e funcionarios depois de entrar', async () => {
+    const { state, workPermitsApi, teamMembersApi } = createState({
+      accessToken: 't',
+      user: authenticatedUser({}),
+    });
+    state.setLoginEmail('gestor@petsystem.local');
+    state.setLoginPassword('senha123');
+
+    await state.loginWithPassword();
+
+    expect(workPermitsApi.findAll).toHaveBeenCalled();
+    expect(teamMembersApi.findAll).toHaveBeenCalled();
+  });
+
+  it('sair fecha a porta de novo', async () => {
+    const { state } = createState({ accessToken: 't', user: authenticatedUser({}) });
+    state.setLoginEmail('gestor@petsystem.local');
+    state.setLoginPassword('senha123');
+    await state.loginWithPassword();
+    state.skipBiometricEnrollment();
+    expect(state.autenticado()).toBe(true);
+
+    state.logout();
+
+    expect(state.autenticado()).toBe(false);
+    expect(state.session()).toBeNull();
   });
 });

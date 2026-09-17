@@ -1,6 +1,7 @@
 import { Component, computed, signal } from '@angular/core';
 import { platformAuthenticatorIsAvailable } from '@simplewebauthn/browser';
 import { PetStateService } from '../pet-state.service';
+import { AccessService } from '../services/access.service';
 import {
   ChecklistAnswer,
   GAS_LIMITS,
@@ -51,7 +52,16 @@ export class PetTechnicianComponent {
   // otimista (true) para não piscar a UI antes da resposta chegar.
   readonly biometricSupported = signal(true);
 
-  constructor(readonly state: PetStateService) {
+  /** Quem pode abrir uma PET, segundo o servidor. */
+  readonly podeEmitirPet = computed(() => this.access.pode()('emitir_pet'));
+
+  /** Quem pode medir e encerrar uma PET ja aberta. */
+  readonly podeOperarPet = computed(() => this.access.pode()('operar_pet'));
+
+  constructor(
+    readonly state: PetStateService,
+    readonly access: AccessService,
+  ) {
     platformAuthenticatorIsAvailable()
       .then((available) => this.biometricSupported.set(available))
       .catch(() => this.biometricSupported.set(false));

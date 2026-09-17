@@ -21,7 +21,11 @@ export interface LoginResult {
   accessToken: string;
   // Nomes exibíveis, resolvidos pelo back-end só na resposta de login —
   // não fazem parte do JWT (ver AuthService.login no back-end).
-  user: AuthenticatedUser & { companyGroupName: string | null; branchName: string | null };
+  user: AuthenticatedUser & {
+    name: string;
+    companyGroupName: string | null;
+    branchName: string | null;
+  };
 }
 
 /**

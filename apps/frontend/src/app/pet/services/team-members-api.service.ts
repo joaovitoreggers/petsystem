@@ -7,7 +7,16 @@ import { TeamMember } from '../pet-mock-data';
 export type CreateTeamMemberPayload = TeamMember;
 
 export type UpdateTeamMemberPayload = Partial<
-  Pick<TeamMember, 'name' | 'role' | 'company' | 'unit' | 'isThirdParty' | 'documents'>
+  Pick<
+    TeamMember,
+    | 'name'
+    | 'role'
+    | 'company'
+    | 'unit'
+    | 'isThirdParty'
+    | 'documents'
+    | 'safetyRoles'
+  >
 >;
 
 @Injectable({ providedIn: 'root' })

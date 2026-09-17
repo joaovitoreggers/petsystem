@@ -25,12 +25,6 @@ const SEED_USERS = [
     role: 'platform-admin',
   },
   {
-    name: 'Default Doorkeeper',
-    email: 'porteiro@petsystem.local',
-    password: 'senha123',
-    role: 'porteiro',
-  },
-  {
     name: 'Operador Backup',
     email: 'operador@petsystem.local',
     password: 'senha123',

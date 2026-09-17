@@ -4,7 +4,15 @@
    seletor de "versão desktop/celular" — o que muda é a largura da tela. */
 
 :host {
-  display: block;
+  /* Coluna que ocupa a janela inteira.
+     Vale para os dois estados que este componente pode mostrar: o sistema
+     (`.shell`, que traz a própria altura) e a tela de acesso, que sem isto
+     ficava presa à altura do próprio conteúdo e aparecia colada no topo,
+     com a página vazia embaixo. */
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .shell {
