@@ -1,0 +1,429 @@
+<nav class="nav">
+  <div class="wrap nav__row">
+    <a class="brand" href="#top">
+      <svg class="brand__mark" width="26" height="22" viewBox="0 0 26 22" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M13 0L26 22H16.2L13 16.4L9.8 22H0L13 0Z" fill="#5980a6"/>
+        <path d="M13 0L19.5 11L13 16.4L9.8 22H0L13 0Z" fill="#a9c1d8"/>
+      </svg>
+      <span class="brand__word">ARTECH <b>· PET DIGITAL</b></span>
+    </a>
+    <div class="nav__links">
+      <a href="#como-funciona">Como funciona</a>
+      <a href="#painel">Painel de gestão</a>
+      <a href="#funcionalidades">Funcionalidades</a>
+      <a href="#seguranca">Confiança</a>
+      <a routerLink="/pet" class="btn btn--ghost-dark">Entrar</a>
+      <a [href]="whatsappUrl" target="_blank" rel="noopener" class="btn btn--amber">Agendar demonstração</a>
+    </div>
+  </div>
+</nav>
+
+<main id="top">
+  <section class="hero" style="padding-block-start: 76px;">
+    <div class="wrap hero__grid">
+      <div>
+        <span class="eyebrow"><span class="dot"></span>Para SESMT e gestão de segurança do trabalho</span>
+        <h1>A Permissão de Entrada e Trabalho não cabe mais numa <em>prancheta</em>.</h1>
+        <p class="lede">O PET Digital emite, mede e encerra a permissão de entrada e trabalho em áreas de risco direto do celular do técnico — checklist certo, atmosfera monitorada e equipe com capacitação em dia, tudo visível em tempo real para quem lidera a segurança.</p>
+        <div class="hero__ctas">
+          <a [href]="whatsappUrl" target="_blank" rel="noopener" class="btn btn--amber">Agendar demonstração</a>
+          <a class="btn btn--ghost-dark" href="#funcionalidades">Ver funcionalidades</a>
+        </div>
+        <div class="hero__meta">
+          <div><b>4</b>gases medidos por leitura</div>
+          <div><b>5</b>áreas de risco cobertas</div>
+          <div><b>0</b>papel na frente de trabalho</div>
+        </div>
+      </div>
+
+      <div class="device" role="img" aria-label="Tela inicial do PET Digital mostrando três permissões de trabalho, uma delas em alarme">
+        <div class="device__bar">
+          <div>
+            <div class="device__unit">Unidade Matelândia · Turno A</div>
+            <div class="device__title">Permissões de entrada e trabalho</div>
+          </div>
+          <div class="device__clock mono">{{ clockText() }}</div>
+        </div>
+        <div class="device__tabs">
+          <b>Abertas · 3</b>
+          <span>Encerradas · 7</span>
+        </div>
+        <div class="device__list">
+          <div class="pcard">
+            <div class="pcard__top">
+              <span class="pcard__id mono">PET-2026-0418</span>
+              <span class="pill pill--ok">Aberta</span>
+            </div>
+            <div class="pcard__name">Silo de milho 04 · Matelândia</div>
+            <div class="pcard__sub">Espaço confinado · NR-33</div>
+            <div class="pcard__foot mono"><span>09:42 · 3 na equipe</span><span>O₂ 20.8%</span></div>
+          </div>
+          <div class="pcard">
+            <div class="pcard__top">
+              <span class="pcard__id mono">PET-2026-0417</span>
+              <span class="pill pill--alarm">Em alarme</span>
+            </div>
+            <div class="pcard__name">Elevatória da ETE · Medianeira</div>
+            <div class="pcard__sub">Espaço confinado + Serviço elétrico · NR-33 · NR-10</div>
+            <div class="pcard__foot mono"><span>08:15 · 2 na equipe</span><span>H₂S 11.4 ppm</span></div>
+          </div>
+          <div class="pcard">
+            <div class="pcard__top">
+              <span class="pcard__id mono">PET-2026-0416</span>
+              <span class="pill pill--ok">Aberta</span>
+            </div>
+            <div class="pcard__name">Casa de caldeiras 02 · Matelândia</div>
+            <div class="pcard__sub">Trabalho a quente + Trabalho em altura · NR-18 · NR-35</div>
+            <div class="pcard__foot mono"><span>07:30 · 4 na equipe</span><span>O₂ 20.9%</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <div class="compare">
+        <div class="before">
+          <span class="tag">O custo de continuar no papel</span>
+          <ul>
+            <li>Formulário preenchido à mão, com o mesmo checklist genérico pra qualquer área de risco</li>
+            <li>Leitura de gás anotada numa planilha à parte — quando é anotada</li>
+            <li>Documento vencido só aparece depois, numa conferência manual, ou não aparece</li>
+            <li>Ninguém na liderança sabe, agora, quantas frentes de risco estão abertas</li>
+          </ul>
+        </div>
+        <div class="after">
+          <span class="tag">O que muda com o PET Digital</span>
+          <ul>
+            <li>Checklist certo aparece sozinho pela área marcada — NR-33, NR-35, NR-18 ou NR-10</li>
+            <li>Leitura de atmosfera registrada na hora, com histórico e alerta automático fora da faixa</li>
+            <li>Quem está com a capacitação vencida aparece bloqueado, com o motivo à vista, antes de liberar</li>
+            <li>A liderança vê, agora, toda frente de risco aberta, em qualquer unidade</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="como-funciona">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="kicker">Como funciona</span>
+        <h2>Do primeiro toque à PET encerrada</h2>
+        <p>O mesmo fluxo que o técnico já faz no papel — só que a norma certa, o limite certo e a equipe certa aparecem sozinhos.</p>
+      </div>
+      <div class="steps">
+        <div class="step">
+          <div class="step__num">1</div>
+          <h3>Marca a área de risco</h3>
+          <p>Espaço confinado, trabalho a quente, em altura ou elétrico — o checklist da norma correspondente é gerado na hora.</p>
+        </div>
+        <div class="step">
+          <div class="step__num">2</div>
+          <h3>Mede a atmosfera</h3>
+          <p>O₂, CO, H₂S e LEL lançados do detector portátil; fora da faixa segura, o assistente trava o avanço até normalizar.</p>
+        </div>
+        <div class="step">
+          <div class="step__num">3</div>
+          <h3>Emite e acompanha</h3>
+          <p>PET visível no painel do gestor em tempo real; nova medição, alerta e encerramento ficam no histórico da própria PET.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="painel">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="kicker">Painel de gestão</span>
+        <h2>A visão que a liderança sempre quis ter</h2>
+        <p>Enquanto o técnico emite a PET no celular, o gestor acompanha tudo de qualquer unidade, num só painel — sem esperar o fim do turno pra saber o que está acontecendo.</p>
+      </div>
+      <div class="panel-mock">
+        <div class="panel-mock__chrome">
+          <span class="chrome-dot" style="background:#e0645a"></span>
+          <span class="chrome-dot" style="background:#e0b25a"></span>
+          <span class="chrome-dot" style="background:#5aae6e"></span>
+          <span class="panel-mock__crumb">painel de gestão de risco · SESMT</span>
+        </div>
+        <img
+          src="assets/screenshots/painel-gestao.png"
+          alt="Painel de gestão do PET Digital: 5 PETs ativas agora, 0 alertas críticos de documentação, 2 ocorrências nos últimos 30 dias, 98,4% de conformidade atmosférica, 3h05 de duração média, e as frentes em execução com leitura de O₂, CO, H₂S e LEL em tempo real"
+        />
+      </div>
+
+      <div class="chart-frame">
+        <img
+          src="assets/screenshots/medicoes-30-dias.png"
+          alt="Gráfico de condição das medições por dia nos últimos 30 dias: 1.056 medições registradas, 17 leituras fora do limite, 98,4% de conformidade atmosférica, maior desvio em 21/08 com 5 leituras"
+        />
+      </div>
+
+      <div class="occurrences">
+        <div class="occurrences__head">
+          <div>
+            <h3>Ocorrências registradas</h3>
+            <p>causa apurada pelo SESMT</p>
+          </div>
+          <span class="occurrences__count">2</span>
+        </div>
+        <div class="occurrences__grid">
+          <div class="occurrence-card">
+            <div class="occurrence-card__top">
+              <span class="mono">PET-2026-0412</span>
+              <span class="nr-tag">NR-33 · NR-18</span>
+              <span>02/09/2026 · 0h26</span>
+            </div>
+            <h4>Moega de recebimento 01 · Missal · Espaço confinado + Trabalho a quente</h4>
+            <p>"LEL atingiu 14% durante a limpeza da moega. Equipe evacuada em 90 s pelo alerta do painel; serviço reprogramado com ventilação forçada prévia."</p>
+          </div>
+          <div class="occurrence-card">
+            <div class="occurrence-card__top">
+              <span class="mono">PET-2026-0398</span>
+              <span class="nr-tag">NR-33 · NR-12</span>
+              <span>27/08/2026 · 0h22</span>
+            </div>
+            <h4>Tanque de efluente 02 · Medianeira · Espaço confinado + Máquinas e bloqueio</h4>
+            <p>"Partida acidental do agitador com a equipe no entorno do tanque. Bloqueio LOTO estava aplicado em apenas dois dos três pontos de energia."</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="history">
+        <div class="history__head">
+          <h3>Histórico</h3>
+          <p>12 permissões no filtro atual</p>
+        </div>
+        <div class="history__filters">
+          <span class="filter-chip filter-chip--active">Todas</span>
+          <span class="filter-chip">Abertas</span>
+          <span class="filter-chip">Encerradas</span>
+          <span class="filter-chip">Ocorrências</span>
+          <span class="filter-chip">Espaço confinado</span>
+          <span class="filter-chip">Trabalho a quente</span>
+        </div>
+        <div class="history__table-scroll">
+          <div class="history__table" role="table" aria-label="Histórico de permissões de entrada e trabalho">
+            <div class="history__row history__row--head" role="row">
+              <span>PET</span><span>Data</span><span>Local / Unidade</span><span>Equipe</span><span>Duração</span><span>Situação</span>
+            </div>
+            <div class="history__row" role="row">
+              <span class="mono">PET-2026-0416</span><span>05/09/2026</span><span>Casa de caldeiras 02 · Matelândia</span><span>4</span><span>—</span><span class="pill pill--ok">Aberta</span>
+            </div>
+            <div class="history__row" role="row">
+              <span class="mono">PET-2026-0417</span><span>05/09/2026</span><span>Elevatória da ETE · Medianeira</span><span>2</span><span>—</span><span class="pill pill--alarm">Em alarme</span>
+            </div>
+            <div class="history__row" role="row">
+              <span class="mono">PET-2026-0414</span><span>04/09/2026</span><span>Torre de resfriamento · Céu Azul</span><span>3</span><span>4h35</span><span class="pill pill--neutral">Encerrada</span>
+            </div>
+            <div class="history__row" role="row">
+              <span class="mono">PET-2026-0412</span><span>02/09/2026</span><span>Moega de recebimento 01 · Missal</span><span>5</span><span>0h26</span><span class="pill pill--warn">Ocorrência</span>
+            </div>
+            <div class="history__row" role="row">
+              <span class="mono">PET-2026-0410</span><span>01/09/2026</span><span>Linha de extrusão · Itaipulândia</span><span>2</span><span>1h48</span><span class="pill pill--neutral">Encerrada</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <ul class="panel-points">
+        <li>
+          <span class="dot2"></span>
+          <h4>Toda frente aberta, em qualquer unidade, numa tela só</h4>
+          <p>Sem esperar relatório nem ligar pra unidade pra saber o que está em andamento agora.</p>
+        </li>
+        <li>
+          <span class="dot2"></span>
+          <h4>Evacuação a um toque, direto do painel</h4>
+          <p>Atmosfera fora do limite aciona o alerta — e a liderança decide e age sem sair da tela.</p>
+        </li>
+        <li>
+          <span class="dot2"></span>
+          <h4>Cada gestor vê a operação que é dele</h4>
+          <p>Mais de uma indústria ou filial num único painel, cada uma mostrando só o que é dela.</p>
+        </li>
+        <li>
+          <span class="dot2"></span>
+          <h4>Relatório e causas prováveis, prontos em minutos</h4>
+          <p>PDF por período e um resumo de causas gerado por IA, prontos pra reunião de segurança.</p>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="funcionalidades">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="kicker">Funcionalidades</span>
+        <h2>Construído em cima da norma, não ao lado dela</h2>
+        <p>Cada tela resolve um problema específico de quem emite, autoriza ou audita uma PET — não é um formulário genérico com campos a mais.</p>
+      </div>
+      <div class="features">
+        <div class="feature">
+          <div class="feature__icon" aria-hidden="true">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2.8H7a2 2 0 0 0-2 2v14.4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7.8Z"/><path d="M14 2.8v5h5"/><path d="m8.5 13.5 2 2 4.5-4.5"/></svg>
+          </div>
+          <h3>Checklist por norma</h3>
+          <p>Sua equipe nunca mais usa o checklist errado para o serviço errado — a norma certa aparece sozinha assim que a área de risco é marcada.</p>
+          <div class="nrs"><span class="nr-tag">NR-33</span><span class="nr-tag">NR-35</span><span class="nr-tag">NR-18</span><span class="nr-tag">NR-10</span></div>
+        </div>
+        <div class="feature">
+          <div class="feature__icon" aria-hidden="true">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.8a8.8 8.8 0 1 0 0 17.6 8.8 8.8 0 0 0 0-17.6Z"/><path d="M12 7v5.4l3.6 2.1"/></svg>
+          </div>
+          <h3>Atmosfera monitorada</h3>
+          <p>Cada leitura de gás fica registrada, com alerta automático assim que algo sai da faixa segura — antes que vire um incidente, não depois de um relatório.</p>
+        </div>
+        <div class="feature">
+          <div class="feature__icon" aria-hidden="true">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M2.8 20a6.2 6.2 0 0 1 12.4 0"/><path d="M16.5 5.6a3.2 3.2 0 0 1 0 6.1"/><path d="M18 14.4a6.2 6.2 0 0 1 3.2 5.6"/></svg>
+          </div>
+          <h3>Equipe com capacitação em dia</h3>
+          <p>Vigia e resgatista com documento vencido não somem da lista — aparecem bloqueados, com o motivo à vista, para a decisão ficar com o técnico responsável.</p>
+        </div>
+        <div class="feature">
+          <div class="feature__icon" aria-hidden="true">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.2a8.8 8.8 0 0 0-8.8 8.8v2.6"/><path d="M12 3.2A8.8 8.8 0 0 1 20.8 12v2.6"/><path d="M7.4 21a13.5 13.5 0 0 1-.8-4.6V12a5.4 5.4 0 0 1 10.8 0v1.4"/><path d="M4.6 17.8A16.7 16.7 0 0 1 4 12"/></svg>
+          </div>
+          <h3>Entrada rápida no celular</h3>
+          <p>Face ID, Touch ID, Windows Hello ou impressão digital — o técnico entra sem digitar senha toda vez, sem abrir mão da segurança.</p>
+        </div>
+        <div class="feature">
+          <div class="feature__icon" aria-hidden="true">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7.5" height="8.5" rx="1.3"/><rect x="13.5" y="3" width="7.5" height="5.5" rx="1.3"/><rect x="3" y="14.5" width="7.5" height="6.5" rx="1.3"/><rect x="13.5" y="11.5" width="7.5" height="9.5" rx="1.3"/></svg>
+          </div>
+          <h3>Painel multi-unidade</h3>
+          <p>Gerencia mais de uma indústria ou filial num único painel — cada gestor enxerga só a operação que é dele.</p>
+        </div>
+        <div class="feature">
+          <div class="feature__icon" aria-hidden="true">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.2 13.7 8l4.8 1.7-4.8 1.7L12 16.2l-1.7-4.8L5.5 9.7 10.3 8Z"/><path d="M18.6 15.4l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8Z"/></svg>
+          </div>
+          <h3>Causas prováveis por IA</h3>
+          <p>Relatório com principais causas, pontos fora do padrão e recomendações, pronto pra reunião de segurança — sem juntar PET por PET manualmente.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section style="padding-block: 0 88px;">
+    <div class="wrap">
+      <div class="gasband">
+        <div>
+          <div class="g-label">O₂</div>
+          <div class="g-val">19.5–23%</div>
+          <div class="g-limit">faixa segura</div>
+        </div>
+        <div>
+          <div class="g-label">CO</div>
+          <div class="g-val">≤ 25 ppm</div>
+          <div class="g-limit">limite de exposição</div>
+        </div>
+        <div>
+          <div class="g-label">H₂S</div>
+          <div class="g-val">≤ 8 ppm</div>
+          <div class="g-limit">limite de exposição</div>
+        </div>
+        <div>
+          <div class="g-label">LEL</div>
+          <div class="g-val">≤ 10%</div>
+          <div class="g-limit">limite inferior de explosividade</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="seguranca">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="kicker">Confiança</span>
+        <h2>Pronto para a auditoria, o tempo todo</h2>
+        <p>Cada permissão, cada leitura e cada liberação fica registrada — não é preciso reconstruir o que aconteceu depois que já aconteceu.</p>
+      </div>
+      <div class="sec-grid">
+        <div class="sec-statement">
+          <h4>Histórico que não se perde</h4>
+          <p>Emissão, medições, alertas e encerramento ficam permanentes na própria PET — nada se perde entre um turno e o outro, e nenhuma pergunta da auditoria fica sem resposta.</p>
+        </div>
+
+        <div class="compliance-card">
+          <span class="kicker">O que fica pronto para a auditoria</span>
+          <div class="check-row"><span class="check-item">✓ PET completa, com checklist da norma respondido</span></div>
+          <div class="check-row"><span class="check-item">✓ Histórico de medições de atmosfera, com hora e valor</span></div>
+          <div class="check-row"><span class="check-item">✓ Ressalvas documentadas, com nome e motivo de quem liberou</span></div>
+          <div class="check-row"><span class="check-item">✓ Relatório em PDF por período, pronto para apresentar</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="mercado">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="kicker">Mercado</span>
+        <h2>Um problema do tamanho da indústria brasileira</h2>
+        <p>NR-33 e NR-35 não são exceção — são rotina em dezenas de milhares de plantas industriais no Brasil.</p>
+      </div>
+      <div class="market-band">
+        <div class="market-stat">
+          <div class="market-stat__label">TAM</div>
+          <div class="market-stat__val">R$ 1,2 bi<span>/ano</span></div>
+          <div class="market-stat__desc">60 mil indústrias de médio e grande porte sob NR-33 e NR-35 no Brasil.</div>
+        </div>
+        <div class="market-stat">
+          <div class="market-stat__label">SAM</div>
+          <div class="market-stat__val">R$ 180 mi<span>/ano</span></div>
+          <div class="market-stat__desc">Foco em 10.000 plantas de Agro, Lácteos e Metalurgia em todo o país.</div>
+        </div>
+        <div class="market-stat">
+          <div class="market-stat__label">SOM</div>
+          <div class="market-stat__val">R$ 480 mil<span>de ARR</span></div>
+          <div class="market-stat__desc">Meta realista de 25 indústrias pagantes, escaladas via PoCs.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="cta">
+    <div class="wrap">
+      <div class="cta">
+        <div>
+          <h2>Leve o PET Digital para a próxima frente de trabalho.</h2>
+          <p>Sem prancheta, sem planilha perdida: cada permissão emitida, cada leitura de gás e cada checklist fica registrado e visível para quem precisa decidir rápido.</p>
+        </div>
+        <div class="cta__actions">
+          <a [href]="whatsappUrl" target="_blank" rel="noopener" class="btn btn--amber">Falar no WhatsApp</a>
+          <a routerLink="/pet" class="btn btn--ghost-dark">Acessar o sistema</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap foot-row">
+    <div class="foot-brand">
+      <svg width="18" height="15" viewBox="0 0 26 22" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M13 0L26 22H16.2L13 16.4L9.8 22H0L13 0Z" fill="#5980a6"/>
+      </svg>
+      ARTECH · PET Digital — segurança do trabalho, sem papel
+    </div>
+    <div class="foot-stack">© 2026 ARTECH · Tecnologia que transforma</div>
+  </div>
+</footer>
+
+<a
+  class="whatsapp-fab"
+  [href]="whatsappUrl"
+  target="_blank"
+  rel="noopener"
+  aria-label="Falar no WhatsApp"
+>
+  <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <path
+      fill="#fff"
+      d="M16.04 4C9.4 4 4 9.4 4 16.04c0 2.45.7 4.73 1.9 6.66L4 28l5.47-1.86A11.96 11.96 0 0 0 16.04 28C22.68 28 28.08 22.6 28.08 15.96 28.08 9.32 22.68 4 16.04 4Zm0 21.7c-1.98 0-3.83-.56-5.4-1.53l-.39-.23-3.62 1.16 1.18-3.53-.25-.4a9.63 9.63 0 0 1-1.5-5.13c0-5.33 4.34-9.67 9.68-9.67 2.58 0 5.01 1 6.84 2.83a9.6 9.6 0 0 1 2.83 6.84c0 5.34-4.34 9.66-9.67 9.66Zm5.3-7.24c-.29-.15-1.72-.85-1.99-.94-.27-.1-.46-.15-.65.15-.19.29-.75.94-.92 1.13-.17.19-.34.22-.63.07-.29-.15-1.22-.45-2.32-1.44-.86-.77-1.44-1.71-1.61-2-.17-.29-.02-.45.13-.6.13-.13.29-.34.44-.51.15-.17.19-.29.29-.48.1-.19.05-.36-.02-.51-.07-.15-.65-1.57-.9-2.15-.24-.57-.48-.5-.65-.5h-.56c-.19 0-.51.07-.78.36-.27.29-1.02 1-1.02 2.44s1.05 2.83 1.19 3.02c.15.19 2.06 3.14 4.98 4.41.7.3 1.24.48 1.67.62.7.22 1.34.19 1.84.12.56-.08 1.72-.7 1.97-1.38.24-.68.24-1.26.17-1.38-.07-.12-.26-.19-.55-.34Z"
+    />
+  </svg>
+</a>

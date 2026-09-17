@@ -3,7 +3,7 @@ import { CDPSession, expect, Page, test } from '@playwright/test';
 const PASSWORD = 'senha123';
 
 async function goToLoginScreen(page: Page): Promise<void> {
-  await page.goto('/');
+  await page.goto('/pet');
 }
 
 async function loginWithPassword(page: Page, email: string): Promise<void> {
