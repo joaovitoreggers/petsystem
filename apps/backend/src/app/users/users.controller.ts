@@ -43,8 +43,20 @@ function toSummary(user: User): UserSummaryDto {
   };
 }
 
+/**
+ * Contas de acesso.
+ *
+ * Todo o modulo e de administrador — inclusive a leitura. Quem pode ver a
+ * lista de logins e os papeis de cada um ja esta olhando o mapa de quem
+ * manda no sistema; gestor cuida da operacao e do cadastro de
+ * funcionarios, nao de quem entra.
+ *
+ * `platform-admin` passa em qualquer @Roles sem ser listado (ver
+ * RolesGuard) — e o papel acima de todos os grupos.
+ */
 @Controller('users')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('admin')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
@@ -67,8 +79,6 @@ export class UsersController {
   }
 
   @Post()
-  @UseGuards(RolesGuard)
-  @Roles('admin', 'gestor')
   @HttpCode(HttpStatus.CREATED)
   async create(
     @Body() dto: CreateUserDto,
@@ -79,8 +89,6 @@ export class UsersController {
   }
 
   @Patch(':id')
-  @UseGuards(RolesGuard)
-  @Roles('admin', 'gestor')
   async update(
     @Param('id') id: string,
     @Body() dto: UpdateUserDto,
@@ -91,8 +99,6 @@ export class UsersController {
   }
 
   @Delete(':id')
-  @UseGuards(RolesGuard)
-  @Roles('admin', 'gestor')
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(
     @Param('id') id: string,

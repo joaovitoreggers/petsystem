@@ -40,6 +40,16 @@ export class User {
   @Column({ name: 'branch_id', type: 'uuid', nullable: true })
   branchId!: string | null;
 
+  /**
+   * Ultima vez que esta conta entrou no sistema.
+   *
+   * Gravado no login (ver AuthService.login). Nulo significa "nunca entrou"
+   * — o que e informacao, nao ausencia de dado: conta criada e nunca usada e
+   * exatamente o que o gestor precisa enxergar.
+   */
+  @Column({ name: 'last_access', type: 'timestamptz', nullable: true })
+  lastAccess!: Date | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt!: Date;
 }
