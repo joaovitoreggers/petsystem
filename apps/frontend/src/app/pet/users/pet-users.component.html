@@ -4,9 +4,10 @@
     <h1 class="users__title">Usuários e papéis de acesso</h1>
     <div class="users__head-row">
       <div class="users__head-text">
-        Cada conta faz login por e-mail e senha e recebe um papel: apenas
-        Administrador e Gestor conseguem cadastrar, editar ou excluir
-        funcionários e outros usuários.
+        Cada conta faz login por e-mail e senha e recebe um papel. Só
+        Administrador chega a esta tela: criar conta é decidir quem entra no
+        sistema e com que alcance. Gestor cuida da operação e do cadastro de
+        funcionários.
       </div>
       <button
         type="button"
@@ -31,7 +32,7 @@
             <th style="width: 26%">Nome</th>
             <th style="width: 28%">E-mail</th>
             <th>Papel</th>
-            <th>Filial</th>
+            <th>Indústria</th>
             <th style="width: 90px">Ações</th>
           </tr>
         </thead>
@@ -48,7 +49,7 @@
               <td data-label="Papel">
                 <span class="status-pill users__role-pill">{{ row.roleLabel }}</span>
               </td>
-              <td data-label="Filial" class="users__branch">{{ row.branchLabel }}</td>
+              <td data-label="Indústria" class="users__branch">{{ row.branchLabel }}</td>
               <td data-label="Ações" class="users__actions">
                 <button
                   type="button"
@@ -173,22 +174,43 @@
           </div>
         }
         <div class="field" style="flex: 1; min-width: 200px">
-          <label>Filial (opcional)</label>
-          <select
-            class="input"
-            [disabled]="branchesLoading() || (state.isPlatformAdmin() && !formCompanyGroupId())"
-            (change)="formBranchId.set($any($event.target).value)"
-          >
-            <option value="" [selected]="!formBranchId()">Todas as filiais do grupo</option>
-            @for (b of branches(); track b.id) {
-              <option [value]="b.id" [selected]="b.id === formBranchId()">{{ b.name }}</option>
-            }
-          </select>
+          <label>Indústria</label>
+          @if (unidadeFixa(); as unidade) {
+            <input class="input" [value]="unidade" disabled />
+          } @else {
+            <select
+              class="input"
+              [disabled]="branchesLoading() || (state.isPlatformAdmin() && !formCompanyGroupId())"
+              (change)="formBranchId.set($any($event.target).value)"
+            >
+              <option value="" [selected]="!formBranchId()">Todas as indústrias do grupo</option>
+              @for (b of branches(); track b.id) {
+                <option [value]="b.id" [selected]="b.id === formBranchId()">{{ b.name }}</option>
+              }
+            </select>
+          }
         </div>
       </div>
-      <div class="users__role-hint">
-        Sem filial escolhida, a conta enxerga todas as filiais do grupo.
+      <!--
+        Papel e indústria são dois campos, mas uma decisão só. A frase mostra
+        o que vai ser criado — "Administrador de Céu Azul" — para ninguém
+        escolher o papel e esquecer a indústria.
+      -->
+      <div class="users__summary">
+        Esta conta será <strong>{{ resumoDoCadastro() }}</strong>.
       </div>
+      <!-- Só explica a escolha que ainda está em aberto. -->
+      @if (unidadeFixa(); as unidade) {
+        <div class="users__role-hint">
+          Sua conta é de {{ unidade }}, então as contas que você cria também
+          são — e só enxergam essa indústria.
+        </div>
+      } @else if (!industriaEscolhida()) {
+        <div class="users__role-hint">
+          Escolha uma indústria para limitar a conta a ela; sem escolher, ela
+          enxerga todas as indústrias do grupo.
+        </div>
+      }
 
       @if (saveError()) {
         <div class="users__form-error">{{ saveError() }}</div>
