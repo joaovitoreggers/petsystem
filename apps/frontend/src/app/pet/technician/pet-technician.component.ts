@@ -10,6 +10,7 @@ import {
   signal,
 } from '@angular/core';
 import { PetStateService } from '../pet-state.service';
+import { AccessService } from '../services/access.service';
 import {
   GAS_LIMITS,
   GasKey,
@@ -67,11 +68,29 @@ export class PetTechnicianComponent implements OnDestroy {
   private readonly enrollVideoRef?: ElementRef<HTMLVideoElement>;
 
   readonly cameraActive = signal(false);
+
+  /** Quem pode abrir uma PET, segundo o servidor. */
+  readonly podeEmitirPet = computed(() => this.access.pode()('emitir_pet'));
+
+  /** Quem pode medir e encerrar uma PET já aberta. */
+  readonly podeOperarPet = computed(() => this.access.pode()('operar_pet'));
+
+  /**
+   * A câmera está barrada pela origem, e não por falta de permissão?
+   *
+   * Navegador nenhum entrega câmera fora de um contexto seguro: só em
+   * HTTPS ou em localhost. Aberto pelo IP da rede em http://, o
+   * `navigator.mediaDevices` simplesmente não existe — e aí "toque para
+   * tentar de novo" é uma instrução falsa, porque tentar de novo nunca vai
+   * funcionar. Quando é este o caso, a tela diz o motivo de verdade.
+   */
+  readonly cameraBlockedByOrigin = signal(false);
   readonly cameraError = signal(false);
   private cameraStream: MediaStream | null = null;
 
   constructor(
     readonly state: PetStateService,
+    readonly access: AccessService,
     private readonly injector: Injector,
   ) {
     effect(() => {
@@ -122,6 +141,7 @@ export class PetTechnicianComponent implements OnDestroy {
   private async startCamera(): Promise<void> {
     if (this.cameraStream) return;
     if (!navigator.mediaDevices?.getUserMedia) {
+      this.cameraBlockedByOrigin.set(!window.isSecureContext);
       this.cameraError.set(true);
       return;
     }
@@ -132,9 +152,13 @@ export class PetTechnicianComponent implements OnDestroy {
       });
       this.cameraStream = stream;
       this.cameraError.set(false);
+      this.cameraBlockedByOrigin.set(false);
       this.cameraActive.set(true);
       this.attachStreamToVideo(() => this.faceVideoRef, stream);
     } catch {
+      // Chegou aqui com a API disponível: foi recusa de permissão ou câmera
+      // ocupada — nesses casos tentar de novo faz sentido.
+      this.cameraBlockedByOrigin.set(false);
       this.cameraError.set(true);
       this.cameraActive.set(false);
     }
