@@ -716,6 +716,50 @@ section { padding-block: 88px; }
   color: var(--graphite-soft);
 }
 
+/* Mercado */
+.market-band {
+  background: var(--ink);
+  color: #eef2f5;
+  border-radius: 16px;
+  padding: 40px 36px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 32px;
+}
+@media (max-width: 760px) {
+  .market-band { grid-template-columns: 1fr; gap: 28px; }
+}
+.market-stat {
+  border-left: 2px solid var(--line-on-ink);
+  padding-left: 20px;
+}
+.market-stat__label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--steel-soft);
+}
+.market-stat__val {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 34px;
+  font-weight: 700;
+  color: #fff;
+  margin-top: 6px;
+}
+.market-stat__val span {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--mist);
+  margin-left: 4px;
+}
+.market-stat__desc {
+  margin-top: 8px;
+  font-size: 13.5px;
+  color: var(--mist);
+}
+
 /* Security */
 .sec-grid {
   display: grid;
