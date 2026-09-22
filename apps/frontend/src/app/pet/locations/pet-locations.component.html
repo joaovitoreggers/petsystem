@@ -19,6 +19,11 @@
     </div>
   </div>
 
+  <!-- Ações usa canManageTeam(), não canEditRoster(): diferente da lista de
+       Funcionários, editar/excluir local não tem fallback local em modo
+       demonstração (ver updateCompanyLocation/deleteCompanyLocation em
+       PetStateService) — mostrar os botões sem um back-end de verdade só
+       resultaria num erro de "sessão expirada" confuso. -->
   <div class="table-wrap locations__table">
     <table class="table table--cards-wide">
       <thead>
@@ -26,7 +31,7 @@
           <th style="width: 30%">Local</th>
           <th>Unidade</th>
           <th style="width: 40%">Área de risco</th>
-          @if (state.canEditRoster()) {
+          @if (state.canManageTeam()) {
             <th style="width: 90px">Ações</th>
           }
         </tr>
@@ -52,7 +57,7 @@
                 }
               </div>
             </td>
-            @if (state.canEditRoster()) {
+            @if (state.canManageTeam()) {
               <td data-label="Ações" class="locations__actions">
                 <button
                   type="button"
