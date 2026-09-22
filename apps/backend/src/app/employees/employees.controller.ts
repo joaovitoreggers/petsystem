@@ -12,7 +12,9 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { Roles } from '../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
 import { AuthenticatedUser } from '../auth/jwt-payload.interface';
 import { scopeFromUser } from '../auth/tenant-scope';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
@@ -80,6 +82,8 @@ export class EmployeesController {
   }
 
   @Patch(':id')
+  @UseGuards(RolesGuard)
+  @Roles('admin', 'gestor')
   async update(
     @Param('id') id: string,
     @Body() dto: UpdateEmployeeDto,
@@ -90,6 +94,8 @@ export class EmployeesController {
   }
 
   @Delete(':id')
+  @UseGuards(RolesGuard)
+  @Roles('admin', 'gestor')
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(
     @Param('id') id: string,
