@@ -18,6 +18,8 @@ import { PetAnalysisModule } from './pet-analysis/pet-analysis.module';
 import { CompanyGroup } from './tenancy/entities/company-group.entity';
 import { Branch } from './tenancy/entities/branch.entity';
 import { TenancyModule } from './tenancy/tenancy.module';
+import { CompanyLocation } from './company-locations/entities/company-location.entity';
+import { CompanyLocationsModule } from './company-locations/company-locations.module';
 
 @Module({
   imports: [
@@ -41,6 +43,7 @@ import { TenancyModule } from './tenancy/tenancy.module';
           CompanyGroup,
           Branch,
           WebAuthnCredential,
+          CompanyLocation,
         ],
         synchronize: true,
       }),
@@ -53,6 +56,7 @@ import { TenancyModule } from './tenancy/tenancy.module';
     TeamMembersModule,
     PetAnalysisModule,
     TenancyModule,
+    CompanyLocationsModule,
   ],
   controllers: [AppController],
 })

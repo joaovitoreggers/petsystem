@@ -7,6 +7,7 @@ import { EmployeesService } from './app/employees/employees.service';
 import { UsersService } from './app/users/users.service';
 import { WorkPermitsService } from './app/work-permits/work-permits.service';
 import { TeamMembersService } from './app/team-members/team-members.service';
+import { CompanyLocationsService } from './app/company-locations/company-locations.service';
 
 const LAR_GROUP_NAME = 'Lar Cooperativa Agroindustrial';
 const LAR_BRANCH_NAMES = [
@@ -86,6 +87,25 @@ const SEED_WORK_PERMITS = [
   { id: 'PET-2026-0385', areas: ['maquinas'], location: 'Linha de abate — nória · Matelândia', unit: 'Matelândia', teamSize: 2, date: '2026-08-18', start: '15:10', end: '17:25', timeLabel: '18/08', technician: 'B. Garlini', status: 'fechada' as const, coordinates: '', durationMinutes: 135 },
 ];
 
+// Um local por nome de site distinto que já aparece em SEED_WORK_PERMITS
+// acima, com a(s) mesma(s) área(s) de risco daquela PET — dá ao cadastro
+// de locais um ponto de partida real em vez de uma tela vazia, e permite
+// escolher "Silo de milho 04" no assistente e já vir com NR-33 marcado.
+const SEED_COMPANY_LOCATIONS = [
+  { name: 'Silo de milho 04', riskAreas: ['confinado'], unit: 'Matelândia' },
+  { name: 'Elevatória da ETE', riskAreas: ['confinado', 'eletrico'], unit: 'Medianeira' },
+  { name: 'Casa de caldeiras 02', riskAreas: ['confinado', 'altura'], unit: 'Matelândia' },
+  { name: 'Túnel de congelamento', riskAreas: ['eletrico', 'maquinas'], unit: 'Matelândia' },
+  { name: 'Torre de resfriamento', riskAreas: ['altura'], unit: 'Céu Azul' },
+  { name: 'Moega de recebimento 01', riskAreas: ['confinado'], unit: 'Missal' },
+  { name: 'Linha de extrusão', riskAreas: ['maquinas'], unit: 'Itaipulândia' },
+  { name: 'Silo de soja 09', riskAreas: ['confinado'], unit: 'Itaipulândia' },
+  { name: 'Oficina de manutenção', riskAreas: ['maquinas'], unit: 'Matelândia' },
+  { name: 'Tanque de efluente 02', riskAreas: ['confinado', 'maquinas'], unit: 'Medianeira' },
+  { name: 'Subestação — pórtico 1', riskAreas: ['altura', 'eletrico'], unit: 'Céu Azul' },
+  { name: 'Linha de abate — nória', riskAreas: ['maquinas'], unit: 'Matelândia' },
+];
+
 const SEED_TEAM_MEMBERS = [
   { name: 'Jonas R. Kirchner', registration: '04812', role: 'Mecânico industrial', company: 'Lar · Manutenção', unit: 'Matelândia', documents: { ASO: '2027-03-14', 'NR-33': '2027-02-08', 'NR-35': '2026-11-21', 'NR-12': '2027-05-30' } },
   { name: 'Elaine M. Sobczak', registration: '07330', role: 'Eletricista', company: 'Termoeletro Ltda', unit: 'Medianeira', isThirdParty: true, documents: { ASO: '2027-01-09', 'NR-10': '2026-09-26', 'NR-33': '2026-09-14', 'NR-35': '2027-07-02' } },
@@ -135,6 +155,7 @@ async function seed() {
   const employeesService = app.get(EmployeesService);
   const workPermitsService = app.get(WorkPermitsService);
   const teamMembersService = app.get(TeamMembersService);
+  const companyLocationsService = app.get(CompanyLocationsService);
   const companyGroupsService = app.get(CompanyGroupsService);
   const branchesService = app.get(BranchesService);
 
@@ -220,6 +241,25 @@ async function seed() {
       branchId: branchIdByName.get(data.unit) ?? null,
     });
     Logger.log(`Team member created: ${data.name} (mat. ${data.registration})`);
+  }
+
+  const existingLocations = await companyLocationsService.findAll({
+    role: 'platform-admin',
+    companyGroupId: null,
+    branchId: null,
+  });
+  for (const data of SEED_COMPANY_LOCATIONS) {
+    const existing = existingLocations.find((location) => location.name === data.name);
+    if (existing) {
+      Logger.log(`Company location already exists, skipping: ${data.name}`);
+      continue;
+    }
+    await companyLocationsService.create({
+      ...data,
+      companyGroupId: groupId,
+      branchId: branchIdByName.get(data.unit) ?? null,
+    });
+    Logger.log(`Company location created: ${data.name}`);
   }
 
   await app.close();

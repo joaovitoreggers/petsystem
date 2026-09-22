@@ -62,6 +62,7 @@ function createState(
 ) {
   const workPermitsApi = { findAll: jest.fn(() => throwError(() => new Error('unauthenticated'))) };
   const teamMembersApi = { findAll: jest.fn(() => throwError(() => new Error('unauthenticated'))) };
+  const companyLocationsApi = { findAll: jest.fn(() => throwError(() => new Error('unauthenticated'))) };
   const authApi = {
     login: jest.fn(() => of(loginResult)),
     getBiometricRegistrationOptions: jest.fn(() =>
@@ -87,6 +88,7 @@ function createState(
   const state = new PetStateService(
     workPermitsApi as never,
     teamMembersApi as never,
+    companyLocationsApi as never,
     authApi as never,
     authToken as never,
     deviceAuth as never,

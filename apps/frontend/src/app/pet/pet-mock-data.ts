@@ -580,6 +580,16 @@ export const DOCUMENT_TYPES: DocumentType[] = [
   { code: 'NR-13', description: 'Caldeiras e vasos de pressão' },
 ];
 
+// Local cadastrado pela empresa, já com a área de risco padrão — permite
+// ao técnico escolher um local conhecido no assistente "Nova PET" e ter a
+// área de risco, o nome e a unidade preenchidos sozinhos.
+export interface CompanyLocation {
+  id: string;
+  name: string;
+  riskAreas: RiskAreaId[];
+  unit: string;
+}
+
 export interface TeamMember {
   name: string;
   registration: string;

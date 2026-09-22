@@ -32,6 +32,19 @@
             Marque todas as áreas de risco da intervenção. Cada norma acrescenta
             seus próprios campos e checklist ao formulário.
           </div>
+          @if (state.companyLocations().length > 0) {
+            <div class="field step-area__location-picker">
+              <label>Local cadastrado (opcional)</label>
+              <select class="input" (change)="pickCompanyLocation($event)">
+                <option value="" selected>
+                  Selecione um local para pré-preencher
+                </option>
+                @for (l of state.companyLocations(); track l.id) {
+                  <option [value]="l.id">{{ l.name }} · {{ l.unit }}</option>
+                }
+              </select>
+            </div>
+          }
           @for (area of areas; track area.id) {
             <label
               class="area-option"
@@ -173,7 +186,7 @@
                 (change)="onFieldChange('local', $event)"
               >
                 <option value="" disabled selected hidden>Selecione</option>
-                @for (l of locationOptions; track l) {
+                @for (l of locationOptions(); track l) {
                   <option>{{ l }}</option>
                 }
               </select>

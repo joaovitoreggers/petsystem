@@ -5,6 +5,7 @@ import {
   Badge,
   BadgeItem,
   ChecklistAnswer,
+  CompanyLocation,
   CriticalAlert,
   FireWatchRound,
   GAS_LIMITS,
@@ -29,12 +30,17 @@ import {
 } from './pet-mock-data';
 import { WorkPermitsApiService } from './services/work-permits-api.service';
 import { TeamMembersApiService, UpdateTeamMemberPayload } from './services/team-members-api.service';
+import {
+  CompanyLocationsApiService,
+  CreateCompanyLocationPayload,
+  UpdateCompanyLocationPayload,
+} from './services/company-locations-api.service';
 import { AuthApiService, AuthenticatedUser } from './services/auth-api.service';
 import { AuthTokenService } from './services/auth-token.service';
 import { DeviceAuthService, BiometricEnrollment } from './services/device-auth.service';
 import { startAuthentication, startRegistration, WebAuthnError } from '@simplewebauthn/browser';
 
-export type PortalRole = 'tecnico' | 'gestor' | 'equipe' | 'usuarios' | 'empresas';
+export type PortalRole = 'tecnico' | 'gestor' | 'equipe' | 'locais' | 'usuarios' | 'empresas';
 export type TechnicianScreen =
   'login' | 'home' | 'nova' | 'emitida' | 'detalhe';
 export type HomeTab = 'abertas' | 'fechadas';
@@ -231,10 +237,16 @@ export class PetStateService {
   // que o MVP evita depender do back-end estar de pé para ser demonstrado.
   readonly pets = signal<Pet[]>([...MOCK_PETS]);
   readonly teamMembers = signal<TeamMember[]>(restoreRoster());
+  // Sem mock local de propósito — diferente de pets/teamMembers, não há um
+  // acervo de exemplo prévio à API pra cair de volta; começa vazio até
+  // loadFromBackend() responder, e a tela de Locais/o assistente mostram
+  // "nenhum local cadastrado ainda" nesse meio-tempo.
+  readonly companyLocations = signal<CompanyLocation[]>([]);
 
   constructor(
     private readonly workPermitsApi: WorkPermitsApiService,
     private readonly teamMembersApi: TeamMembersApiService,
+    private readonly companyLocationsApi: CompanyLocationsApiService,
     private readonly authApi: AuthApiService,
     private readonly authToken: AuthTokenService,
     private readonly deviceAuth: DeviceAuthService,
@@ -263,6 +275,12 @@ export class PetStateService {
     } catch {
       // mantém os dados mockados como estão
     }
+    try {
+      const locations = await firstValueFrom(this.companyLocationsApi.findAll());
+      this.companyLocations.set(locations);
+    } catch {
+      // mantém a lista vazia — sem mock local pra este recurso
+    }
   }
 
   async registerTeamMember(member: TeamMember): Promise<void> {
@@ -272,6 +290,37 @@ export class PetStateService {
     } catch {
       this.teamMembers.update((list) => [...list, member]);
     }
+  }
+
+  /**
+   * Cadastro de local (tela "Locais"): qualquer sessão real pode criar,
+   * mesma exigência de registerTeamMember — só login, sem papel específico.
+   * Fallback local se a API falhar, pelo mesmo motivo: um cadastro que
+   * "sumiu" sem aviso seria pior que um cadastro que só não persistiu.
+   */
+  async registerCompanyLocation(location: CreateCompanyLocationPayload): Promise<void> {
+    try {
+      const created = await firstValueFrom(this.companyLocationsApi.create(location));
+      this.companyLocations.update((list) => [...list, created]);
+    } catch {
+      this.companyLocations.update((list) => [...list, { ...location, id: `local-${Date.now()}` }]);
+    }
+  }
+
+  /**
+   * Exige sessão real de admin/gestor (ver RolesGuard no back-end) — ao
+   * contrário de registerCompanyLocation(), não há fallback local aqui
+   * pelo mesmo motivo de updateTeamMember(): editar sem persistir
+   * esconderia do usuário que a mudança não pegou.
+   */
+  async updateCompanyLocation(id: string, patch: UpdateCompanyLocationPayload): Promise<void> {
+    const updated = await firstValueFrom(this.companyLocationsApi.update(id, patch));
+    this.companyLocations.update((list) => list.map((l) => (l.id === id ? updated : l)));
+  }
+
+  async deleteCompanyLocation(id: string): Promise<void> {
+    await firstValueFrom(this.companyLocationsApi.remove(id));
+    this.companyLocations.update((list) => list.filter((l) => l.id !== id));
   }
 
   /**
@@ -843,6 +892,18 @@ export class PetStateService {
     this.selectedAreas.update((ids) =>
       ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id],
     );
+  }
+
+  /**
+   * Escolher um local já cadastrado pré-preenche a área de risco (a do
+   * cadastro do local, substituindo o que já estava marcado) e o nome/
+   * unidade na etapa seguinte — continuam editáveis à mão depois, isto só
+   * dá o ponto de partida. Ver CompanyLocation.
+   */
+  selectCompanyLocation(location: CompanyLocation): void {
+    this.selectedAreas.set([...location.riskAreas]);
+    this.setField('local', location.name);
+    this.setField('unidade', location.unit);
   }
 
   setField<K extends keyof WizardFields>(name: K, value: string): void {
