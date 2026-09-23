@@ -43,8 +43,10 @@
                 <app-icon name="document" [size]="26" />
                 <span class="metodo__choice-title">Cadastrar por NR</span>
                 <span class="metodo__choice-desc">
-                  Marque manualmente as normas regulamentadoras aplicáveis a
-                  esta intervenção.
+                  Você marca à mão quais normas (NR-33, NR-35...) se aplicam
+                  a esta intervenção. Use quando o local não está cadastrado
+                  ou muda a cada serviço — cada norma marcada acrescenta seu
+                  próprio checklist ao formulário.
                 </span>
               </button>
               <button
@@ -59,8 +61,9 @@
                 </span>
                 <span class="metodo__choice-desc">
                   @if (state.companyLocations().length > 0) {
-                    Escolha um local já cadastrado — a área de risco e o
-                    local específico preenchem sozinhos.
+                    Você escolhe um local já cadastrado pela empresa e a
+                    PET preenche sozinha a área de risco, o nome do local e
+                    a unidade — só confere e segue, sem repetir o cadastro.
                   } @else {
                     Nenhum local cadastrado ainda. Cadastre um na aba
                     "Locais" para usar este atalho.
