@@ -13,7 +13,11 @@ export class EvacuationAlert {
 
   // Nula quando a evacuação foi acionada sem uma PET específica em foco
   // (retirada geral das frentes ativas) — ver PetStateService.evacuationPet.
-  @Column({ name: 'work_permit_id', nullable: true })
+  // Tipo explícito ('varchar', igual ao WorkPermit.id que referencia): um
+  // union com `null` não vira metadata de tipo utilizável por reflexão no
+  // build via SWC — sem isso o TypeORM tenta gravar a coluna como "Object"
+  // e o Postgres recusa (mesmo motivo do comentário em WorkPermit.status).
+  @Column({ name: 'work_permit_id', type: 'varchar', nullable: true })
   workPermitId!: string | null;
 
   @Column({ name: 'company_group_id', type: 'uuid', nullable: true })

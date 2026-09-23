@@ -561,6 +561,12 @@ export class PetStateService {
       );
       this.session.set(result);
       this.authToken.setToken(result.accessToken);
+      // loadFromBackend() já rodou uma vez no construtor, sem token —
+      // tudo que exige sessão (pets, funcionários, locais, brigada) tinha
+      // voltado 401 e ficado no mock/vazio. Com o token de verdade em
+      // mãos agora, busca de novo pra trocar isso pelos dados reais do
+      // tenant.
+      this.loadFromBackend();
       this.authPhase.set('ok');
       setTimeout(() => {
         this.authPhase.set('idle');
@@ -731,6 +737,10 @@ export class PetStateService {
       );
       this.session.set(result);
       this.authToken.setToken(result.accessToken);
+      // Mesmo motivo do login por biometria: refaz a carga agora que há
+      // um token de verdade, pra sair do mock/vazio e mostrar os dados
+      // reais do tenant.
+      this.loadFromBackend();
       this.loginPassword.set('');
       // Sem passkey cadastrada neste aparelho ainda: oferece habilitar
       // antes de seguir pra home — a biometria nativa só facilita quem já
@@ -763,6 +773,17 @@ export class PetStateService {
     this.loginError.set(null);
     this.biometricAuthError.set(null);
     this.authMethod.set(this.biometricEnrollment() ? 'biometria' : 'senha');
+    // Sem isto, um aparelho compartilhado (portaria, tablet de chão de
+    // fábrica) continuaria mostrando os dados do tenant anterior — em
+    // memória, não voltam ao mock sozinhos só porque o token sumiu.
+    this.resetTenantData();
+  }
+
+  private resetTenantData(): void {
+    this.pets.set([...MOCK_PETS]);
+    this.teamMembers.set(restoreRoster());
+    this.companyLocations.set([]);
+    this.emergencyContacts.set([]);
   }
 
   selectHomeTab(tab: HomeTab): void {
