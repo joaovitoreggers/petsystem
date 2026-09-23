@@ -591,6 +591,14 @@ export interface CompanyLocation {
   unit: string;
 }
 
+// Membro da brigada de emergência: recebe SMS/WhatsApp quando o botão de
+// evacuação é acionado (ver EvacuationApiService/PetStateService).
+export interface EmergencyContact {
+  id: string;
+  name: string;
+  phone: string;
+}
+
 export interface TeamMember {
   name: string;
   registration: string;

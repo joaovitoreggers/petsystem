@@ -20,6 +20,10 @@ import { Branch } from './tenancy/entities/branch.entity';
 import { TenancyModule } from './tenancy/tenancy.module';
 import { CompanyLocation } from './company-locations/entities/company-location.entity';
 import { CompanyLocationsModule } from './company-locations/company-locations.module';
+import { EmergencyContact } from './emergency-contacts/entities/emergency-contact.entity';
+import { EmergencyContactsModule } from './emergency-contacts/emergency-contacts.module';
+import { EvacuationAlert } from './evacuation/entities/evacuation-alert.entity';
+import { EvacuationModule } from './evacuation/evacuation.module';
 
 @Module({
   imports: [
@@ -44,6 +48,8 @@ import { CompanyLocationsModule } from './company-locations/company-locations.mo
           Branch,
           WebAuthnCredential,
           CompanyLocation,
+          EmergencyContact,
+          EvacuationAlert,
         ],
         synchronize: true,
       }),
@@ -57,6 +63,8 @@ import { CompanyLocationsModule } from './company-locations/company-locations.mo
     PetAnalysisModule,
     TenancyModule,
     CompanyLocationsModule,
+    EmergencyContactsModule,
+    EvacuationModule,
   ],
   controllers: [AppController],
 })

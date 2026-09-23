@@ -7,6 +7,7 @@ import {
   ChecklistAnswer,
   CompanyLocation,
   CriticalAlert,
+  EmergencyContact,
   FireWatchRound,
   GAS_LIMITS,
   GasKey,
@@ -35,12 +36,18 @@ import {
   CreateCompanyLocationPayload,
   UpdateCompanyLocationPayload,
 } from './services/company-locations-api.service';
+import {
+  CreateEmergencyContactPayload,
+  EmergencyContactsApiService,
+  UpdateEmergencyContactPayload,
+} from './services/emergency-contacts-api.service';
+import { EvacuationApiService } from './services/evacuation-api.service';
 import { AuthApiService, AuthenticatedUser } from './services/auth-api.service';
 import { AuthTokenService } from './services/auth-token.service';
 import { DeviceAuthService, BiometricEnrollment } from './services/device-auth.service';
 import { startAuthentication, startRegistration, WebAuthnError } from '@simplewebauthn/browser';
 
-export type PortalRole = 'tecnico' | 'gestor' | 'equipe' | 'locais' | 'usuarios' | 'empresas';
+export type PortalRole = 'tecnico' | 'gestor' | 'equipe' | 'locais' | 'brigada' | 'usuarios' | 'empresas';
 export type TechnicianScreen =
   'login' | 'home' | 'nova' | 'emitida' | 'detalhe';
 export type HomeTab = 'abertas' | 'fechadas';
@@ -98,13 +105,25 @@ export class PetStateService {
 
   // ── Alerta e evacuação ──────────────────────────────────────────────
   // Vive aqui (não num componente) para ficar disponível em qualquer tela —
-  // trocar de aba (técnico/gestor/funcionários) não deve silenciar a sirene
-  // nem fechar o alerta de uma evacuação em curso.
+  // trocar de aba (técnico/gestor/funcionários) não deve fechar o alerta
+  // de uma evacuação em curso nem perder o resultado do envio.
   readonly evacuating = signal(false);
 
-  private audioContext: AudioContext | null = null;
-  private sirenOscillator: OscillatorNode | null = null;
-  private sirenIntervalId: ReturnType<typeof setInterval> | null = null;
+  // Acompanha o disparo de SMS/WhatsApp pra brigada (ver EvacuationModule
+  // no back-end) — substituiu a sirene sonora local, que só quem estivesse
+  // com o navegador aberto e o som ligado ouvia.
+  readonly evacuationAlertId = signal<string | null>(null);
+  readonly evacuationStatusLink = signal<string | null>(null);
+  readonly evacuationContactsNotified = signal(0);
+  // 'error' é a chamada em si não ter completado (rede/sessão) — nesse
+  // caso `evacuationContactsNotified` nunca chega a ser atualizado, então
+  // precisa de um estado próprio, senão a tela diria "nenhum contato
+  // cadastrado" mesmo quando existem e só não foi possível perguntar.
+  // 'failed' é a chamada ter completado mas nenhum envio individual ter
+  // ido (ex. Twilio configurado, mas rejeitando as mensagens).
+  readonly evacuationNotifyState = signal<
+    'sending' | 'sent' | 'failed' | 'not_configured' | 'error' | null
+  >(null);
 
   readonly alarmedPets = computed(() =>
     this.pets().filter((p) => p.alarm && p.status !== 'fechada'),
@@ -136,10 +155,26 @@ export class PetStateService {
     return `${pet.id} · ${pet.location} · ${riskAreaNrs(pet.areas)}. Atmosfera fora do limite: retirada imediata da frente de trabalho.`;
   });
 
-  triggerEvacuation(petId?: string): void {
+  async triggerEvacuation(petId?: string): Promise<void> {
     this.evacuationPetId.set(petId ?? null);
-    this.startSiren();
     this.evacuating.set(true);
+    this.evacuationAlertId.set(null);
+    this.evacuationStatusLink.set(null);
+    this.evacuationContactsNotified.set(0);
+    this.evacuationNotifyState.set('sending');
+    try {
+      const result = await firstValueFrom(this.evacuationApi.trigger(petId ?? null));
+      this.evacuationAlertId.set(result.alertId);
+      this.evacuationStatusLink.set(result.statusUrl);
+      this.evacuationContactsNotified.set(result.contactsNotified);
+      const anyConfigured = result.deliveries.some(
+        (d) => d.sms !== 'not_configured' || d.whatsapp !== 'not_configured',
+      );
+      const anySent = result.deliveries.some((d) => d.sms === 'sent' || d.whatsapp === 'sent');
+      this.evacuationNotifyState.set(!anyConfigured ? 'not_configured' : anySent ? 'sent' : 'failed');
+    } catch {
+      this.evacuationNotifyState.set('error');
+    }
   }
 
   // Seletor "qual PET está sendo evacuada", compartilhado pelos dois
@@ -176,57 +211,21 @@ export class PetStateService {
     this.evacuationPickerOpen.set(false);
   }
 
-  silenceSiren(): void {
-    this.stopSiren();
-  }
-
-  finishEvacuation(): void {
-    this.stopSiren();
+  async finishEvacuation(): Promise<void> {
+    const alertId = this.evacuationAlertId();
     this.evacuating.set(false);
     this.evacuationPetId.set(null);
-  }
-
-  private startSiren(): void {
-    try {
-      this.stopSiren();
-      const AudioCtx =
-        window.AudioContext ??
-        (window as unknown as { webkitAudioContext: typeof AudioContext })
-          .webkitAudioContext;
-      if (!AudioCtx) return;
-      const ctx = (this.audioContext ??= new AudioCtx());
-      if (ctx.state === 'suspended') ctx.resume();
-      const oscillator = ctx.createOscillator();
-      const gain = ctx.createGain();
-      oscillator.type = 'square';
-      oscillator.frequency.setValueAtTime(760, ctx.currentTime);
-      gain.gain.setValueAtTime(0.055, ctx.currentTime);
-      oscillator.connect(gain);
-      gain.connect(ctx.destination);
-      oscillator.start();
-      this.sirenOscillator = oscillator;
-      let high = true;
-      this.sirenIntervalId = setInterval(() => {
-        high = !high;
-        oscillator.frequency.setValueAtTime(high ? 760 : 520, ctx.currentTime);
-      }, 420);
-    } catch {
-      // Web Audio unavailable — o alerta visual continua funcionando sem som.
-    }
-  }
-
-  private stopSiren(): void {
-    if (this.sirenIntervalId !== null) {
-      clearInterval(this.sirenIntervalId);
-      this.sirenIntervalId = null;
-    }
-    if (this.sirenOscillator) {
+    this.evacuationAlertId.set(null);
+    this.evacuationStatusLink.set(null);
+    this.evacuationNotifyState.set(null);
+    this.evacuationContactsNotified.set(0);
+    if (alertId) {
       try {
-        this.sirenOscillator.stop();
+        await firstValueFrom(this.evacuationApi.resolve(alertId));
       } catch {
-        // já parado
+        // best-effort — a página pública só deixa de mostrar "encerrada",
+        // o encerramento local já valeu.
       }
-      this.sirenOscillator = null;
     }
   }
 
@@ -243,10 +242,16 @@ export class PetStateService {
   // "nenhum local cadastrado ainda" nesse meio-tempo.
   readonly companyLocations = signal<CompanyLocation[]>([]);
 
+  // Mesmo raciocínio de companyLocations: sem mock local, começa vazia até
+  // loadFromBackend() responder.
+  readonly emergencyContacts = signal<EmergencyContact[]>([]);
+
   constructor(
     private readonly workPermitsApi: WorkPermitsApiService,
     private readonly teamMembersApi: TeamMembersApiService,
     private readonly companyLocationsApi: CompanyLocationsApiService,
+    private readonly emergencyContactsApi: EmergencyContactsApiService,
+    private readonly evacuationApi: EvacuationApiService,
     private readonly authApi: AuthApiService,
     private readonly authToken: AuthTokenService,
     private readonly deviceAuth: DeviceAuthService,
@@ -278,6 +283,12 @@ export class PetStateService {
     try {
       const locations = await firstValueFrom(this.companyLocationsApi.findAll());
       this.companyLocations.set(locations);
+    } catch {
+      // mantém a lista vazia — sem mock local pra este recurso
+    }
+    try {
+      const contacts = await firstValueFrom(this.emergencyContactsApi.findAll());
+      this.emergencyContacts.set(contacts);
     } catch {
       // mantém a lista vazia — sem mock local pra este recurso
     }
@@ -321,6 +332,27 @@ export class PetStateService {
   async deleteCompanyLocation(id: string): Promise<void> {
     await firstValueFrom(this.companyLocationsApi.remove(id));
     this.companyLocations.update((list) => list.filter((l) => l.id !== id));
+  }
+
+  // Mesmo padrão de registerCompanyLocation: qualquer sessão real pode
+  // cadastrar um contato de brigada, com fallback local se a API falhar.
+  async registerEmergencyContact(contact: CreateEmergencyContactPayload): Promise<void> {
+    try {
+      const created = await firstValueFrom(this.emergencyContactsApi.create(contact));
+      this.emergencyContacts.update((list) => [...list, created]);
+    } catch {
+      this.emergencyContacts.update((list) => [...list, { ...contact, id: `local-${Date.now()}` }]);
+    }
+  }
+
+  async updateEmergencyContact(id: string, patch: UpdateEmergencyContactPayload): Promise<void> {
+    const updated = await firstValueFrom(this.emergencyContactsApi.update(id, patch));
+    this.emergencyContacts.update((list) => list.map((c) => (c.id === id ? updated : c)));
+  }
+
+  async deleteEmergencyContact(id: string): Promise<void> {
+    await firstValueFrom(this.emergencyContactsApi.remove(id));
+    this.emergencyContacts.update((list) => list.filter((c) => c.id !== id));
   }
 
   /**

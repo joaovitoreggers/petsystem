@@ -472,6 +472,24 @@
   opacity: 0.85;
   line-height: 1.7;
 }
+.evac__link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.1);
+}
+.evac__link-text {
+  flex: 1 1 220px;
+  font-size: var(--text-sm);
+  word-break: break-all;
+}
+.evac__link-copy {
+  flex: none;
+  padding: var(--space-2) var(--space-3);
+}
 .evac__actions {
   display: flex;
   gap: var(--space-3);

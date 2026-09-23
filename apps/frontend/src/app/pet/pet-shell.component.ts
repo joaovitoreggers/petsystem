@@ -4,6 +4,7 @@ import { PetTechnicianComponent } from './technician/pet-technician.component';
 import { PetManagerComponent } from './manager/pet-manager.component';
 import { PetTeamComponent } from './team/pet-team.component';
 import { PetLocationsComponent } from './locations/pet-locations.component';
+import { PetBrigadeComponent } from './brigade/pet-brigade.component';
 import { PetUsersComponent } from './users/pet-users.component';
 import { PetCompaniesComponent } from './companies/pet-companies.component';
 import { IconComponent, IconName } from '../shared/icon.component';
@@ -27,6 +28,7 @@ interface NavItem {
     PetManagerComponent,
     PetTeamComponent,
     PetLocationsComponent,
+    PetBrigadeComponent,
     PetUsersComponent,
     PetCompaniesComponent,
     IconComponent,
@@ -69,6 +71,14 @@ export class PetShellComponent {
       badge: () => null,
     },
     {
+      id: 'brigada',
+      label: 'Brigada',
+      shortLabel: 'Brigada',
+      description: 'Quem recebe o alerta de evacuação',
+      icon: 'alert',
+      badge: () => null,
+    },
+    {
       id: 'usuarios',
       label: 'Usuários',
       shortLabel: 'Usuários',
@@ -106,6 +116,7 @@ export class PetShellComponent {
   );
 
   readonly evacStartedAt = signal('');
+  readonly statusLinkCopied = signal(false);
 
   constructor(readonly state: PetStateService) {
     // Se a sessão de admin/gestor cair (logout, expiração) enquanto a aba
@@ -171,4 +182,15 @@ export class PetShellComponent {
       { label: 'Acionamento', value: 'manual · SESMT' },
     ];
   });
+
+  async copyStatusLink(link: string): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(link);
+      this.statusLinkCopied.set(true);
+      setTimeout(() => this.statusLinkCopied.set(false), 2000);
+    } catch {
+      // Clipboard indisponível (contexto não seguro, permissão negada) — o
+      // link continua selecionável/copiável à mão no próprio texto.
+    }
+  }
 }

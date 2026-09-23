@@ -1,0 +1,87 @@
+/* ── Página pública de status de evacuação ────────────────────────────
+   Aberta pelo link do SMS/WhatsApp — sem sidebar, sem login, funciona
+   sozinha. Mesma paleta vermelha da tela de emergência do shell enquanto
+   a evacuação segue aberta; vira verde quando é registrada como
+   concluída, pra não deixar quem chega tarde com a falsa urgência. */
+
+:host {
+  display: block;
+  min-height: 100vh;
+}
+
+.pubstatus {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-5) var(--space-4);
+  background: #7d1c1c;
+  color: #fff;
+}
+.pubstatus--resolved {
+  background: #1d4d33;
+}
+
+.pubstatus__card {
+  width: 100%;
+  max-width: 560px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.pubstatus__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.pubstatus__title {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: clamp(22px, 4vw, 30px);
+  letter-spacing: 0.02em;
+}
+.pubstatus__clock {
+  opacity: 0.85;
+  font-size: var(--text-sm);
+}
+.pubstatus__text {
+  font-size: var(--text-base);
+  line-height: 1.55;
+  opacity: 0.9;
+}
+
+.pubstatus__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.1);
+}
+.pubstatus__fact-label {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.75;
+}
+.pubstatus__fact-value {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: var(--text-lg);
+  line-height: 1.25;
+  word-break: break-word;
+}
+
+.pubstatus__note {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  opacity: 0.8;
+  line-height: 1.6;
+}
+
+@media (max-width: 480px) {
+  .pubstatus__grid {
+    grid-template-columns: 1fr;
+  }
+}
