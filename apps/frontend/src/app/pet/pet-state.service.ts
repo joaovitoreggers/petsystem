@@ -885,7 +885,8 @@ export class PetStateService {
   }
 
   editArea(): void {
-    this.stepIndex.set(0);
+    const target = this.steps().indexOf('area');
+    this.stepIndex.set(target === -1 ? 0 : target);
   }
 
   toggleArea(id: RiskAreaId): void {
@@ -904,6 +905,25 @@ export class PetStateService {
     this.selectedAreas.set([...location.riskAreas]);
     this.setField('local', location.name);
     this.setField('unidade', location.unit);
+  }
+
+  // Primeira etapa do assistente: "cadastrar por NR" segue pro checklist
+  // manual de área de risco de sempre — sem nada pré-marcado.
+  chooseManualArea(): void {
+    this.stepIndex.update((i) => i + 1);
+  }
+
+  /**
+   * "Cadastrar por lugar de risco": pré-preenche via selectCompanyLocation()
+   * e pula direto pra etapa de atividade — a área já foi decidida pelo local
+   * escolhido, reapresentar o checklist manual seria redundante. O resumo da
+   * etapa seguinte mostra a área escolhida com um link "Editar" pra quem
+   * quiser ajustar à mão mesmo assim.
+   */
+  startFromCompanyLocation(location: CompanyLocation): void {
+    this.selectCompanyLocation(location);
+    const target = this.steps().indexOf('atividade');
+    this.stepIndex.set(target === -1 ? this.stepIndex() + 1 : target);
   }
 
   setField<K extends keyof WizardFields>(name: K, value: string): void {
@@ -1053,6 +1073,10 @@ export class PetStateService {
   // ── Navegação do wizard ──────────────────────────────────────────
   canAdvance(): boolean {
     const step = this.currentStep();
+    // Sem "Avançar" genérico aqui: os dois botões da etapa decidem o
+    // próximo passo sozinhos (ver chooseManualArea/startFromCompanyLocation)
+    // — nenhum dos dois passa pelo botão do rodapé do assistente.
+    if (step === 'metodo') return false;
     if (step === 'area') return this.selectedAreas().length > 0;
     if (step === 'gases')
       return this.gasReadingComplete() && !this.atmosphereOutOfRange();
