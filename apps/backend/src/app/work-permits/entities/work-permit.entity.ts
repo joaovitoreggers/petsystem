@@ -46,7 +46,10 @@ export type WorkPermitTeamRole = 'equipe' | 'vigia' | 'resgate';
 export type WorkPermitChecklistAnswer = 'sim' | 'nao' | 'na';
 
 // Ronda de vigia de fogo pós-término, exigida em trabalho a quente (NR-18):
-// 4 checagens a cada 30 min nas 2h seguintes ao fim do serviço.
+// 4 checagens a cada 30 min nas 2h seguintes ao fim do serviço. NR-18 não
+// é uma área de risco selecionável no momento (ver RiskAreaId no
+// front-end), então nada popula isto hoje — mantido para quando o escopo
+// crescer de novo.
 export interface WorkPermitFireWatchRound {
   hora: string;
   nome: string;

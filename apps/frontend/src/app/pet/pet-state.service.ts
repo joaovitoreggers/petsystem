@@ -1054,10 +1054,11 @@ export class PetStateService {
       ...this.badgesToTeam(this.resgateTeam(), 'resgate'),
     ];
     const teamSize = team.length;
-    // Rondas de vigia só existem de verdade em trabalho a quente (NR-18) —
-    // nas demais áreas o bloco nem aparece na etapa "Checklist e foto",
-    // então enviar os 4 slots vazios não representaria nada preenchido.
-    const fireWatchRounds = areas.includes('quente') ? this.fireWatchRounds() : undefined;
+    // Rondas de vigia só existem de verdade em trabalho a quente (NR-18),
+    // que não é uma área de risco selecionável no momento (ver RiskAreaId
+    // em pet-mock-data.ts) — então isto nunca envia rondas preenchidas
+    // hoje. Mantido pronto para quando o escopo crescer de novo.
+    const fireWatchRounds = undefined;
     const payload = {
       areas,
       location: fields.local || 'Local não informado',

@@ -1,12 +1,14 @@
-// Mesmos 5 códigos de RiskAreaId do front-end (apps/frontend/src/app/pet/pet-mock-data.ts),
+// Mesmos códigos de RiskAreaId do front-end (apps/frontend/src/app/pet/pet-mock-data.ts),
 // duplicados aqui só para dar um rótulo legível no resumo enviado à IA — não
 // há uma lib compartilhada entre os dois apps neste monorepo.
 export const AREA_INFO: { id: string; label: string; nr: string }[] = [
   { id: 'confinado', label: 'Espaço confinado', nr: 'NR-33' },
-  { id: 'quente', label: 'Trabalho a quente', nr: 'NR-18' },
   { id: 'altura', label: 'Trabalho em altura', nr: 'NR-35' },
   { id: 'eletrico', label: 'Serviço elétrico', nr: 'NR-10' },
   { id: 'maquinas', label: 'Máquinas e bloqueio', nr: 'NR-12' },
+  { id: 'descarga', label: 'Descarga de gases/líquidos', nr: 'NR-20' },
+  { id: 'naval', label: 'Indústria naval', nr: 'NR-34' },
+  { id: 'plataforma', label: 'Plataforma de petróleo', nr: 'NR-37' },
 ];
 
 export interface AreaStat {

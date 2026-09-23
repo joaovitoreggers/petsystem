@@ -4,9 +4,16 @@
 //
 // O checklist, os campos de EPI e as áreas de risco abaixo foram conferidos
 // contra a PET física em papel da Lar (FO 060 330-37, v5 09/2025) — ver
-// CHECKLISTS, EPI_CHECKLIST e as áreas 'icamento'/'descarga'.
+// CHECKLISTS, EPI_CHECKLIST e a área 'descarga'.
 
-export type RiskAreaId = 'confinado' | 'quente' | 'altura' | 'eletrico' | 'maquinas' | 'icamento' | 'descarga';
+// De propósito, restrito às 7 normas que o sistema cobre por enquanto —
+// NR-33/35/10/12/20 já tinham checklist na PET física da Lar; NR-34
+// (naval) e NR-37 (plataforma) foram adicionadas com checklist próprio,
+// mas sem PET de exemplo — a Lar é agroindustrial, não tem operação naval
+// nem offshore. Trabalho a quente (NR-18) e içamento (NR-11) saíram do
+// escopo aqui — ver histórico de PETs que usavam NR-18, reatribuídas para
+// a área que melhor representa o mesmo serviço.
+export type RiskAreaId = 'confinado' | 'altura' | 'eletrico' | 'maquinas' | 'descarga' | 'naval' | 'plataforma';
 
 export interface RiskArea {
   id: RiskAreaId;
@@ -17,12 +24,12 @@ export interface RiskArea {
 
 export const RISK_AREAS: RiskArea[] = [
   { id: 'confinado', name: 'Espaço confinado', nr: 'NR-33', description: 'Silos, moegas, tanques, elevatórias' },
-  { id: 'quente', name: 'Trabalho a quente', nr: 'NR-18', description: 'Solda, corte, esmerilhamento' },
   { id: 'altura', name: 'Trabalho em altura', nr: 'NR-35', description: 'Acima de 2 m do nível inferior' },
   { id: 'eletrico', name: 'Serviço elétrico', nr: 'NR-10', description: 'Painéis, CCM, alta tensão' },
   { id: 'maquinas', name: 'Máquinas e bloqueio', nr: 'NR-12', description: 'Intervenção em equipamento motorizado' },
-  { id: 'icamento', name: 'Içamento de carga', nr: 'NR-11', description: 'Guindaste, munck, talha — movimentação de cargas' },
   { id: 'descarga', name: 'Descarga de gases/líquidos', nr: 'NR-20', description: 'Caminhão-tanque, produtos inflamáveis' },
+  { id: 'naval', name: 'Indústria naval', nr: 'NR-34', description: 'Construção, reparo ou desmonte de embarcações — docas, estaleiros, tanques' },
+  { id: 'plataforma', name: 'Plataforma de petróleo', nr: 'NR-37', description: 'Operações em plataforma fixa ou flutuante — processo, embarque, offshore' },
 ];
 
 export function riskAreaName(id: RiskAreaId): string {
@@ -38,7 +45,7 @@ export function riskAreaNrs(ids: RiskAreaId[]): string {
   return ids.map(riskAreaNr).join(' · ');
 }
 export function requiresGasMonitoring(ids: RiskAreaId[]): boolean {
-  return ids.some((id) => id === 'confinado' || id === 'quente');
+  return ids.some((id) => id === 'confinado' || id === 'naval' || id === 'plataforma');
 }
 
 export function dateToBr(iso: string): string {
@@ -97,10 +104,12 @@ export interface ChecklistGroup {
   items: string[];
 }
 
-// Checklists de confinado, altura, quente, içamento e descarga transcritos
-// da PET física da Lar (FO 060 330-37). Elétrico e máquinas não aparecem
-// nessa folha — a empresa provavelmente usa uma PET própria para elétrica —
-// então mantêm o checklist genérico que já existia.
+// Checklists de confinado, altura e descarga transcritos da PET física da
+// Lar (FO 060 330-37). Elétrico e máquinas não aparecem nessa folha — a
+// empresa provavelmente usa uma PET própria para elétrica — então mantêm o
+// checklist genérico que já existia. Naval (NR-34) e plataforma (NR-37) são
+// checklists novos, escritos a partir do texto das normas — sem PET física
+// de referência, já que a Lar não opera nesses dois setores.
 export const CHECKLISTS: Record<RiskAreaId, ChecklistGroup[]> = {
   confinado: [
     {
@@ -125,7 +134,6 @@ export const CHECKLISTS: Record<RiskAreaId, ChecklistGroup[]> = {
       title: 'Equipe e comunicação',
       items: [
         'Trabalhadores com treinamentos válidos em NR-33?',
-        'Trabalhadores com treinamentos válidos em NR-18?',
         'Trabalhadores em condições físicas/clínicas?',
         'Comunicação clara entre vigia/trabalhadores?',
         'Comunicação entre equipe de vigia/resgate?',
@@ -160,43 +168,44 @@ export const CHECKLISTS: Record<RiskAreaId, ChecklistGroup[]> = {
       ],
     },
   ],
-  quente: [
+  naval: [
     {
-      title: 'Prevenção de incêndio · NR-18',
+      title: 'Condições gerais · NR-34',
       items: [
-        'Equipamentos e ferramentas em boas condições?',
-        'Área está sinalizada e isolada?',
-        'Realizado bloqueio? (elétrico/mecânico)',
-        'Retirado todo inflamável do ambiente?',
-        'Retirado material combustível?',
-        'Lonas resistentes a fogo para recolher fagulhas?',
-        'Aberturas nas paredes e piso foram cobertas?',
-        'Equipamento de combate a incêndio próximo?',
-        'Vigias capacitados em combate a incêndio?',
+        'Permissão de Trabalho (PT) específica emitida e visível no local?',
+        'Certificado de teste atmosférico (gás-livre) válido para a área?',
+        'Área isolada e sinalizada a bordo ou no estaleiro?',
+        'Rotas de fuga e ponto de encontro identificados?',
+        'Trabalhadores em condições físicas/clínicas?',
+      ],
+    },
+    {
+      title: 'Atmosfera e prevenção de incêndio',
+      items: [
+        'Ventilação forçada mantida durante o serviço em tanques/porões?',
+        'Extintores posicionados próximos à frente de trabalho?',
+        'Materiais inflamáveis removidos da área?',
+        'Equipamentos elétricos adequados para atmosfera classificada?',
       ],
     },
   ],
-  icamento: [
+  plataforma: [
     {
-      title: 'Operação e equipe',
+      title: 'Condições gerais · NR-37',
       items: [
-        'Operador capacitado?',
+        'Treinamento de sobrevivência e escape (HUET) válido?',
+        'Permissão de Trabalho (PT) da plataforma emitida e assinada?',
+        'Isolamento de energia dos sistemas de processo relacionados?',
         'Trabalhadores em condições físicas/clínicas?',
-        'Ausência de condições impeditivas? (clima, vento, etc.)',
-        'Boa iluminação e visibilidade?',
-        'Avisados envolvidos diretos/indiretos sobre risco de queda?',
       ],
     },
     {
-      title: 'Equipamento e carga',
+      title: 'Atmosfera e emergência',
       items: [
-        'Manobra distante das redes de energia? (+5 m alta tensão)',
-        'Plano de rigging e ART estão conformes?',
-        'Máquina nivelada e patolada?',
-        'Peso da carga conforme com a capacidade da máquina?',
-        'Máquina, cintas e cordas em boas condições?',
-        'Carga está amarrada/presa?',
-        'Cabo guia para estabilização da carga?',
+        'Detecção de gás (H₂S/LEL) testada na área?',
+        'Colete salva-vidas e EPI de embarque conferidos?',
+        'Rota de abandono de plataforma e ponto de reunião confirmados?',
+        'Comunicação com a sala de controle estabelecida?',
       ],
     },
   ],
@@ -252,8 +261,10 @@ export const EPI_CHECKLIST: ChecklistGroup = {
   ],
 };
 
-// Trabalho a quente exige vigia no local a cada 30 min por 2h após o
-// término (04 rondas), conforme a PET em papel.
+// Trabalho a quente (NR-18) exigia vigia no local a cada 30 min por 2h
+// após o término (04 rondas), conforme a PET em papel — mas NR-18 não é
+// uma área de risco selecionável no momento (ver RiskAreaId), então nada
+// aciona mais este tipo; mantido para quando o escopo crescer de novo.
 export interface FireWatchRound {
   hora: string;
   nome: string;
@@ -303,12 +314,12 @@ export function buildChecklistGroups(areas: RiskAreaId[]): ChecklistGroupView[] 
 
 export const AREA_NOTE: Record<RiskAreaId, string> = {
   confinado: 'Espaço confinado (NR-33): o fluxo inclui medição atmosférica contínua, vigia externo e plano de resgate antes da liberação.',
-  quente: 'Trabalho a quente (NR-18): o fluxo inclui medição de gás inflamável, isolamento da área e vigia de fogo por 60 min após o término.',
   altura: 'Trabalho em altura (NR-35): o fluxo exige ancoragem certificada, linha de vida testada e plano de resgate — sem etapa de medição atmosférica.',
   eletrico: 'Serviço elétrico (NR-10): o fluxo exige desenergização, teste de ausência de tensão e aterramento temporário registrados.',
   maquinas: 'Máquinas e bloqueio (NR-12): o fluxo exige cadeado individual por executante e teste de tentativa de partida.',
-  icamento: 'Içamento de carga (NR-11): o fluxo exige plano de rigging aprovado, ART do responsável técnico e conferência da capacidade de carga antes da manobra.',
   descarga: 'Descarga de gases/líquidos (NR-20): o fluxo exige motorista capacitado (NR-20/MOPP), aterramento do caminhão e ausência de fontes de ignição na área.',
+  naval: 'Indústria naval (NR-34): o fluxo inclui teste atmosférico (gás-livre) antes da entrada em tanques/porões e isolamento da frente de trabalho a bordo.',
+  plataforma: 'Plataforma de petróleo (NR-37): o fluxo exige treinamento de sobrevivência (HUET) válido e detecção de gás antes de liberar a frente de trabalho.',
 };
 
 export type WizardStepId = 'area' | 'atividade' | 'gases' | 'qr' | 'check' | 'sig';
@@ -500,13 +511,13 @@ export interface Pet {
 export const MOCK_PETS: Pet[] = [
   { id: 'PET-2026-0418', areas: ['confinado'], location: 'Silo de milho 04 · Matelândia', unit: 'Matelândia', teamSize: 3, date: '2026-09-05', start: '09:42', end: '', timeLabel: '09:42', technician: 'B. Garlini', status: 'aberta', coordinates: '-25.2531, -53.9927', gas: { o2: 20.8, co: 2, h2s: 0.2, lel: 1 } },
   { id: 'PET-2026-0417', areas: ['confinado', 'eletrico'], location: 'Elevatória da ETE · Medianeira', unit: 'Medianeira', teamSize: 2, date: '2026-09-05', start: '08:15', end: '', timeLabel: '08:15', technician: 'R. Hoffmann', status: 'aberta', coordinates: '-25.2952, -54.0940', gas: { o2: 20.1, co: 6, h2s: 11.4, lel: 3 }, alarm: true },
-  { id: 'PET-2026-0416', areas: ['quente', 'altura'], location: 'Casa de caldeiras 02 · Matelândia', unit: 'Matelândia', teamSize: 4, date: '2026-09-05', start: '07:30', end: '', timeLabel: '07:30', technician: 'B. Garlini', status: 'aberta', coordinates: '-25.2540, -53.9911', gas: { o2: 20.9, co: 14, h2s: 0, lel: 4 } },
+  { id: 'PET-2026-0416', areas: ['confinado', 'altura'], location: 'Casa de caldeiras 02 · Matelândia', unit: 'Matelândia', teamSize: 4, date: '2026-09-05', start: '07:30', end: '', timeLabel: '07:30', technician: 'B. Garlini', status: 'aberta', coordinates: '-25.2540, -53.9911', gas: { o2: 20.9, co: 14, h2s: 0, lel: 4 } },
   { id: 'PET-2026-0415', areas: ['eletrico', 'maquinas'], location: 'Túnel de congelamento · Matelândia', unit: 'Matelândia', teamSize: 2, date: '2026-09-04', start: '13:20', end: '15:30', timeLabel: 'ontem', technician: 'B. Garlini', status: 'fechada', coordinates: '', durationMinutes: 130 },
   { id: 'PET-2026-0414', areas: ['altura'], location: 'Torre de resfriamento · Céu Azul', unit: 'Céu Azul', teamSize: 3, date: '2026-09-04', start: '08:05', end: '12:40', timeLabel: 'ontem', technician: 'A. Beal', status: 'fechada', coordinates: '', durationMinutes: 275 },
-  { id: 'PET-2026-0412', areas: ['confinado', 'quente'], location: 'Moega de recebimento 01 · Missal', unit: 'Missal', teamSize: 5, date: '2026-09-02', start: '14:10', end: '14:36', timeLabel: '02/09', technician: 'A. Beal', status: 'ocorrencia', coordinates: '', durationMinutes: 26 },
+  { id: 'PET-2026-0412', areas: ['confinado'], location: 'Moega de recebimento 01 · Missal', unit: 'Missal', teamSize: 5, date: '2026-09-02', start: '14:10', end: '14:36', timeLabel: '02/09', technician: 'A. Beal', status: 'ocorrencia', coordinates: '', durationMinutes: 26 },
   { id: 'PET-2026-0410', areas: ['maquinas'], location: 'Linha de extrusão · Itaipulândia', unit: 'Itaipulândia', teamSize: 2, date: '2026-09-01', start: '09:00', end: '10:48', timeLabel: '01/09', technician: 'R. Hoffmann', status: 'fechada', coordinates: '', durationMinutes: 108 },
   { id: 'PET-2026-0409', areas: ['confinado'], location: 'Silo de soja 09 · Itaipulândia', unit: 'Itaipulândia', teamSize: 4, date: '2026-08-31', start: '07:15', end: '11:05', timeLabel: '31/08', technician: 'R. Hoffmann', status: 'fechada', coordinates: '', durationMinutes: 230 },
-  { id: 'PET-2026-0405', areas: ['quente'], location: 'Oficina de manutenção · Matelândia', unit: 'Matelândia', teamSize: 2, date: '2026-08-28', start: '13:40', end: '16:10', timeLabel: '28/08', technician: 'B. Garlini', status: 'fechada', coordinates: '', durationMinutes: 150 },
+  { id: 'PET-2026-0405', areas: ['maquinas'], location: 'Oficina de manutenção · Matelândia', unit: 'Matelândia', teamSize: 2, date: '2026-08-28', start: '13:40', end: '16:10', timeLabel: '28/08', technician: 'B. Garlini', status: 'fechada', coordinates: '', durationMinutes: 150 },
   { id: 'PET-2026-0398', areas: ['confinado', 'maquinas'], location: 'Tanque de efluente 02 · Medianeira', unit: 'Medianeira', teamSize: 3, date: '2026-08-27', start: '08:30', end: '08:52', timeLabel: '27/08', technician: 'A. Beal', status: 'ocorrencia', coordinates: '', durationMinutes: 22 },
   { id: 'PET-2026-0392', areas: ['altura', 'eletrico'], location: 'Subestação — pórtico 1 · Céu Azul', unit: 'Céu Azul', teamSize: 3, date: '2026-08-22', start: '07:50', end: '12:20', timeLabel: '22/08', technician: 'R. Hoffmann', status: 'fechada', coordinates: '', durationMinutes: 270 },
   { id: 'PET-2026-0385', areas: ['maquinas'], location: 'Linha de abate — nória · Matelândia', unit: 'Matelândia', teamSize: 2, date: '2026-08-18', start: '15:10', end: '17:25', timeLabel: '18/08', technician: 'B. Garlini', status: 'fechada', coordinates: '', durationMinutes: 135 },
@@ -645,11 +656,11 @@ export function buildMonitorArchive(pet: Pet): MonitorArchive {
   const rnd = seededRandom(seed);
   const bad = pet.status === 'ocorrencia';
   const alarm = !!pet.alarm;
-  const confinedOrHot = pet.areas.some((a) => a === 'confinado' || a === 'quente');
+  const gasMonitored = requiresGasMonitoring(pet.areas);
   const readingCount = Math.max(18, Math.round((pet.durationMinutes ?? 190) / 2));
   const range: Record<GasKey, [number, number, number]> = {
     o2: alarm ? [19.6, 20.1, 20.7] : bad ? [18.6, 19.4, 20.4] : [20.2, 20.7, 21.0],
-    co: alarm ? [1, 5 + rnd() * 2, 9 + rnd() * 3] : confinedOrHot ? [0, 3 + rnd() * 4, 9 + rnd() * 8] : [0, 1 + rnd() * 2, 4 + rnd() * 3],
+    co: alarm ? [1, 5 + rnd() * 2, 9 + rnd() * 3] : gasMonitored ? [0, 3 + rnd() * 4, 9 + rnd() * 8] : [0, 1 + rnd() * 2, 4 + rnd() * 3],
     h2s: alarm ? [0.6, 6.4 + rnd(), 11.2 + rnd() * 1.4] : bad ? [0.4, 3.2 + rnd() * 2, 9.8 + rnd() * 3] : [0, rnd() * 0.6, 0.8 + rnd() * 1.4],
     lel: alarm ? [0, 3 + rnd() * 2, 6 + rnd() * 2] : bad ? [0, 5 + rnd() * 3, 12 + rnd() * 4] : [0, 1 + rnd() * 2, 3 + rnd() * 3],
   };

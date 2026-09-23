@@ -46,7 +46,7 @@ describe('PetAnalysisService', () => {
           permit({ id: 'a', date: '2026-09-01', areas: ['confinado'], status: 'fechada' }),
           permit({ id: 'b', date: '2026-09-02', areas: ['confinado'], status: 'fechada' }),
           permit({ id: 'c', date: '2026-09-03', areas: ['confinado'], status: 'aberta' }),
-          permit({ id: 'd', date: '2026-09-03', areas: ['quente'], status: 'aberta' }),
+          permit({ id: 'd', date: '2026-09-03', areas: ['altura'], status: 'aberta' }),
           permit({ id: 'e', date: '2026-09-03', areas: ['maquinas'], status: 'ocorrencia' }),
         ]),
       } as unknown as WorkPermitsService;

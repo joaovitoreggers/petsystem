@@ -221,9 +221,10 @@ export class PetWizardComponent {
     this.state.setChecklistAnswer(key, answer);
   }
 
-  readonly needsFireWatch = computed(() =>
-    this.state.selectedAreas().includes('quente'),
-  );
+  // Trabalho a quente (NR-18) não é uma área de risco selecionável no
+  // momento (ver RiskAreaId em pet-mock-data.ts), então isto nunca é
+  // verdadeiro hoje — mantido pronto para quando o escopo crescer de novo.
+  readonly needsFireWatch = computed(() => false);
 
   onFireWatchTimeChange(index: number, event: Event): void {
     this.state.updateFireWatchRound(index, {
