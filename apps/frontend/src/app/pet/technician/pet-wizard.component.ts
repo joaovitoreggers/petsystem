@@ -5,6 +5,7 @@ import { TenancyApiService } from '../services/tenancy-api.service';
 import {
   AREA_NOTE,
   ChecklistAnswer,
+  CompanyLocation,
   GAS_LIMITS,
   GasKey,
   MOCK_BADGES,
@@ -239,7 +240,14 @@ export class PetWizardComponent {
   }
 
   readonly companyOptions = EXECUTING_COMPANIES;
-  readonly locationOptions = SITE_LOCATIONS;
+
+  // Nomes dos locais cadastrados pela empresa (ver "Locais" no menu); cai
+  // para SITE_LOCATIONS só enquanto o cadastro real estiver vazio — mesmo
+  // padrão de fallback do unitOptions acima.
+  readonly locationOptions = computed(() => {
+    const names = this.state.companyLocations().map((l) => l.name);
+    return names.length > 0 ? names : SITE_LOCATIONS;
+  });
 
   readonly badgeStatusLabel = (status: 'ok' | 'prox' | 'venc') =>
     status === 'ok' ? '✓' : status === 'prox' ? '!' : '✕';
@@ -271,6 +279,19 @@ export class PetWizardComponent {
 
   toggleArea(id: RiskAreaId): void {
     this.state.toggleArea(id);
+  }
+
+  // Escolher um local cadastrado pré-preenche área de risco, nome do local
+  // e unidade (ver PetStateService.selectCompanyLocation) — o <select> volta
+  // ao placeholder logo em seguida, porque isto é um atalho de preenchimento,
+  // não um campo com valor próprio.
+  pickCompanyLocation(event: Event): void {
+    const select = event.target as HTMLSelectElement;
+    const location = this.state
+      .companyLocations()
+      .find((l: CompanyLocation) => l.id === select.value);
+    if (location) this.state.selectCompanyLocation(location);
+    select.value = '';
   }
 
   fieldValue(name: WizardFieldName): string {

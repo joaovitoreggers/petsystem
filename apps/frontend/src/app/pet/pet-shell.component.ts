@@ -3,6 +3,7 @@ import { PetStateService, PortalRole } from './pet-state.service';
 import { PetTechnicianComponent } from './technician/pet-technician.component';
 import { PetManagerComponent } from './manager/pet-manager.component';
 import { PetTeamComponent } from './team/pet-team.component';
+import { PetLocationsComponent } from './locations/pet-locations.component';
 import { PetUsersComponent } from './users/pet-users.component';
 import { PetCompaniesComponent } from './companies/pet-companies.component';
 import { IconComponent, IconName } from '../shared/icon.component';
@@ -25,6 +26,7 @@ interface NavItem {
     PetTechnicianComponent,
     PetManagerComponent,
     PetTeamComponent,
+    PetLocationsComponent,
     PetUsersComponent,
     PetCompaniesComponent,
     IconComponent,
@@ -56,6 +58,14 @@ export class PetShellComponent {
       shortLabel: 'Equipe',
       description: 'Cadastro e validade das NRs',
       icon: 'team',
+      badge: () => null,
+    },
+    {
+      id: 'locais',
+      label: 'Locais',
+      shortLabel: 'Locais',
+      description: 'Cadastro de locais e áreas de risco',
+      icon: 'pin',
       badge: () => null,
     },
     {

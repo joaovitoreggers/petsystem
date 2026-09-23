@@ -1,0 +1,211 @@
+<div class="locations">
+  <div class="locations__head">
+    <div class="section-kicker">Cadastro de locais · SESMT</div>
+    <h1 class="locations__title">Locais e áreas de risco</h1>
+    <div class="locations__head-row">
+      <div class="locations__head-text">
+        Cada local já sai com a área de risco e a unidade certas. No
+        assistente "Nova PET", escolher um local cadastrado preenche esses
+        campos sozinho — o técnico ainda pode ajustar à mão depois.
+      </div>
+      <button
+        type="button"
+        class="btn btn-primary locations__new"
+        (click)="openModal()"
+      >
+        <app-icon name="plus" [size]="17" />
+        Cadastrar local
+      </button>
+    </div>
+  </div>
+
+  <!-- Ações usa canManageTeam(), não canEditRoster(): diferente da lista de
+       Funcionários, editar/excluir local não tem fallback local em modo
+       demonstração (ver updateCompanyLocation/deleteCompanyLocation em
+       PetStateService) — mostrar os botões sem um back-end de verdade só
+       resultaria num erro de "sessão expirada" confuso. -->
+  <div class="table-wrap locations__table">
+    <table class="table table--cards-wide">
+      <thead>
+        <tr>
+          <th style="width: 30%">Local</th>
+          <th>Unidade</th>
+          <th style="width: 40%">Área de risco</th>
+          @if (state.canManageTeam()) {
+            <th style="width: 90px">Ações</th>
+          }
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of locations(); track row.location.id) {
+          <tr>
+            <td data-label="Local">
+              <div class="locations__name">
+                <app-icon name="pin" [size]="16" />
+                <span>{{ row.location.name }}</span>
+              </div>
+            </td>
+            <td data-label="Unidade" class="locations__unit">
+              {{ row.location.unit }}
+            </td>
+            <td data-label="Área de risco">
+              <div class="locations__areas">
+                @for (area of row.areaTags; track area.id) {
+                  <span class="tag locations__area-tag">
+                    {{ area.name }} · {{ area.nr }}
+                  </span>
+                }
+              </div>
+            </td>
+            @if (state.canManageTeam()) {
+              <td data-label="Ações" class="locations__actions">
+                <button
+                  type="button"
+                  class="btn-icon-ghost"
+                  title="Editar local"
+                  (click)="openEditModal(row.location)"
+                >
+                  <app-icon name="pencil" [size]="16" />
+                </button>
+                <button
+                  type="button"
+                  class="btn-icon-ghost btn-icon-ghost--danger"
+                  title="Excluir local"
+                  (click)="openDeleteDialog(row.location)"
+                >
+                  <app-icon name="trash" [size]="16" />
+                </button>
+              </td>
+            }
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  @if (locations().length === 0) {
+    <div class="empty-state locations__empty">
+      <app-industrial-art class="empty-state__art" scene="clipboard" />
+      <div class="empty-state__title">Nenhum local cadastrado</div>
+      <div class="empty-state__text">
+        Cadastre os locais mais usados para que o assistente "Nova PET"
+        preencha área de risco, nome e unidade sozinho.
+      </div>
+      <button type="button" class="btn btn-secondary" (click)="openModal()">
+        <app-icon name="plus" [size]="17" />
+        Cadastrar local
+      </button>
+    </div>
+  }
+</div>
+
+@if (modalOpen()) {
+  <div class="dialog-backdrop" (click)="closeModal()">
+    <div class="dialog locations__dialog" (click)="$event.stopPropagation()">
+      <div class="dialog-title">{{ dialogTitle() }}</div>
+      <div class="dialog-body">
+        @if (dialogMode() === 'edit') {
+          Atualize o nome, a unidade ou as áreas de risco do local.
+        } @else {
+          Esse cadastro passa a aparecer como local pronto no assistente
+          "Nova PET".
+        }
+      </div>
+
+      <div class="locations__form-row">
+        <div class="field" style="flex: 2; min-width: 220px">
+          <label>Nome do local</label>
+          <input
+            class="input"
+            placeholder="ex. Silo de milho 04"
+            [value]="cadName()"
+            (input)="cadName.set($any($event.target).value)"
+          />
+        </div>
+        <div class="field" style="flex: 1; min-width: 180px">
+          <label>Unidade</label>
+          <select
+            class="input"
+            [value]="cadUnit()"
+            (change)="cadUnit.set($any($event.target).value)"
+          >
+            @for (u of unitOptions(); track u) {
+              <option>{{ u }}</option>
+            }
+          </select>
+        </div>
+      </div>
+
+      <div class="section-kicker locations__areas-kicker">
+        Área de risco do local
+      </div>
+      <div class="locations__area-list">
+        @for (area of riskAreas; track area.id) {
+          <label class="locations__area-row">
+            <input
+              type="checkbox"
+              [checked]="cadRiskAreas().includes(area.id)"
+              (change)="toggleCadRiskArea(area.id)"
+            />
+            <span class="locations__area-row-info">
+              <span class="locations__area-row-name">{{ area.name }}</span>
+              <span class="locations__area-row-desc"
+                >{{ area.nr }} · {{ area.description }}</span
+              >
+            </span>
+          </label>
+        }
+      </div>
+
+      @if (saveError()) {
+        <div class="locations__form-error">{{ saveError() }}</div>
+      }
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-secondary" (click)="closeModal()">
+          Cancelar
+        </button>
+        <button
+          type="button"
+          class="btn btn-primary"
+          [disabled]="cadDisabled()"
+          (click)="save()"
+        >
+          {{ dialogActionLabel() }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (deleteTarget(); as target) {
+  <div class="dialog-backdrop" (click)="closeDeleteDialog()">
+    <div class="dialog locations__delete-dialog" (click)="$event.stopPropagation()">
+      <div class="dialog-title">Excluir local</div>
+      <div class="dialog-body">
+        Tem certeza que quer excluir <strong>{{ target.name }}</strong>? Ele
+        deixa de aparecer como opção no assistente "Nova PET". Essa ação não
+        pode ser desfeita.
+      </div>
+      @if (deleteError()) {
+        <div class="locations__form-error">{{ deleteError() }}</div>
+      }
+      <div class="dialog-actions">
+        <button
+          type="button"
+          class="btn btn-secondary"
+          (click)="closeDeleteDialog()"
+        >
+          Cancelar
+        </button>
+        <button
+          type="button"
+          class="btn btn-danger"
+          [disabled]="deleting()"
+          (click)="confirmDelete()"
+        >
+          {{ deleting() ? 'Excluindo…' : 'Excluir definitivamente' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
