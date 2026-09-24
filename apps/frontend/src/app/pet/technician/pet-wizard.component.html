@@ -364,13 +364,37 @@
 
                   <div class="qr-scan blueprint">
                     <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-                    <div class="qr-scan__frame"></div>
+                    @if (qrScanning()) {
+                      <video #qrVideo class="qr-scan__video" muted playsinline></video>
+                    } @else {
+                      <div class="qr-scan__frame"></div>
+                    }
                     <div class="qr-scan__sweep"></div>
-                    <div class="qr-scan__caption">aponte para o QR do crachá</div>
+                    <div class="qr-scan__caption">
+                      {{ qrScanning() ? 'lendo…' : 'aponte para o QR do crachá' }}
+                    </div>
                   </div>
-                  <button type="button" class="btn btn-primary btn-block qr-scan__btn" (click)="state.scanBadge()">
-                    Simular leitura do crachá
-                  </button>
+
+                  @if (qrScanError()) {
+                    <div class="qr-scan__error">{{ qrScanError() }}</div>
+                  }
+
+                  @if (qrScanning()) {
+                    <button type="button" class="btn btn-secondary btn-block" (click)="stopQrScan()">
+                      Cancelar leitura
+                    </button>
+                  } @else {
+                    <button type="button" class="btn btn-primary btn-block qr-scan__btn" (click)="startQrScan()">
+                      Ler QR do crachá
+                    </button>
+                    <button
+                      type="button"
+                      class="btn btn-ghost btn-block qr-scan__simulate"
+                      (click)="state.scanBadge()"
+                    >
+                      Simular leitura (sem câmera)
+                    </button>
+                  }
 
                   @if (state.currentBadge(); as badge) {
                     <div class="badge-card blueprint">

@@ -202,6 +202,28 @@
 .team__delete-dialog {
   width: min(420px, 100%);
 }
+.team__qr-dialog {
+  width: min(420px, 100%);
+}
+.team__qr-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 240px;
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface-1);
+}
+.team__qr-preview img {
+  width: 100%;
+  max-width: 260px;
+  height: auto;
+  image-rendering: pixelated;
+}
+.team__qr-loading {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
 .team__form-error {
   font-size: var(--text-sm);
   color: var(--status-bad);

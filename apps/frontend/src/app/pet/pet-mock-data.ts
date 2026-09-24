@@ -654,6 +654,23 @@ export function teamMemberToBadge(member: TeamMember): Badge {
   };
 }
 
+// Conteúdo do QR do crachá — cadastro (Funcionários, ver PetTeamComponent)
+// gera, assistente (etapa "Crachá e permissão") lê pela câmera e resolve de
+// volta pro mesmo TeamMember por matrícula. Prefixo evita que a câmera
+// aceite qualquer QR aleatório apontado por engano (um link, um Wi-Fi...)
+// como se fosse um crachá.
+const BADGE_QR_PREFIX = 'PETDIGITAL:MAT:';
+
+export function encodeBadgeQr(registration: string): string {
+  return `${BADGE_QR_PREFIX}${registration}`;
+}
+
+export function decodeBadgeQr(text: string): string | null {
+  if (!text.startsWith(BADGE_QR_PREFIX)) return null;
+  const registration = text.slice(BADGE_QR_PREFIX.length).trim();
+  return registration.length > 0 ? registration : null;
+}
+
 export interface MonitorArchive {
   readingCount: number;
   range: Record<GasKey, [number, number, number]>;

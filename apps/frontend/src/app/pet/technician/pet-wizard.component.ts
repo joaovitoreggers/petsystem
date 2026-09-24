@@ -1,5 +1,6 @@
-import { Component, ElementRef, ViewChild, computed, signal } from '@angular/core';
+import { Component, ElementRef, OnDestroy, ViewChild, computed, effect, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
+import jsQR from 'jsqr';
 import { PetStateService } from '../pet-state.service';
 import { TenancyApiService } from '../services/tenancy-api.service';
 import {
@@ -15,6 +16,7 @@ import {
   STEP_NAME,
   TeamMember,
   buildChecklistGroups,
+  decodeBadgeQr,
   isGasWithinLimit,
   riskAreaNrs,
 } from '../pet-mock-data';
@@ -90,10 +92,11 @@ export const SITE_LOCATIONS = [
   templateUrl: './pet-wizard.component.html',
   styleUrls: ['./pet-wizard.component.scss', './pet-wizard-instruments.scss'],
 })
-export class PetWizardComponent {
+export class PetWizardComponent implements OnDestroy {
   @ViewChild('tecnicoCanvas') tecnicoCanvasRef?: ElementRef<HTMLCanvasElement>;
   @ViewChild('execCanvas') execCanvasRef?: ElementRef<HTMLCanvasElement>;
   @ViewChild('photoInput') photoInputRef?: ElementRef<HTMLInputElement>;
+  @ViewChild('qrVideo') qrVideoRef?: ElementRef<HTMLVideoElement>;
 
   readonly areas = RISK_AREAS;
 
@@ -111,6 +114,13 @@ export class PetWizardComponent {
     if (companyGroupId) {
       this.loadBranchNames(companyGroupId);
     }
+    // Avançar/voltar pra outra etapa com a câmera ligada não destrói o
+    // componente (é o mesmo assistente, só troca o stepIndex) — sem isto
+    // a câmera continuaria ligada em segundo plano depois que a etapa
+    // "Crachá e permissão" saísse de tela.
+    effect(() => {
+      if (this.state.currentStep() !== 'qr') this.stopQrScan();
+    });
   }
 
   private async loadBranchNames(companyGroupId: string): Promise<void> {
@@ -270,11 +280,103 @@ export class PetWizardComponent {
   }
 
   toggleAddPanel(role: PetTeamRole): void {
+    this.stopQrScan();
     this.state.toggleAddPanel(role);
   }
 
   confirmAdd(): void {
+    this.stopQrScan();
     this.state.confirmAddCurrentBadge();
+  }
+
+  // ── Leitura do QR do crachá pela câmera ───────────────────────────
+  // O QR é gerado na tela Funcionários (ver PetTeamComponent.openQrDialog)
+  // e codifica só a matrícula (decodeBadgeQr, em pet-mock-data.ts) — decodificado
+  // aqui, resolve pro mesmo TeamMember que a busca por texto já resolvia.
+  readonly qrScanning = signal(false);
+  readonly qrScanError = signal<string | null>(null);
+
+  private qrStream: MediaStream | null = null;
+  private qrAnimationFrameId: number | null = null;
+  private qrCanvas: HTMLCanvasElement | null = null;
+
+  async startQrScan(): Promise<void> {
+    this.qrScanError.set(null);
+    if (!navigator.mediaDevices?.getUserMedia) {
+      this.qrScanError.set('Este navegador não permite acesso à câmera.');
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment' },
+      });
+      this.qrStream = stream;
+      this.qrScanning.set(true);
+      // A tag <video> só existe no DOM depois do @if (qrScanning()) — espera
+      // o próximo ciclo de detecção de mudanças pra achar a ref.
+      queueMicrotask(() => {
+        const video = this.qrVideoRef?.nativeElement;
+        if (!video) return;
+        video.srcObject = stream;
+        video.play();
+        this.qrAnimationFrameId = requestAnimationFrame(this.tickQrScan);
+      });
+    } catch (err) {
+      this.qrScanError.set(qrCameraErrorMessage(err));
+    }
+  }
+
+  stopQrScan(): void {
+    if (this.qrAnimationFrameId !== null) {
+      cancelAnimationFrame(this.qrAnimationFrameId);
+      this.qrAnimationFrameId = null;
+    }
+    this.qrStream?.getTracks().forEach((track) => track.stop());
+    this.qrStream = null;
+    this.qrScanning.set(false);
+  }
+
+  private readonly tickQrScan = (): void => {
+    const video = this.qrVideoRef?.nativeElement;
+    if (!video || video.readyState !== video.HAVE_ENOUGH_DATA) {
+      this.qrAnimationFrameId = requestAnimationFrame(this.tickQrScan);
+      return;
+    }
+    const canvas = (this.qrCanvas ??= document.createElement('canvas'));
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) {
+      this.qrAnimationFrameId = requestAnimationFrame(this.tickQrScan);
+      return;
+    }
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const code = jsQR(frame.data, frame.width, frame.height);
+    if (code) {
+      this.handleQrDecoded(code.data);
+      return;
+    }
+    this.qrAnimationFrameId = requestAnimationFrame(this.tickQrScan);
+  };
+
+  private handleQrDecoded(text: string): void {
+    this.stopQrScan();
+    const registration = decodeBadgeQr(text);
+    if (!registration) {
+      this.qrScanError.set('QR code não reconhecido — não é um crachá do PET Digital.');
+      return;
+    }
+    const member = this.state.teamMembers().find((m) => m.registration === registration);
+    if (!member) {
+      this.qrScanError.set(`Matrícula ${registration} não encontrada no cadastro de funcionários.`);
+      return;
+    }
+    this.selectEmployee(member);
+  }
+
+  ngOnDestroy(): void {
+    this.stopQrScan();
   }
 
   toggleArea(id: RiskAreaId): void {
@@ -359,4 +461,27 @@ export class PetWizardComponent {
     if (which === 'tecnico') this.state.setTechnicianSigned(true);
     else this.state.setExecutorSigned(true);
   }
+}
+
+/**
+ * Por que a câmera não abriu, na linguagem de quem está em campo.
+ *
+ * getUserMedia só roda em contexto seguro — https, ou http em localhost.
+ * Fora do celular do técnico acessando via IP da rede (não localhost), o
+ * erro mais comum não é permissão negada, é o navegador nem oferecer a
+ * API — daí o aviso específico sobre https, em vez de um genérico "sem
+ * acesso à câmera" que mandaria a pessoa procurar a permissão errada.
+ */
+function qrCameraErrorMessage(err: unknown): string {
+  const name = (err as { name?: string })?.name;
+  if (name === 'NotAllowedError') {
+    return 'Permissão da câmera negada. Libere o acesso à câmera nas configurações do navegador e tente de novo.';
+  }
+  if (name === 'NotFoundError' || name === 'OverconstrainedError') {
+    return 'Nenhuma câmera encontrada neste aparelho.';
+  }
+  if (!window.isSecureContext) {
+    return 'A câmera só funciona em conexão segura (https). Acessando por IP na rede, use um endereço https.';
+  }
+  return 'Não foi possível abrir a câmera agora. Tente de novo.';
 }
