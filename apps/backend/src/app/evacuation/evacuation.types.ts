@@ -1,4 +1,4 @@
-import { ContactDelivery } from './notifications.service';
+import { ContactDelivery } from '../notifications/notifications.service';
 
 export interface TriggerEvacuationResult {
   alertId: string;

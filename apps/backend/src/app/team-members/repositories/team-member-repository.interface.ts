@@ -10,6 +10,7 @@ export interface CreateTeamMemberData {
   branchId?: string | null;
   isThirdParty?: boolean;
   documents: Record<string, string>;
+  phone?: string | null;
 }
 
 export interface UpdateTeamMemberData {
@@ -21,6 +22,8 @@ export interface UpdateTeamMemberData {
   branchId?: string | null;
   isThirdParty?: boolean;
   documents?: Record<string, string>;
+  phone?: string | null;
+  pinHash?: string | null;
 }
 
 /**

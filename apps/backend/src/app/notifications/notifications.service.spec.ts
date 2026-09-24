@@ -89,4 +89,76 @@ describe('NotificationsService', () => {
 
     expect(service.buildStatusLink('abc-123')).toBe('https://pet.example.com/status/abc-123');
   });
+
+  describe('sendVerificationCode', () => {
+    it('returns not_configured when Twilio credentials are missing', async () => {
+      const service = new NotificationsService(configWith({}));
+
+      const result = await service.sendVerificationCode('+5545999999999', '123456', 'sms');
+
+      expect(result).toBe('not_configured');
+      expect(mockCreate).not.toHaveBeenCalled();
+    });
+
+    it('sends the code via SMS with the SMS from-number', async () => {
+      mockCreate.mockResolvedValue({ sid: 'SM123' });
+      const service = new NotificationsService(
+        configWith({
+          TWILIO_ACCOUNT_SID: 'AC123',
+          TWILIO_AUTH_TOKEN: 'secret',
+          TWILIO_SMS_FROM: '+15550001111',
+          TWILIO_WHATSAPP_FROM: '+15550002222',
+        }),
+      );
+
+      const result = await service.sendVerificationCode('+5545999999999', '123456', 'sms');
+
+      expect(result).toBe('sent');
+      expect(mockCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          from: '+15550001111',
+          to: '+5545999999999',
+          body: expect.stringContaining('123456'),
+        }),
+      );
+    });
+
+    it('sends the code via WhatsApp with the whatsapp: prefix', async () => {
+      mockCreate.mockResolvedValue({ sid: 'SM124' });
+      const service = new NotificationsService(
+        configWith({
+          TWILIO_ACCOUNT_SID: 'AC123',
+          TWILIO_AUTH_TOKEN: 'secret',
+          TWILIO_SMS_FROM: '+15550001111',
+          TWILIO_WHATSAPP_FROM: '+15550002222',
+        }),
+      );
+
+      const result = await service.sendVerificationCode('+5545999999999', '123456', 'whatsapp');
+
+      expect(result).toBe('sent');
+      expect(mockCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          from: 'whatsapp:+15550002222',
+          to: 'whatsapp:+5545999999999',
+          body: expect.stringContaining('123456'),
+        }),
+      );
+    });
+
+    it('reports failed when the send rejects, without throwing', async () => {
+      mockCreate.mockRejectedValue(new Error('Twilio down'));
+      const service = new NotificationsService(
+        configWith({
+          TWILIO_ACCOUNT_SID: 'AC123',
+          TWILIO_AUTH_TOKEN: 'secret',
+          TWILIO_SMS_FROM: '+15550001111',
+        }),
+      );
+
+      const result = await service.sendVerificationCode('+5545999999999', '123456', 'sms');
+
+      expect(result).toBe('failed');
+    });
+  });
 });

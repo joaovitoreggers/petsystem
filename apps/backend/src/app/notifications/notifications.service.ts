@@ -3,6 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import { Twilio } from 'twilio';
 import { EmergencyContact } from '../emergency-contacts/entities/emergency-contact.entity';
 
+export type NotificationChannel = 'sms' | 'whatsapp';
+
 export type DeliveryStatus = 'sent' | 'failed' | 'not_configured';
 
 export interface ContactDelivery {
@@ -47,6 +49,18 @@ export class NotificationsService {
         whatsapp: await this.sendOne(this.whatsappFrom, contact.phone, message, true),
       })),
     );
+  }
+
+  // Reaproveita o mesmo client/credenciais do alerta de evacuação — só muda
+  // o corpo da mensagem e o canal único (a assinatura pede um método por
+  // vez, diferente de notifyContacts que manda pelos dois sempre).
+  sendVerificationCode(
+    phone: string,
+    code: string,
+    channel: NotificationChannel,
+  ): Promise<DeliveryStatus> {
+    const from = channel === 'whatsapp' ? this.whatsappFrom : this.smsFrom;
+    return this.sendOne(from, phone, `PET Digital: seu codigo e ${code}. Valido por 5 minutos.`, channel === 'whatsapp');
   }
 
   private async sendOne(

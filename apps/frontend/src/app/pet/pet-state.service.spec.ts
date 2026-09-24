@@ -34,6 +34,7 @@ const mockStartRegistration = startRegistration as jest.Mock;
 function authenticatedUser(overrides: Partial<LoginResult['user']>): LoginResult['user'] {
   return {
     id: 'u1',
+    name: 'Test User',
     email: 'user@petsystem.local',
     role: 'tecnico',
     companyGroupId: null,

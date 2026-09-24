@@ -28,6 +28,7 @@ interface UserSummaryDto {
   name: string;
   email: string;
   role: string;
+  phone: string | null;
   companyGroupId: string | null;
   branchId: string | null;
 }
@@ -38,6 +39,7 @@ function toSummary(user: User): UserSummaryDto {
     name: user.name,
     email: user.email,
     role: user.role,
+    phone: user.phone,
     companyGroupId: user.companyGroupId,
     branchId: user.branchId,
   };

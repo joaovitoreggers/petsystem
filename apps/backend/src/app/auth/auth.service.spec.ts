@@ -41,6 +41,7 @@ function fullUser(overrides: Partial<User>): User {
     email: 'user@petsystem.local',
     password: 'hash',
     role: 'gestor',
+    phone: null,
     companyGroupId: 'g1',
     branchId: null,
     createdAt: new Date(),
@@ -153,6 +154,23 @@ describe('AuthService', () => {
       expect(jwtService.sign).toHaveBeenCalledWith(
         expect.not.objectContaining({ companyGroupName: expect.anything() }),
       );
+    });
+
+    it('resolves the display name from the current user record, not the JWT payload', async () => {
+      usersService.findById.mockResolvedValue(fullUser({ id: 'u1', name: 'Bárbara M. Garlini' }));
+
+      const result = await service.login(user({ id: 'u1' }));
+
+      expect(result.user.name).toBe('Bárbara M. Garlini');
+      expect(jwtService.sign).toHaveBeenCalledWith(expect.not.objectContaining({ name: expect.anything() }));
+    });
+
+    it('falls back to an empty name if the user record has disappeared since the JWT was issued', async () => {
+      usersService.findById.mockResolvedValue(null);
+
+      const result = await service.login(user({ id: 'u1' }));
+
+      expect(result.user.name).toBe('');
     });
   });
 

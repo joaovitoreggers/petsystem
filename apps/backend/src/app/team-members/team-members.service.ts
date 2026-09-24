@@ -1,4 +1,5 @@
 import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
 import { assertOwnedByScope, filterOwnedByScope, TenantScope } from '../auth/tenant-scope';
 import { BranchesService } from '../tenancy/branches.service';
 import { TeamMember } from './entities/team-member.entity';
@@ -13,6 +14,7 @@ export type CreateTeamMemberInput = CreateTeamMemberData;
 export type UpdateTeamMemberInput = UpdateTeamMemberData;
 
 const NOT_FOUND_MESSAGE = 'Funcionário não encontrado';
+const PIN_SALT_ROUNDS = 10;
 
 /**
  * Público boundary de TeamMembersModule — controllers só dependem deste
@@ -70,6 +72,20 @@ export class TeamMembersService {
       throw new NotFoundException(NOT_FOUND_MESSAGE);
     }
     return updated;
+  }
+
+  // Rota própria (não parte de update()): um técnico pode definir/resetar
+  // o PIN de assinatura sem ter permissão para reescrever o resto do
+  // cadastro (nome, empresa, cargo — isso continua exigindo admin/gestor).
+  async setPin(registration: string, pin: string, scope?: TenantScope): Promise<void> {
+    const current = await this.teamMemberRepository.findByRegistration(registration);
+    if (!current) {
+      throw new NotFoundException(NOT_FOUND_MESSAGE);
+    }
+    assertOwnedByScope(current, scope, NOT_FOUND_MESSAGE);
+
+    const pinHash = await bcrypt.hash(pin, PIN_SALT_ROUNDS);
+    await this.teamMemberRepository.update(registration, { pinHash });
   }
 
   async delete(registration: string, scope?: TenantScope): Promise<void> {

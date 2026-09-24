@@ -5,7 +5,7 @@ import { WorkPermit } from '../work-permits/entities/work-permit.entity';
 import { WorkPermitsService } from '../work-permits/work-permits.service';
 import { EvacuationService } from './evacuation.service';
 import { EvacuationAlert } from './entities/evacuation-alert.entity';
-import { NotificationsService } from './notifications.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { IEvacuationAlertRepository } from './repositories/evacuation-alert-repository.interface';
 
 const GROUP_ID = 'gggggggg-gggg-gggg-gggg-gggggggggggg';

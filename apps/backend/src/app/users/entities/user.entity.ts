@@ -31,6 +31,11 @@ export class User {
   @Column()
   role!: string;
 
+  // Usado para enviar o código de confirmação por SMS/WhatsApp na
+  // assinatura eletrônica de PET (emitente) — opcional até ser cadastrado.
+  @Column({ type: 'varchar', nullable: true })
+  phone!: string | null;
+
   // Tenant do usuário. Nulo só para platform-admin (papel acima de todos os
   // grupos); obrigatório para os demais papéis. `branchId` nulo significa
   // "enxerga todas as filiais do grupo"; preenchido restringe a uma só.

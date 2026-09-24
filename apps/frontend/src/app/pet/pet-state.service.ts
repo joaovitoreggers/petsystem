@@ -386,6 +386,14 @@ export class PetStateService {
     this.teamMembers.update((list) => list.filter((m) => m.registration !== registration));
   }
 
+  // Exige sessão real (RolesGuard admin/gestor/tecnico no back-end) — sem
+  // fallback local em modo demonstração, pelo mesmo motivo de
+  // updateTeamMember(): um PIN que parece definido mas nunca chegou ao
+  // servidor falharia silenciosamente na hora de assinar de verdade.
+  async setTeamMemberPin(registration: string, pin: string): Promise<void> {
+    await firstValueFrom(this.teamMembersApi.setPin(registration, pin));
+  }
+
   /**
    * Guarda o cadastro no aparelho, no modo demonstração.
    *
@@ -723,6 +731,19 @@ export class PetStateService {
   readonly canEditRoster = computed(
     () => this.canManageTeam() || this.demoMode(),
   );
+
+  /**
+   * Quem pode definir/alterar o PIN de assinatura (crachá + PIN) de um
+   * funcionário — mais permissivo que canManageTeam() porque o back-end
+   * também libera para 'tecnico' (ver TeamMembersController.setPin): é o
+   * técnico em campo, não só admin/gestor, quem normalmente cadastra esse
+   * PIN na hora de preparar a equipe pra assinar. Sem fallback de modo
+   * demonstração — ver setTeamMemberPin().
+   */
+  readonly canSetTeamMemberPin = computed(() => {
+    const role = this.session()?.user.role;
+    return role === 'admin' || role === 'gestor' || role === 'tecnico' || role === 'platform-admin';
+  });
 
   // Grupos de empresas/filiais (tenants) — só o platform-admin gerencia a
   // estrutura em si; ver a aba Empresas.

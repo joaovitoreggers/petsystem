@@ -1,4 +1,4 @@
-import { IsEmail, IsIn, IsOptional, IsString, IsUUID, MinLength } from 'class-validator';
+import { IsEmail, IsIn, IsOptional, IsString, IsUUID, Matches, MinLength } from 'class-validator';
 import { USER_ROLES } from './create-user.dto';
 
 export class UpdateUserDto {
@@ -19,6 +19,10 @@ export class UpdateUserDto {
   @IsOptional()
   @IsIn(USER_ROLES)
   role?: string;
+
+  @IsOptional()
+  @Matches(/^\+?[1-9]\d{7,14}$/)
+  phone?: string;
 
   @IsOptional()
   @IsUUID()

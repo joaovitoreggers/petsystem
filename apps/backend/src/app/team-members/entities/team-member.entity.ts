@@ -41,6 +41,18 @@ export class TeamMember {
   @Column({ type: 'jsonb', default: {} })
   documents!: Record<string, string>;
 
+  // Usado para enviar o código de confirmação por SMS/WhatsApp na
+  // assinatura eletrônica de PET — opcional até ser cadastrado.
+  @Column({ type: 'varchar', nullable: true })
+  phone!: string | null;
+
+  // Hash bcrypt do PIN de assinatura (crachá + PIN) — nunca a entidade
+  // crua sai do controller com este campo preenchido (ver toPublic() em
+  // TeamMembersController). Definido por um técnico/gestor, não pela
+  // própria pessoa (sem login próprio para autoatendimento).
+  @Column({ name: 'pin_hash', type: 'varchar', nullable: true })
+  pinHash!: string | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt!: Date;
 }

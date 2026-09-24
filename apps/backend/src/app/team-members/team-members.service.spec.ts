@@ -1,4 +1,5 @@
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
 import { BranchesService } from '../tenancy/branches.service';
 import { TeamMember } from './entities/team-member.entity';
 import { ITeamMemberRepository } from './repositories/team-member-repository.interface';
@@ -17,6 +18,8 @@ function teamMember(overrides: Partial<TeamMember>): TeamMember {
     branchId: null,
     isThirdParty: false,
     documents: { ASO: '2027-03-14' },
+    phone: null,
+    pinHash: null,
     createdAt: new Date(),
     ...overrides,
   };
@@ -208,6 +211,39 @@ describe('TeamMembersService', () => {
           { role: 'platform-admin', companyGroupId: null, branchId: null },
         ),
       ).resolves.toBeDefined();
+    });
+  });
+
+  describe('setPin', () => {
+    it('hashes the PIN with bcrypt and stores it via update', async () => {
+      repository.findByRegistration.mockResolvedValue(teamMember({}));
+      repository.update.mockResolvedValue(teamMember({}));
+
+      await service.setPin('04812', '1234', { role: 'gestor', companyGroupId: GROUP_ID, branchId: null });
+
+      expect(repository.update).toHaveBeenCalledTimes(1);
+      const [registration, data] = repository.update.mock.calls[0];
+      expect(registration).toBe('04812');
+      expect(data.pinHash).toBeDefined();
+      expect(data.pinHash).not.toBe('1234');
+      await expect(bcrypt.compare('1234', data.pinHash as string)).resolves.toBe(true);
+    });
+
+    it('rejects setting a PIN for a team member from a different tenant, as if it did not exist', async () => {
+      repository.findByRegistration.mockResolvedValue(teamMember({ companyGroupId: 'other-group' }));
+
+      await expect(
+        service.setPin('04812', '1234', { role: 'gestor', companyGroupId: GROUP_ID, branchId: null }),
+      ).rejects.toThrow(NotFoundException);
+      expect(repository.update).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException when the registration does not exist', async () => {
+      repository.findByRegistration.mockResolvedValue(null);
+
+      await expect(
+        service.setPin('nope', '1234', { role: 'gestor', companyGroupId: GROUP_ID, branchId: null }),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 

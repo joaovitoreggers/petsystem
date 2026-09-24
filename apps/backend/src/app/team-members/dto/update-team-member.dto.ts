@@ -1,4 +1,4 @@
-import { IsBoolean, IsObject, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsBoolean, IsObject, IsOptional, IsString, Matches, MinLength } from 'class-validator';
 
 export class UpdateTeamMemberDto {
   @IsOptional()
@@ -28,4 +28,8 @@ export class UpdateTeamMemberDto {
   @IsOptional()
   @IsObject()
   documents?: Record<string, string>;
+
+  @IsOptional()
+  @Matches(/^\+?[1-9]\d{7,14}$/)
+  phone?: string;
 }

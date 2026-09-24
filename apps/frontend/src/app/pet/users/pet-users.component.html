@@ -128,6 +128,23 @@
 
       <div class="users__form-row">
         <div class="field" style="flex: 1; min-width: 200px">
+          <label>Telefone (opcional)</label>
+          <input
+            class="input"
+            type="tel"
+            placeholder="+55 45 99999-9999"
+            [value]="formPhone()"
+            (input)="formPhone.set($any($event.target).value)"
+          />
+        </div>
+      </div>
+      <div class="users__role-hint">
+        Telefone é usado para enviar o código de confirmação por SMS/WhatsApp
+        na assinatura eletrônica da PET (emitente).
+      </div>
+
+      <div class="users__form-row">
+        <div class="field" style="flex: 1; min-width: 200px">
           <label>{{ dialogMode() === 'edit' ? 'Nova senha (opcional)' : 'Senha' }}</label>
           <input
             class="input"
