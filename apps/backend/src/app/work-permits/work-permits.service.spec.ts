@@ -1,8 +1,35 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { BranchesService } from '../tenancy/branches.service';
+import { WorkPermitSignature } from '../work-permit-signatures/entities/work-permit-signature.entity';
+import { WorkPermitSignaturesService } from '../work-permit-signatures/work-permit-signatures.service';
 import { WorkPermit } from './entities/work-permit.entity';
 import { IWorkPermitRepository } from './repositories/work-permit-repository.interface';
 import { WorkPermitsService } from './work-permits.service';
+
+function signature(overrides: Partial<WorkPermitSignature> = {}): WorkPermitSignature {
+  return {
+    id: 'sig-1',
+    workPermitId: null,
+    draftId: 'draft-1',
+    petRole: 'emitente',
+    lifecycleEvent: 'abertura',
+    signerType: 'user',
+    signerUserId: 'u1',
+    signerTeamMemberRegistration: null,
+    signerName: 'Bárbara M. Garlini',
+    method: 'biometria',
+    contentHash: 'hash',
+    contentSnapshot: {},
+    webauthnCredentialId: 'cred-1',
+    ip: null,
+    userAgent: null,
+    geolocation: null,
+    companyGroupId: 'gggggggg-gggg-gggg-gggg-gggggggggggg',
+    branchId: null,
+    signedAt: new Date('2026-01-01T00:00:00.000Z'),
+    ...overrides,
+  };
+}
 
 const GROUP_ID = 'gggggggg-gggg-gggg-gggg-gggggggggggg';
 
@@ -32,6 +59,9 @@ describe('WorkPermitsService', () => {
   let service: WorkPermitsService;
   let repository: jest.Mocked<IWorkPermitRepository>;
   let branchesService: jest.Mocked<BranchesService>;
+  let workPermitSignaturesService: jest.Mocked<
+    Pick<WorkPermitSignaturesService, 'requireDraftSignatures' | 'linkDraftToWorkPermit'>
+  >;
 
   beforeEach(() => {
     repository = {
@@ -46,7 +76,15 @@ describe('WorkPermitsService', () => {
       findByCompanyGroupAndName: jest.fn().mockResolvedValue(null),
       findByCompanyGroup: jest.fn().mockResolvedValue([]),
     } as unknown as jest.Mocked<BranchesService>;
-    service = new WorkPermitsService(repository, branchesService);
+    workPermitSignaturesService = {
+      requireDraftSignatures: jest.fn(),
+      linkDraftToWorkPermit: jest.fn(),
+    };
+    service = new WorkPermitsService(
+      repository,
+      branchesService,
+      workPermitSignaturesService as unknown as WorkPermitSignaturesService,
+    );
   });
 
   describe('create', () => {
@@ -137,6 +175,84 @@ describe('WorkPermitsService', () => {
       expect(repository.create).toHaveBeenCalledWith(
         expect.objectContaining({ companyGroupId: 'explicit-group', branchId: 'explicit-branch' }),
       );
+    });
+  });
+
+  describe('create — with draftId (real signatures)', () => {
+    const scope = { role: 'tecnico', companyGroupId: GROUP_ID, branchId: null };
+    const basePayload = {
+      areas: ['confinado'],
+      location: 'Silo de milho 04',
+      unit: 'Matelândia',
+      teamSize: 1,
+      date: '2026-09-05',
+      start: '09:42',
+      draftId: 'draft-1',
+    };
+
+    it('derives technician from the emitente signature, ignoring any technician in the body', async () => {
+      workPermitSignaturesService.requireDraftSignatures.mockResolvedValue([
+        signature({ petRole: 'emitente', signerName: 'Bárbara M. Garlini' }),
+        signature({ petRole: 'executante', signerName: 'Jonas R. Kirchner' }),
+      ]);
+      repository.create.mockResolvedValue(workPermit({}));
+
+      await service.create({ ...basePayload, technician: 'Nome Forjado' }, scope);
+
+      expect(repository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ technician: 'Bárbara M. Garlini' }),
+      );
+    });
+
+    it('links the draft to the newly created permit id', async () => {
+      workPermitSignaturesService.requireDraftSignatures.mockResolvedValue([
+        signature({ petRole: 'emitente' }),
+        signature({ petRole: 'executante' }),
+      ]);
+      const created = workPermit({ id: 'PET-2026-0777' });
+      repository.create.mockResolvedValue(created);
+
+      await service.create(basePayload, scope);
+
+      expect(workPermitSignaturesService.linkDraftToWorkPermit).toHaveBeenCalledWith(
+        'draft-1',
+        'PET-2026-0777',
+      );
+    });
+
+    it('propagates rejection when a required signature is missing', async () => {
+      workPermitSignaturesService.requireDraftSignatures.mockRejectedValue(
+        new BadRequestException('Falta a assinatura de executante responsável para emitir esta PET'),
+      );
+
+      await expect(service.create(basePayload, scope)).rejects.toThrow(BadRequestException);
+      expect(repository.create).not.toHaveBeenCalled();
+    });
+
+    it('propagates rejection when the signed content no longer matches (409)', async () => {
+      workPermitSignaturesService.requireDraftSignatures.mockRejectedValue(
+        new ConflictException('O conteúdo da PET mudou depois de assinado'),
+      );
+
+      await expect(service.create(basePayload, scope)).rejects.toThrow(ConflictException);
+      expect(repository.create).not.toHaveBeenCalled();
+    });
+
+    it('passes the canonical opening snapshot (not the raw body) to requireDraftSignatures', async () => {
+      workPermitSignaturesService.requireDraftSignatures.mockResolvedValue([
+        signature({ petRole: 'emitente' }),
+        signature({ petRole: 'executante' }),
+      ]);
+      repository.create.mockResolvedValue(workPermit({}));
+
+      await service.create(basePayload, scope);
+
+      const [draftId, snapshot, roles] = workPermitSignaturesService.requireDraftSignatures.mock.calls[0];
+      expect(draftId).toBe('draft-1');
+      expect(roles).toEqual(['emitente', 'executante']);
+      expect(snapshot).toMatchObject({ areas: ['confinado'], location: 'Silo de milho 04' });
+      expect(snapshot).not.toHaveProperty('draftId');
+      expect(snapshot).not.toHaveProperty('technician');
     });
   });
 

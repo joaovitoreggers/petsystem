@@ -642,88 +642,52 @@
         <div class="step step--sig">
           <div>
             <div class="section-kicker">Técnico de segurança emitente</div>
-            <div class="sig__name">Bárbara M. Garlini · mat. 03177</div>
-            <div class="sig-pad blueprint">
-              <i class="corner tl"></i><i class="corner tr"></i
-              ><i class="corner bl"></i><i class="corner br"></i>
-              <canvas
-                #tecnicoCanvas
-                width="740"
-                height="240"
-                class="sig-pad__canvas"
-                (pointerdown)="startDraw($event, 'tecnico')"
-                (pointermove)="moveDraw($event, 'tecnico')"
-                (pointerup)="endDraw()"
-                (pointerleave)="endDraw()"
-              ></canvas>
-            </div>
-            <div class="sig__footer">
-              <span
-                [style.color]="
-                  state.technicianSigned()
-                    ? 'var(--status-ok)'
-                    : 'var(--color-neutral-600)'
-                "
-              >
-                {{
-                  state.technicianSigned()
-                    ? 'assinatura capturada'
-                    : 'aguardando assinatura'
-                }}
-              </span>
-              <button
-                type="button"
-                class="btn btn-ghost sig__clear"
-                (click)="clearSignature('tecnico')"
-              >
-                Limpar
-              </button>
-            </div>
+            <app-pet-signature-panel
+              [signerLabel]="emitenteLabel()"
+              petRole="emitente"
+              lifecycleEvent="abertura"
+              [draftId]="draftId()"
+              [contentSnapshot]="openingContentSnapshot()"
+              (signed)="onEmitenteSigned($event)"
+            />
           </div>
           <div>
             <div class="section-kicker">Executante responsável</div>
-            <div class="sig__name">Jonas R. Kirchner · mat. 04812</div>
-            <div class="sig-pad blueprint">
-              <i class="corner tl"></i><i class="corner tr"></i
-              ><i class="corner bl"></i><i class="corner br"></i>
-              <canvas
-                #execCanvas
-                width="740"
-                height="240"
-                class="sig-pad__canvas"
-                (pointerdown)="startDraw($event, 'exec')"
-                (pointermove)="moveDraw($event, 'exec')"
-                (pointerup)="endDraw()"
-                (pointerleave)="endDraw()"
-              ></canvas>
-            </div>
-            <div class="sig__footer">
-              <span
-                [style.color]="
-                  state.executorSigned()
-                    ? 'var(--status-ok)'
-                    : 'var(--color-neutral-600)'
-                "
-              >
-                {{
-                  state.executorSigned()
-                    ? 'assinatura capturada'
-                    : 'aguardando assinatura'
-                }}
-              </span>
-              <button
-                type="button"
-                class="btn btn-ghost sig__clear"
-                (click)="clearSignature('exec')"
-              >
-                Limpar
-              </button>
-            </div>
+            @if (executorCandidates().length > 1) {
+              <div class="field sig__executor-picker">
+                <label>Quem está assinando como executante</label>
+                <select class="input" (change)="onExecutorRegistrationChange($event)">
+                  @for (candidate of executorCandidates(); track candidate.registration) {
+                    <option
+                      [value]="candidate.registration"
+                      [selected]="candidate.registration === state.executorRegistration()"
+                    >
+                      {{ candidate.name }} · mat. {{ candidate.registration }}
+                    </option>
+                  }
+                </select>
+              </div>
+            }
+            <app-pet-signature-panel
+              [signerLabel]="executanteLabel()"
+              petRole="executante"
+              lifecycleEvent="abertura"
+              [draftId]="draftId()"
+              [contentSnapshot]="openingContentSnapshot()"
+              [registration]="state.executorRegistration() ?? undefined"
+              (signed)="onExecutanteSigned()"
+            />
           </div>
           <div class="sig__disclaimer">
-            Assinatura registrada com data, hora, matrícula e coordenada GPS.
-            Hash gravado no histórico da PET.
+            Assinatura eletrônica avançada (Lei 14.063/2020) — método,
+            data/hora e, quando autorizado, a coordenada de quem assinou
+            ficam registrados no histórico da PET.
           </div>
+          @if (state.finishPetError()) {
+            <div class="callout callout--bad sig__finish-error">
+              {{ state.finishPetError() }}
+            </div>
+          }
         </div>
       }
     }
@@ -741,7 +705,7 @@
       <button
         type="button"
         class="btn btn-primary wizard__footer-btn wizard__footer-btn--primary"
-        [disabled]="!state.canAdvance()"
+        [disabled]="!state.canAdvance() || state.finishingPet()"
         (click)="state.advance()"
       >
         {{ state.advanceStepLabel() }}

@@ -1,14 +1,23 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { assertOwnedByScope, filterOwnedByScope, TenantScope } from '../auth/tenant-scope';
+import { WorkPermitSignaturesService } from '../work-permit-signatures/work-permit-signatures.service';
 import { BranchesService } from '../tenancy/branches.service';
+import { CreateWorkPermitDto } from './dto/create-work-permit.dto';
 import { WorkPermit, WorkPermitGasReading } from './entities/work-permit.entity';
+import { buildOpeningSnapshot } from './opening-snapshot';
 import {
   CreateWorkPermitData,
   IWorkPermitRepository,
   WORK_PERMIT_REPOSITORY,
 } from './repositories/work-permit-repository.interface';
 
-export type CreateWorkPermitInput = CreateWorkPermitData;
+// `companyGroupId`/`branchId` não fazem parte do DTO (o controller nunca os
+// recebe do cliente, resolve a partir da sessão) — só o seed os informa
+// explicitamente, pra migrar registros antigos direto pro grupo certo.
+export type CreateWorkPermitInput = CreateWorkPermitDto & {
+  companyGroupId?: string | null;
+  branchId?: string | null;
+};
 
 export interface CloseWorkPermitInput {
   end: string;
@@ -31,6 +40,7 @@ export class WorkPermitsService {
     @Inject(WORK_PERMIT_REPOSITORY)
     private readonly workPermitRepository: IWorkPermitRepository,
     private readonly branchesService: BranchesService,
+    private readonly workPermitSignaturesService: WorkPermitSignaturesService,
   ) {}
 
   async findAll(scope?: TenantScope): Promise<WorkPermit[]> {
@@ -56,7 +66,39 @@ export class WorkPermitsService {
     }
     const branchId =
       data.branchId !== undefined ? data.branchId : await this.resolveBranchId(companyGroupId, data.unit);
-    return this.workPermitRepository.create({ ...data, companyGroupId, branchId });
+
+    // Sem draftId: caminho legado (seed, criações fora do assistente novo)
+    // — usa `technician` do corpo diretamente, sem exigir assinatura.
+    if (!data.draftId) {
+      const permit = await this.workPermitRepository.create({
+        ...data,
+        technician: data.technician ?? '',
+        companyGroupId,
+        branchId,
+      });
+      return permit;
+    }
+
+    // Com draftId: exige assinatura real do emitente e do executante para
+    // este mesmo conteúdo — `technician` nunca vem do corpo aqui, sempre do
+    // nome capturado na assinatura (ver WorkPermitSignaturesService).
+    const snapshot = buildOpeningSnapshot(data);
+    const signatures = await this.workPermitSignaturesService.requireDraftSignatures(
+      data.draftId,
+      snapshot,
+      ['emitente', 'executante'],
+      scope,
+    );
+    const emitente = signatures.find((s) => s.petRole === 'emitente')!;
+
+    const permit = await this.workPermitRepository.create({
+      ...data,
+      technician: emitente.signerName,
+      companyGroupId,
+      branchId,
+    });
+    await this.workPermitSignaturesService.linkDraftToWorkPermit(data.draftId, permit.id);
+    return permit;
   }
 
   async close(id: string, data: CloseWorkPermitInput, scope?: TenantScope): Promise<WorkPermit> {

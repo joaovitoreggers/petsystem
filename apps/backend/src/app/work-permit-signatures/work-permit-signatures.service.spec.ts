@@ -6,6 +6,7 @@ import { TeamMembersService } from '../team-members/team-members.service';
 import { TeamMember } from '../team-members/entities/team-member.entity';
 import { UsersService } from '../users/users.service';
 import { User } from '../users/entities/user.entity';
+import { computeContentHash } from './canonical-snapshot';
 import { WorkPermitSignature } from './entities/work-permit-signature.entity';
 import { IWorkPermitSignatureRepository } from './repositories/work-permit-signature-repository.interface';
 import { WorkPermitSignaturesService } from './work-permit-signatures.service';
@@ -649,6 +650,66 @@ describe('WorkPermitSignaturesService', () => {
       await expect(
         service.verifyOtpSignatureCode({ otpId, code, ip: null, userAgent: null, scope }),
       ).rejects.toThrow(UnauthorizedException);
+    });
+  });
+
+  describe('requireDraftSignatures', () => {
+    const scope = { role: 'tecnico', companyGroupId: 'g1', branchId: null };
+
+    it('rejects when a required role has no signature for this draftId', async () => {
+      repository.findByDraftId.mockResolvedValue([
+        signature({ petRole: 'emitente', contentHash: computeContentHash({}) }),
+      ]);
+
+      await expect(
+        service.requireDraftSignatures('draft-1', {}, ['emitente', 'executante'], scope),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('rejects with a conflict when the signed hash no longer matches the given content', async () => {
+      repository.findByDraftId.mockResolvedValue([
+        signature({ petRole: 'emitente', contentHash: 'stale-hash' }),
+      ]);
+
+      await expect(
+        service.requireDraftSignatures('draft-1', { location: 'changed' }, ['emitente'], scope),
+      ).rejects.toThrow('mudou depois de assinado');
+    });
+
+    it('ignores signatures from a different tenant, treating the role as unsigned', async () => {
+      repository.findByDraftId.mockResolvedValue([
+        signature({ petRole: 'emitente', companyGroupId: 'other-group' }),
+      ]);
+
+      await expect(
+        service.requireDraftSignatures('draft-1', {}, ['emitente'], scope),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('returns every matching signature when all required roles are present with a matching hash', async () => {
+      const contentHash = computeContentHash({ location: 'Silo 4' });
+      const signatures = [
+        signature({ id: 's1', petRole: 'emitente', contentHash }),
+        signature({ id: 's2', petRole: 'executante', contentHash }),
+      ];
+      repository.findByDraftId.mockResolvedValue(signatures);
+
+      const result = await service.requireDraftSignatures(
+        'draft-1',
+        { location: 'Silo 4' },
+        ['emitente', 'executante'],
+        scope,
+      );
+
+      expect(result).toEqual(signatures);
+    });
+  });
+
+  describe('linkDraftToWorkPermit', () => {
+    it('delegates to the repository', async () => {
+      await service.linkDraftToWorkPermit('draft-1', 'PET-2026-0001');
+
+      expect(repository.linkDraftToWorkPermit).toHaveBeenCalledWith('draft-1', 'PET-2026-0001');
     });
   });
 

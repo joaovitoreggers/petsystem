@@ -1,0 +1,136 @@
+<div class="sig-panel">
+  <div class="sig-panel__name">{{ signerLabel }}</div>
+
+  @if (completedSignature(); as sig) {
+    <div class="callout callout--ok sig-panel__done">
+      <app-icon name="check" [size]="18" />
+      <span>
+        Assinado por {{ methodLabel(sig.method) }} — {{ sig.signedAt | date: 'dd/MM HH:mm' }}
+      </span>
+    </div>
+  } @else if (!online()) {
+    <div class="callout callout--bad sig-panel__offline">
+      <div class="callout__title">Sem conexão</div>
+      <div>
+        Não é possível assinar agora sem internet. Assim que a conexão
+        voltar, os métodos de assinatura aparecem aqui de novo.
+      </div>
+    </div>
+  } @else if (activeMethod() === null) {
+    <div class="sig-panel__methods">
+      @for (method of availableMethods(); track method.id) {
+        <button
+          type="button"
+          class="btn btn-secondary sig-panel__method-btn"
+          [disabled]="signing()"
+          (click)="selectMethod(method.id)"
+        >
+          <app-icon [name]="method.icon" [size]="18" />
+          {{ method.label }}
+        </button>
+      }
+    </div>
+    @if (signing()) {
+      <div class="sig-panel__hint">Confirmando biometria…</div>
+    }
+  } @else if (activeMethod() === 'cracha_pin') {
+    <div class="sig-panel__form">
+      <div class="field">
+        <label>PIN</label>
+        <input
+          class="input"
+          type="password"
+          inputmode="numeric"
+          maxlength="6"
+          placeholder="••••"
+          [value]="pinValue()"
+          (input)="pinValue.set($any($event.target).value)"
+        />
+      </div>
+      <div class="sig-panel__form-actions">
+        <button type="button" class="btn btn-ghost" (click)="cancelMethod()">
+          Cancelar
+        </button>
+        <button
+          type="button"
+          class="btn btn-primary"
+          [disabled]="pinDisabled()"
+          (click)="confirmPin()"
+        >
+          {{ signing() ? 'Confirmando…' : 'Confirmar PIN' }}
+        </button>
+      </div>
+    </div>
+  } @else if (activeMethod() === 'sms_otp') {
+    <div class="sig-panel__form">
+      @if (!otpId()) {
+        <div class="sig-panel__channel">
+          <button
+            type="button"
+            class="tag"
+            [class.sig-panel__channel--active]="otpChannel() === 'sms'"
+            (click)="otpChannel.set('sms')"
+          >
+            SMS
+          </button>
+          <button
+            type="button"
+            class="tag"
+            [class.sig-panel__channel--active]="otpChannel() === 'whatsapp'"
+            (click)="otpChannel.set('whatsapp')"
+          >
+            WhatsApp
+          </button>
+        </div>
+        <div class="sig-panel__form-actions">
+          <button type="button" class="btn btn-ghost" (click)="cancelMethod()">
+            Cancelar
+          </button>
+          <button
+            type="button"
+            class="btn btn-primary"
+            [disabled]="signing()"
+            (click)="sendOtp()"
+          >
+            {{ signing() ? 'Enviando…' : 'Enviar código' }}
+          </button>
+        </div>
+      } @else {
+        @if (otpDevCode(); as devCode) {
+          <div class="callout callout--warn sig-panel__devcode">
+            <strong>Modo de teste</strong> — Twilio não configurado neste
+            ambiente. Código: <span class="mono">{{ devCode }}</span>
+          </div>
+        }
+        <div class="field">
+          <label>Código recebido</label>
+          <input
+            class="input"
+            inputmode="numeric"
+            maxlength="8"
+            placeholder="000000"
+            [value]="otpCode()"
+            (input)="otpCode.set($any($event.target).value)"
+          />
+        </div>
+        <div class="sig-panel__form-actions">
+          <button type="button" class="btn btn-ghost" (click)="cancelMethod()">
+            Cancelar
+          </button>
+          <button
+            type="button"
+            class="btn btn-primary"
+            [disabled]="otpDisabled()"
+            (click)="confirmOtp()"
+          >
+            {{ signing() ? 'Confirmando…' : 'Confirmar código' }}
+          </button>
+        </div>
+      }
+    </div>
+  }
+
+  @if (error()) {
+    <div class="sig-panel__error">{{ error() }}</div>
+  }
+</div>

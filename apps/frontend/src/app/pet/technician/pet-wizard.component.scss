@@ -489,28 +489,19 @@
 .step--sig {
   gap: var(--space-6);
 }
-.sig__name {
-  font-family: var(--font-heading);
-  font-weight: 600;
-  font-size: var(--text-lg);
-  margin-bottom: var(--space-2);
-  color: var(--text-strong);
-}
-.sig__footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-  margin-top: var(--space-1);
-  font-size: var(--text-sm);
-  font-weight: 500;
-}
 .sig__disclaimer {
   font-size: var(--text-sm);
   color: var(--text-faint);
   line-height: 1.5;
   padding-top: var(--space-3);
   border-top: 1px solid var(--border-subtle);
+}
+.sig__executor-picker {
+  margin-bottom: var(--space-3);
+  max-width: 360px;
+}
+.sig__finish-error {
+  margin-top: var(--space-2);
 }
 
 /* ── Rodapé de navegação ───────────────────────────────────────────── */

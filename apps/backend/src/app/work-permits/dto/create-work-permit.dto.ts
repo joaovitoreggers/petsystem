@@ -99,8 +99,21 @@ export class CreateWorkPermitDto {
   @IsString()
   start!: string;
 
+  // Amarra esta PET às assinaturas eletrônicas já coletadas no assistente
+  // (emitente + executante) — ver WorkPermitsService.create() e
+  // WorkPermitSignaturesService.requireDraftSignatures(). Sem draftId, cai
+  // no comportamento legado (usa `technician` do corpo diretamente) — só
+  // usado pelo seed e por criações antigas fora do assistente novo.
+  @IsOptional()
   @IsString()
-  technician!: string;
+  draftId?: string;
+
+  // Derivado da assinatura do emitente quando `draftId` está presente
+  // (nunca confiado do cliente nesse caso) — só é de fato usado quando não
+  // há draftId (caminho legado).
+  @IsOptional()
+  @IsString()
+  technician?: string;
 
   @IsOptional()
   @IsString()

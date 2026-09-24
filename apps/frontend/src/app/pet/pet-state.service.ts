@@ -30,7 +30,7 @@ import {
   stepsFor,
   teamMemberToBadge,
 } from './pet-mock-data';
-import { WorkPermitsApiService } from './services/work-permits-api.service';
+import { CreateWorkPermitPayload, WorkPermitsApiService } from './services/work-permits-api.service';
 import { TeamMembersApiService, UpdateTeamMemberPayload } from './services/team-members-api.service';
 import {
   CompanyLocationsApiService,
@@ -77,8 +77,6 @@ const EMPTY_FIELDS: WizardFields = {
   local: '',
   unidade: 'Matelândia',
 };
-
-let nextPetSequence = 419;
 
 /** Onde o cadastro editado sem servidor fica guardado no aparelho. */
 const ROSTER_KEY = 'artech.pet.roster';
@@ -496,6 +494,100 @@ export class PetStateService {
   readonly technicianSigned = signal(false);
   readonly executorSigned = signal(false);
 
+  // ── Assinatura eletrônica (abertura) ──────────────────────────────
+  // Id que amarra as assinaturas de emitente/executante umas às outras e,
+  // depois, à PET criada — gerado de novo a cada "Nova PET" (ver
+  // startNewPet()). Precisa existir antes da PET (que só ganha id real na
+  // criação), daí um id à parte gerado no front-end.
+  readonly draftId = signal<string>(crypto.randomUUID());
+
+  // Coordenada capturada pelo painel de assinatura do emitente (best-effort
+  // — ausente se a geolocalização foi negada/indisponível), usada como
+  // `coordinates` da PET. Substitui a coordenada fake que existia antes.
+  readonly emitenteCoordinates = signal<string | null>(null);
+
+  setEmitenteCoordinates(value: string | null): void {
+    this.emitenteCoordinates.set(value);
+  }
+
+  // `date`/`start` da PET são capturados uma única vez, ao entrar na etapa
+  // de assinatura — não recalculados a cada requisição (options/verify de
+  // cada signatário, depois a criação em si), porque o back-end recalcula o
+  // hash do conteúdo assinado a cada uma dessas chamadas e exige que bata;
+  // um relógio "agora" diferente em cada chamada quebraria essa conferência
+  // sem que o conteúdo tivesse realmente mudado.
+  private readonly openingTimestamp = signal<{ date: string; start: string } | null>(null);
+
+  ensureOpeningTimestamp(): void {
+    if (this.openingTimestamp()) return;
+    const now = new Date();
+    this.openingTimestamp.set({
+      date: now.toISOString().slice(0, 10),
+      start: now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+    });
+  }
+
+  // Qual membro já adicionado à equipe é o "executante responsável" que
+  // assina a abertura — por padrão o primeiro adicionado; a pessoa pode
+  // trocar via setExecutorRegistration() se houver mais de um. Recalcula
+  // sozinho se a escolhida for removida da equipe.
+  private readonly executorRegistrationOverride = signal<string | null>(null);
+  readonly executorRegistration = computed<string | null>(() => {
+    const team = this.authorizedTeam();
+    const override = this.executorRegistrationOverride();
+    if (override && team.some((b) => b.registration === override)) return override;
+    return team[0]?.registration ?? null;
+  });
+  readonly executorMember = computed<Badge | null>(() => {
+    const registration = this.executorRegistration();
+    return registration ? this.authorizedTeam().find((b) => b.registration === registration) ?? null : null;
+  });
+
+  setExecutorRegistration(registration: string): void {
+    this.executorRegistrationOverride.set(registration);
+  }
+
+  // Snapshot canônico do que está sendo assinado na abertura — exatamente
+  // os mesmos campos que WorkPermitsService.buildOpeningSnapshot() recorta
+  // do corpo recebido no back-end (ver opening-snapshot.ts); os dois lados
+  // precisam concordar byte a byte, senão o hash não bate e o back-end
+  // rejeita a criação com 409 mesmo sem nada ter mudado de verdade.
+  readonly openingContentSnapshot = computed<Record<string, unknown>>(() => {
+    const fields = this.fields();
+    const timestamp = this.openingTimestamp();
+    const team: PetTeamMember[] = [
+      ...this.badgesToTeam(this.authorizedTeam(), 'equipe'),
+      ...this.badgesToTeam(this.vigiaTeam(), 'vigia'),
+      ...this.badgesToTeam(this.resgateTeam(), 'resgate'),
+    ];
+    return {
+      areas: this.selectedAreas(),
+      location: fields.local || 'Local não informado',
+      unit: fields.unidade || 'Matelândia',
+      teamSize: team.length,
+      date: timestamp?.date ?? '',
+      start: timestamp?.start ?? '',
+      gas: this.needsGasMonitoring() ? this.liveGas() : null,
+      criticalAlerts: this.criticalAlerts(),
+      team,
+      companyPhone: fields.telefone || null,
+      description: fields.descricao || null,
+      serviceType: fields.tipo || null,
+      executingCompany: fields.empresa || null,
+      plannedStart: fields.inicio || null,
+      plannedEnd: fields.fim || null,
+      checklist: this.checklistState(),
+      // Rondas de vigia só existem de verdade em trabalho a quente (NR-18),
+      // que não é uma área de risco selecionável hoje — sempre vazio, mas
+      // precisa ser `[]` (não `undefined`) pra bater com o que o back-end
+      // recompõe em buildOpeningSnapshot() (`dto.fireWatchRounds ?? []`).
+      fireWatchRounds: [] as unknown[],
+    };
+  });
+
+  readonly finishingPet = signal(false);
+  readonly finishPetError = signal<string | null>(null);
+
   // Foto do ponto de entrada anexada na etapa de checklist — só existe
   // durante o preenchimento do assistente, como as assinaturas.
   readonly sitePhoto = signal<string | null>(null);
@@ -678,7 +770,7 @@ export class PetStateService {
   /** Sessão autenticada (JWT + usuário) enquanto o app estiver aberto. */
   readonly session = signal<{
     accessToken: string;
-    user: AuthenticatedUser & { companyGroupName: string | null; branchName: string | null };
+    user: AuthenticatedUser & { name: string; companyGroupName: string | null; branchName: string | null };
   } | null>(null);
 
   readonly canSubmitLogin = computed(
@@ -982,6 +1074,11 @@ export class PetStateService {
     this.executorSigned.set(false);
     this.criticalAlerts.set([]);
     this.sitePhoto.set(null);
+    this.draftId.set(crypto.randomUUID());
+    this.emitenteCoordinates.set(null);
+    this.openingTimestamp.set(null);
+    this.executorRegistrationOverride.set(null);
+    this.finishPetError.set(null);
     this.screen.set('nova');
   }
 
@@ -1190,6 +1287,7 @@ export class PetStateService {
   advanceStepLabel(): string {
     const steps = this.steps();
     const isLast = this.stepIndex() === steps.length - 1;
+    if (isLast && this.finishingPet()) return 'Emitindo…';
     return isLast ? 'Emitir PET' : 'Avançar';
   }
 
@@ -1225,78 +1323,45 @@ export class PetStateService {
     }));
   }
 
+  // Sem fallback local se a API falhar (ao contrário de outros cadastros
+  // deste serviço): as duas assinaturas eletrônicas só existem de verdade
+  // no servidor, então fabricar uma PET local aqui criaria uma permissão
+  // "emitida" sem nenhuma assinatura real por trás dela — exatamente o
+  // problema que esta feature existe para resolver. Erro fica visível
+  // (finishPetError) e o técnico tenta de novo; as assinaturas já
+  // coletadas continuam válidas (mesmo draftId).
   private async finishPet(): Promise<void> {
-    const fields = this.fields();
-    const now = new Date();
-    const time = now.toLocaleTimeString('pt-BR', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-    const areas = this.selectedAreas();
-    const gas = this.needsGasMonitoring() ? this.liveGas() : undefined;
-    const criticalAlerts = this.criticalAlerts();
-    const team: PetTeamMember[] = [
-      ...this.badgesToTeam(this.authorizedTeam(), 'equipe'),
-      ...this.badgesToTeam(this.vigiaTeam(), 'vigia'),
-      ...this.badgesToTeam(this.resgateTeam(), 'resgate'),
-    ];
-    const teamSize = team.length;
-    // Rondas de vigia só existem de verdade em trabalho a quente (NR-18),
-    // que não é uma área de risco selecionável no momento (ver RiskAreaId
-    // em pet-mock-data.ts) — então isto nunca envia rondas preenchidas
-    // hoje. Mantido pronto para quando o escopo crescer de novo.
-    const fireWatchRounds = undefined;
+    this.ensureOpeningTimestamp();
+    const snapshot = this.openingContentSnapshot();
+    // O tipo do computed é deliberadamente solto (Record<string, unknown> —
+    // ver openingContentSnapshot()): é o mesmo objeto usado pra montar o
+    // hash assinado, então o formato precisa seguir exatamente o que o
+    // back-end recompõe, não a interface estrita da API.
     const payload = {
-      areas,
-      location: fields.local || 'Local não informado',
-      unit: fields.unidade || 'Matelândia',
-      teamSize,
-      date: now.toISOString().slice(0, 10),
-      start: time,
-      technician: 'Bárbara M. Garlini',
-      coordinates: '-25.2531, -53.9927',
-      gas,
-      criticalAlerts,
-      team,
-      companyPhone: fields.telefone || undefined,
-      description: fields.descricao || undefined,
-      serviceType: fields.tipo || undefined,
-      executingCompany: fields.empresa || undefined,
-      plannedStart: fields.inicio || undefined,
-      plannedEnd: fields.fim || undefined,
-      checklist: this.checklistState(),
-      fireWatchRounds,
-    };
+      ...snapshot,
+      draftId: this.draftId(),
+      coordinates: this.emitenteCoordinates() ?? undefined,
+    } as unknown as CreateWorkPermitPayload;
 
+    this.finishingPet.set(true);
+    this.finishPetError.set(null);
     let pet: Pet;
     try {
       pet = await firstValueFrom(this.workPermitsApi.create(payload));
-    } catch {
-      pet = {
-        id: `PET-2026-${String(nextPetSequence++).padStart(4, '0')}`,
-        areas,
-        location: payload.location,
-        unit: payload.unit,
-        teamSize: payload.teamSize,
-        date: payload.date,
-        start: time,
-        end: '',
-        timeLabel: time,
-        technician: payload.technician,
-        status: 'aberta',
-        coordinates: payload.coordinates,
-        gas,
-        criticalAlerts,
-        team,
-        companyPhone: payload.companyPhone,
-        description: payload.description,
-        serviceType: payload.serviceType,
-        executingCompany: payload.executingCompany,
-        plannedStart: payload.plannedStart,
-        plannedEnd: payload.plannedEnd,
-        checklist: payload.checklist,
-        fireWatchRounds: payload.fireWatchRounds,
-      };
+    } catch (err) {
+      this.finishPetError.set(finishPetErrorMessage(err));
+      if ((err as { status?: number })?.status === 409) {
+        // Conteúdo mudou depois de assinado — força reassinatura com um
+        // draftId novo em vez de deixar o técnico reenviar contra
+        // assinaturas que o back-end já considera inválidas para este
+        // conteúdo.
+        this.technicianSigned.set(false);
+        this.executorSigned.set(false);
+        this.draftId.set(crypto.randomUUID());
+      }
+      return;
+    } finally {
+      this.finishingPet.set(false);
     }
     this.pets.update((list) => [pet, ...list]);
     this.emittedPetId.set(pet.id);
@@ -1361,4 +1426,32 @@ function biometricErrorMessage(err: unknown): string {
   if (status === 401) return 'Biometria não reconhecida. Entre por e-mail e senha.';
   if (status === 0) return 'Servidor de autenticação indisponível.';
   return 'Não foi possível confirmar a biometria neste aparelho.';
+}
+
+/**
+ * Por que a PET não foi emitida, na linguagem de quem está em campo.
+ *
+ * 409 é o back-end recusando porque o conteúdo mudou depois de assinado
+ * (ver WorkPermitSignaturesService.requireDraftSignatures) — as duas
+ * assinaturas já coletadas ficam inválidas para este conteúdo, por isso
+ * finishPet() já zera technicianSigned/executorSigned e gera um draftId
+ * novo antes de mostrar esta mensagem.
+ */
+function finishPetErrorMessage(err: unknown): string {
+  const status = (err as { status?: number })?.status;
+  if (status === 409) {
+    return 'O conteúdo da PET mudou depois de assinado — assine de novo e emita outra vez.';
+  }
+  if (status === 400) {
+    const body = (err as { error?: { message?: unknown } })?.error;
+    if (typeof body?.message === 'string' && body.message.trim()) return body.message;
+    return 'Faltou concluir alguma assinatura antes de emitir a PET.';
+  }
+  if (status === 0 || status === undefined || status >= 502) {
+    return 'Servidor indisponível: a PET não foi emitida. As assinaturas já coletadas continuam válidas — tente de novo quando a conexão voltar.';
+  }
+  if (status === 401) {
+    return 'Sua sessão expirou. Entre de novo com e-mail e senha para continuar.';
+  }
+  return 'Não foi possível emitir a PET agora. Tente novamente.';
 }

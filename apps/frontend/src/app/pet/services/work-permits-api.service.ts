@@ -19,7 +19,12 @@ export interface CreateWorkPermitPayload {
   teamSize: number;
   date: string;
   start: string;
-  technician: string;
+  // Amarra a criação às assinaturas eletrônicas já coletadas no assistente
+  // (ver PetStateService.draftId/finishPet) — o back-end deriva
+  // `technician` da assinatura do emitente quando presente, em vez de
+  // confiar no campo abaixo.
+  draftId: string;
+  technician?: string;
   coordinates?: string;
   gas?: GasReading;
   alarm?: boolean;
