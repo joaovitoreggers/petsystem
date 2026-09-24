@@ -1270,6 +1270,47 @@ input[type='checkbox'] {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
+   Impressão da PET individual (só NR-33 por enquanto — ver comentário
+   junto de CHECKLISTS.confinado em pet-mock-data.ts): mesmo truque do
+   relatório de IA acima. O detalhe da PET no painel de gestão
+   (PetManagerComponent) é um diálogo — sem isolar por visibility, a regra
+   de impressão global mais abaixo esconderia .dialog-backdrop e não
+   sobraria nada pra imprimir. O detalhe do técnico (.screen--detalhe) não
+   é diálogo, então não precisa deste bloco — a regra global já basta.
+   ═══════════════════════════════════════════════════════════════════════ */
+@media print {
+  body.pet-detail-printing {
+    visibility: hidden;
+  }
+  body.pet-detail-printing .pet-detail,
+  body.pet-detail-printing .pet-detail * {
+    visibility: visible;
+  }
+  body.pet-detail-printing .pet-detail {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    max-width: none;
+    max-height: none;
+    overflow: visible;
+    box-shadow: none;
+    border: none;
+    padding: 14mm 12mm;
+    animation: none;
+  }
+  body.pet-detail-printing .dialog-backdrop {
+    position: static;
+    background: none;
+    backdrop-filter: none;
+    padding: 0;
+    animation: none;
+  }
+  body.pet-detail-printing .no-print {
+    display: none !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
       Impressão do relatório — folha A4
    ═══════════════════════════════════════════════════════════════════════
 
@@ -1303,9 +1344,13 @@ input[type='checkbox'] {
     color: #000;
   }
 
-  /* Estrutura do app: fora. A negação protege a impressão do laudo de IA,
-     que usa outro caminho (body.ai-report-printing) e vive num diálogo. */
-  body:not(.ai-report-printing) {
+  /* Estrutura do app: fora. A negação protege a impressão do laudo de IA e
+     do detalhe de PET no painel de gestão — os dois usam o truque de
+     isolar por visibility (body.ai-report-printing / .pet-detail-printing,
+     ver acima) e vivem num diálogo; sem a exceção, esta regra escondia
+     .dialog-backdrop com !important antes do outro bloco conseguir
+     reexibi-lo. */
+  body:not(.ai-report-printing):not(.pet-detail-printing) {
     .shell__sidebar,
     .shell__topbar,
     .shell__bottomnav,
@@ -1594,5 +1639,38 @@ input[type='checkbox'] {
     text-shadow: none !important;
     animation: none !important;
     transition: none !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Impressão da PET individual — acabamento.
+   Compartilhado pelas duas telas de detalhe (.detalhe__* no técnico,
+   .pet-detail__* no painel de gestão — ver PetTechnicianComponent.printPet
+   e PetManagerComponent.printPet), que duplicam a mesma estrutura com
+   nomes de classe diferentes. Sem cor de status preservada, a coluna
+   "situação" e o SIM/NÃO do checklist viram texto preto sem sentido.
+   ═══════════════════════════════════════════════════════════════════════ */
+@media print {
+  .detalhe__status,
+  .pet-detail .status-pill,
+  .detalhe__checklist-answer,
+  .pet-detail__checklist-answer {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Grupo de checklist e grade de gases não partem no meio — um título de
+     grupo sozinho no rodapé da página, com os itens na próxima, é tão
+     ilegível quanto um item sem o SIM/NÃO ao lado. */
+  .detalhe__checklist-group,
+  .pet-detail__checklist-group,
+  .gauge-grid {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .detalhe__body,
+  .pet-detail {
+    font-size: 9.5pt;
   }
 }

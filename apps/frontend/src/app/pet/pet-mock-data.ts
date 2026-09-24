@@ -4,7 +4,9 @@
 //
 // O checklist, os campos de EPI e as áreas de risco abaixo foram conferidos
 // contra a PET física em papel da Lar (FO 060 330-37, v5 09/2025) — ver
-// CHECKLISTS, EPI_CHECKLIST e a área 'descarga'.
+// CHECKLISTS, EPI_CHECKLIST e a área 'descarga'. Exceção: 'confinado'
+// (NR-33) segue o Anexo II (Modelo de PET) oficial da norma, não mais a
+// aproximação da PET da Lar — ver o comentário junto de CHECKLISTS.confinado.
 
 // De propósito, restrito às 7 normas que o sistema cobre por enquanto —
 // NR-33/35/10/12/20 já tinham checklist na PET física da Lar; NR-34
@@ -111,34 +113,62 @@ export interface ChecklistGroup {
 // checklists novos, escritos a partir do texto das normas — sem PET física
 // de referência, já que a Lar não opera nesses dois setores.
 export const CHECKLISTS: Record<RiskAreaId, ChecklistGroup[]> = {
+  // Transcrito item a item do Anexo II (Modelo de PET) da NR-33, vigente
+  // desde 03/10/2022 (Portaria MTP n.º 1.690/2022) — não é mais a
+  // aproximação da PET física da Lar, é o modelo oficial. Os testes
+  // atmosféricos (itens 2 e 6 do anexo) não viram pergunta SIM/NÃO aqui:
+  // os valores numéricos (O₂, LEL) já são capturados pela etapa "Medição
+  // atmosférica" do assistente, com os mesmos limites do anexo (O₂ entre
+  // 19,5% e 23,0%; inflamáveis abaixo de 10% LEL — ver
+  // requiresGasMonitoring/atmosphereOutOfRange) — duplicar como checklist
+  // criaria dois lugares para a mesma resposta divergirem.
   confinado: [
     {
-      title: 'Atmosfera e ventilação',
+      title: 'Antes da entrada · isolamento e testes (itens 1, 3-7)',
       items: [
-        'Limite de explosividade (LIE ou LEL) está nulo?',
-        'Possibilidade de formação de gases foi anulada?',
-        'Poeira e pó em suspensão estão controlados?',
-        'Existe ventilação?',
+        'Isolamento da área realizado?',
+        'Bloqueio, travamento e etiquetagem realizados, quando aplicável?',
+        'Purga e/ou lavagem realizadas, quando aplicável?',
+        'Ventilação/exaustão adequada — tipo, equipamento e tempo registrados?',
+        'Teste após ventilação e isolamento dentro dos limites? (O₂ entre 19,5% e 23,0%; inflamáveis abaixo de 10% LEL)',
+        'Iluminação geral adequada?',
       ],
     },
     {
-      title: 'Isolamento e riscos físicos',
+      title: 'Antes da entrada · comunicação, resgate e treinamento (itens 8-11)',
       items: [
-        'Realizado bloqueio e sinalização? (elétrico/mecânico)',
-        'Eliminado risco de afogamento, engolfamento e soterramento?',
-        'Ambiente iluminado?',
-        'Escavação escorada? (se +1,5 m de profundidade)',
+        'Procedimentos de comunicação definidos?',
+        'Procedimentos de resgate definidos?',
+        'Procedimentos e proteção de movimentação vertical definidos?',
+        'Todos os trabalhadores têm treinamento válido em NR-33?',
       ],
     },
     {
-      title: 'Equipe e comunicação',
+      title: 'Equipamentos · monitoramento e proteção coletiva (item 13)',
       items: [
-        'Trabalhadores com treinamentos válidos em NR-33?',
-        'Trabalhadores em condições físicas/clínicas?',
-        'Comunicação clara entre vigia/trabalhadores?',
-        'Comunicação entre equipe de vigia/resgate?',
-        'Equipamentos de monitoramento testados ou calibrados?',
+        'Equipamento de monitoramento contínuo de gases, com alarmes, em condições?',
+        'Lanternas em condições?',
+        'Roupa de proteção disponível?',
+        'Extintores de incêndio disponíveis?',
+        'Capacetes, botas e luvas disponíveis?',
+        'Escada disponível e em condições?',
+        'Equipamentos de movimentação vertical/suportes externos disponíveis?',
       ],
+    },
+    {
+      title: 'Equipamentos · respiração, resgate e áreas explosivas (item 13)',
+      items: [
+        'Equipamento de proteção respiratória autônomo (ou ar mandado com cilindro de escape) para os trabalhadores autorizados?',
+        'Cinturão de segurança e linhas de vida para os trabalhadores autorizados?',
+        'Cinturão de segurança e linhas de vida para a equipe de resgate?',
+        'Equipamento de proteção respiratória autônomo (ou ar mandado com cilindro de escape) para a equipe de resgate?',
+        'Equipamentos de comunicação eletrônica adequados para áreas potencialmente explosivas?',
+        'Equipamentos elétricos e eletrônicos adequados para áreas potencialmente explosivas?',
+      ],
+    },
+    {
+      title: 'Durante os trabalhos (item 14)',
+      items: ['Permissão de trabalhos a quente emitida, quando aplicável?'],
     },
   ],
   altura: [
