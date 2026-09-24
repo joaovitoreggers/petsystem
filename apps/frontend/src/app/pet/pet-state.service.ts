@@ -31,6 +31,7 @@ import {
   teamMemberToBadge,
 } from './pet-mock-data';
 import { CreateWorkPermitPayload, WorkPermitsApiService } from './services/work-permits-api.service';
+import { WorkPermitSignature } from './services/work-permit-signatures-api.service';
 import { TeamMembersApiService, UpdateTeamMemberPayload } from './services/team-members-api.service';
 import {
   CompanyLocationsApiService,
@@ -924,57 +925,88 @@ export class PetStateService {
     this.teamMembers.set(restoreRoster());
     this.companyLocations.set([]);
     this.emergencyContacts.set([]);
+    this.detailPetSignatures.set([]);
   }
 
   selectHomeTab(tab: HomeTab): void {
     this.homeTab.set(tab);
   }
 
+  // Trilha de auditoria da PET aberta no detalhe — quem assinou, quando,
+  // por qual método. Recarregada a cada abertura (inclusive depois de
+  // encerrar, pra mostrar a assinatura de encerramento que acabou de
+  // entrar) e limpa ao sair, pra não vazar a lista de uma PET pra outra.
+  readonly detailPetSignatures = signal<WorkPermitSignature[]>([]);
+
   openPetDetail(id: string): void {
     this.detailPetId.set(id);
     this.screen.set('detalhe');
+    this.detailPetSignatures.set([]);
+    firstValueFrom(this.workPermitsApi.findSignatures(id))
+      .then((signatures) => this.detailPetSignatures.set(signatures))
+      .catch(() => {
+        // sem sessão real ou servidor fora do ar — a tela de detalhe
+        // simplesmente não mostra a trilha de auditoria nesse caso
+      });
   }
 
   goHome(): void {
     this.screen.set('home');
   }
 
-  async encerrarPet(reason: string, closedBy: string): Promise<void> {
+  // ── Assinatura eletrônica (encerramento) ──────────────────────────
+  // Mesmo raciocínio do openingTimestamp da abertura: `end`/`durationMinutes`
+  // precisam ficar fixos entre a assinatura e a chamada de fechamento em
+  // si, senão o hash assinado não bate mais com "agora" na hora de fechar.
+  readonly closingTimestamp = signal<{ end: string; durationMinutes: number } | null>(null);
+
+  ensureClosingTimestamp(): void {
+    if (this.closingTimestamp()) return;
     const id = this.detailPetId();
-    if (!id) return;
     const pet = this.pets().find((p) => p.id === id);
     const end = new Date().toLocaleTimeString('pt-BR', {
       hour: '2-digit',
       minute: '2-digit',
     });
     const durationMinutes = pet ? minutesSince(pet.start) : 0;
+    this.closingTimestamp.set({ end, durationMinutes });
+  }
+
+  resetClosingTimestamp(): void {
+    this.closingTimestamp.set(null);
+  }
+
+  readonly closingPet = signal(false);
+  readonly closingPetError = signal<string | null>(null);
+
+  // Sem fallback local se a API falhar — mesmo raciocínio de finishPet():
+  // sem uma assinatura real por trás, "fechada" na tela seria mentira. Erro
+  // fica visível (closingPetError) e o técnico tenta de novo; a assinatura
+  // já coletada continua válida (mesmo end/durationMinutes).
+  async encerrarPet(reason: string, signatureIds: string[]): Promise<void> {
+    const id = this.detailPetId();
+    const timestamp = this.closingTimestamp();
+    if (!id || !timestamp) return;
+
+    this.closingPet.set(true);
+    this.closingPetError.set(null);
     try {
       const closed = await firstValueFrom(
         this.workPermitsApi.close(id, {
-          end,
-          durationMinutes,
+          end: timestamp.end,
+          durationMinutes: timestamp.durationMinutes,
           reason,
-          closedBy,
+          signatureIds,
         }),
       );
       this.pets.update((list) => list.map((p) => (p.id === id ? closed : p)));
-    } catch {
-      this.pets.update((list) =>
-        list.map((p) =>
-          p.id === id
-            ? {
-                ...p,
-                status: 'fechada' as const,
-                end,
-                durationMinutes,
-                closeReason: reason,
-                closedBy,
-              }
-            : p,
-        ),
-      );
+      this.resetClosingTimestamp();
+      this.goHome();
+    } catch (err) {
+      this.closingPetError.set(closingPetErrorMessage(err));
+    } finally {
+      this.closingPet.set(false);
     }
-    this.goHome();
   }
 
   openMeasurementDialog(): void {
@@ -1454,4 +1486,24 @@ function finishPetErrorMessage(err: unknown): string {
     return 'Sua sessão expirou. Entre de novo com e-mail e senha para continuar.';
   }
   return 'Não foi possível emitir a PET agora. Tente novamente.';
+}
+
+/** Mesmo raciocínio de finishPetErrorMessage(), para o encerramento. */
+function closingPetErrorMessage(err: unknown): string {
+  const status = (err as { status?: number })?.status;
+  if (status === 409) {
+    return 'O conteúdo do encerramento mudou depois de assinado — assine de novo.';
+  }
+  if (status === 400) {
+    const body = (err as { error?: { message?: unknown } })?.error;
+    if (typeof body?.message === 'string' && body.message.trim()) return body.message;
+    return 'Assine o encerramento antes de confirmar.';
+  }
+  if (status === 0 || status === undefined || status >= 502) {
+    return 'Servidor indisponível: a PET não foi encerrada. A assinatura já coletada continua válida — tente de novo quando a conexão voltar.';
+  }
+  if (status === 401) {
+    return 'Sua sessão expirou. Entre de novo com e-mail e senha para continuar.';
+  }
+  return 'Não foi possível encerrar a PET agora. Tente novamente.';
 }

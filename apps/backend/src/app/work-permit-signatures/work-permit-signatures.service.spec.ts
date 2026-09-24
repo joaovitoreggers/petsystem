@@ -485,6 +485,23 @@ describe('WorkPermitSignaturesService', () => {
       );
     });
 
+    it('also sends to the current user phone for petRole encerrante (closing is always the logged-in user)', async () => {
+      usersService.findById.mockResolvedValue(fullUser({ id: 'u1', phone: '+5545999990000' }));
+      notificationsService.sendVerificationCode.mockResolvedValue('sent');
+
+      const result = await service.sendOtpSignatureCode({
+        currentUserId: 'u1',
+        petRole: 'encerrante',
+        lifecycleEvent: 'encerramento',
+        channel: 'sms',
+        contentSnapshot: {},
+        scope,
+      });
+
+      expect(result.delivery).toBe('sent');
+      expect(teamMembersService.findByRegistration).not.toHaveBeenCalled();
+    });
+
     it('rejects when the emitente has no phone on file', async () => {
       usersService.findById.mockResolvedValue(fullUser({ id: 'u1', phone: null }));
 
@@ -710,6 +727,86 @@ describe('WorkPermitSignaturesService', () => {
       await service.linkDraftToWorkPermit('draft-1', 'PET-2026-0001');
 
       expect(repository.linkDraftToWorkPermit).toHaveBeenCalledWith('draft-1', 'PET-2026-0001');
+    });
+  });
+
+  describe('requireClosingSignatures', () => {
+    const scope = { role: 'tecnico', companyGroupId: 'g1', branchId: null };
+
+    it('rejects an empty signatureIds list', async () => {
+      await expect(
+        service.requireClosingSignatures('PET-2026-0001', [], {}, scope),
+      ).rejects.toThrow(BadRequestException);
+      expect(repository.findByWorkPermitId).not.toHaveBeenCalled();
+    });
+
+    it('rejects a signatureId that does not exist for this work permit', async () => {
+      repository.findByWorkPermitId.mockResolvedValue([]);
+
+      await expect(
+        service.requireClosingSignatures('PET-2026-0001', ['sig-missing'], {}, scope),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('rejects a signature that exists but is for abertura, not encerramento', async () => {
+      repository.findByWorkPermitId.mockResolvedValue([
+        signature({ id: 'sig-1', workPermitId: 'PET-2026-0001', lifecycleEvent: 'abertura' }),
+      ]);
+
+      await expect(
+        service.requireClosingSignatures('PET-2026-0001', ['sig-1'], {}, scope),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('rejects when the signed hash no longer matches the given content', async () => {
+      repository.findByWorkPermitId.mockResolvedValue([
+        signature({
+          id: 'sig-1',
+          workPermitId: 'PET-2026-0001',
+          lifecycleEvent: 'encerramento',
+          contentHash: 'stale-hash',
+        }),
+      ]);
+
+      await expect(
+        service.requireClosingSignatures('PET-2026-0001', ['sig-1'], { reason: 'x' }, scope),
+      ).rejects.toThrow('mudou depois de assinado');
+    });
+
+    it('ignores a signature from a different tenant, treating it as not found', async () => {
+      repository.findByWorkPermitId.mockResolvedValue([
+        signature({
+          id: 'sig-1',
+          workPermitId: 'PET-2026-0001',
+          lifecycleEvent: 'encerramento',
+          companyGroupId: 'other-group',
+        }),
+      ]);
+
+      await expect(
+        service.requireClosingSignatures('PET-2026-0001', ['sig-1'], {}, scope),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('returns the matched signatures when every id is valid and the hash matches', async () => {
+      const contentHash = computeContentHash({ workPermitId: 'PET-2026-0001', end: '10:00' });
+      const sig = signature({
+        id: 'sig-1',
+        workPermitId: 'PET-2026-0001',
+        lifecycleEvent: 'encerramento',
+        contentHash,
+        signerName: 'Bárbara M. Garlini',
+      });
+      repository.findByWorkPermitId.mockResolvedValue([sig]);
+
+      const result = await service.requireClosingSignatures(
+        'PET-2026-0001',
+        ['sig-1'],
+        { workPermitId: 'PET-2026-0001', end: '10:00' },
+        scope,
+      );
+
+      expect(result).toEqual([sig]);
     });
   });
 

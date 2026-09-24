@@ -1,4 +1,5 @@
 import { Component, computed, signal } from '@angular/core';
+import { DatePipe } from '@angular/common';
 import { platformAuthenticatorIsAvailable } from '@simplewebauthn/browser';
 import { PetStateService } from '../pet-state.service';
 import {
@@ -13,7 +14,13 @@ import {
   riskAreaNames,
   riskAreaNrs,
 } from '../pet-mock-data';
+import {
+  SignatureMethod,
+  SignaturePetRole,
+  WorkPermitSignature,
+} from '../services/work-permit-signatures-api.service';
 import { PetWizardComponent } from './pet-wizard.component';
+import { PetSignaturePanelComponent } from './pet-signature-panel.component';
 import { IconComponent } from '../../shared/icon.component';
 import { IndustrialArtComponent } from '../../shared/industrial-art.component';
 
@@ -39,7 +46,7 @@ interface MeasurementFieldView {
 @Component({
   selector: 'app-pet-technician',
   standalone: true,
-  imports: [PetWizardComponent, IconComponent, IndustrialArtComponent],
+  imports: [PetWizardComponent, PetSignaturePanelComponent, IconComponent, IndustrialArtComponent, DatePipe],
   templateUrl: './pet-technician.component.html',
   styleUrls: ['./pet-technician.component.scss', './pet-login.scss'],
 })
@@ -184,39 +191,56 @@ export class PetTechnicianComponent {
 
   readonly cancelDialogOpen = signal(false);
   readonly cancelReason = signal('');
-  readonly cancelClosedBy = signal('');
+  readonly closingSignature = signal<WorkPermitSignature | null>(null);
 
   readonly canConfirmCancel = computed(
-    () =>
-      this.cancelReason().trim().length > 0 &&
-      this.cancelClosedBy().trim().length > 0,
+    () => this.cancelReason().trim().length > 0 && this.closingSignature() !== null,
   );
+
+  // Snapshot canônico do que está sendo assinado no encerramento — precisa
+  // bater byte a byte com buildClosingSnapshot() no back-end (ver
+  // closing-snapshot.ts), mesmo raciocínio do snapshot de abertura.
+  readonly closingContentSnapshot = computed<Record<string, unknown>>(() => {
+    const timestamp = this.state.closingTimestamp();
+    return {
+      workPermitId: this.state.detailPetId(),
+      end: timestamp?.end ?? '',
+      durationMinutes: timestamp?.durationMinutes ?? 0,
+      reason: this.cancelReason().trim() || null,
+    };
+  });
 
   openCancelDialog(): void {
     this.cancelReason.set('');
-    this.cancelClosedBy.set('');
+    this.closingSignature.set(null);
+    this.state.ensureClosingTimestamp();
     this.cancelDialogOpen.set(true);
   }
 
   closeCancelDialog(): void {
     this.cancelDialogOpen.set(false);
+    this.state.resetClosingTimestamp();
   }
 
   onCancelReasonChange(event: Event): void {
     this.cancelReason.set((event.target as HTMLTextAreaElement).value);
   }
 
-  onCancelClosedByChange(event: Event): void {
-    this.cancelClosedBy.set((event.target as HTMLInputElement).value);
+  onClosingSigned(signature: WorkPermitSignature): void {
+    this.closingSignature.set(signature);
   }
 
-  confirmCancel(): void {
-    if (!this.canConfirmCancel()) return;
-    this.state.encerrarPet(
-      this.cancelReason().trim(),
-      this.cancelClosedBy().trim(),
-    );
-    this.cancelDialogOpen.set(false);
+  // Não fecha o diálogo até confirmar sucesso — se a chamada falhar
+  // (servidor fora do ar, assinatura ficou inválida), o erro precisa
+  // continuar visível ali, não desaparecer junto com o diálogo (mesmo
+  // raciocínio de finishPet() no assistente).
+  async confirmCancel(): Promise<void> {
+    const signature = this.closingSignature();
+    if (!this.canConfirmCancel() || !signature) return;
+    await this.state.encerrarPet(this.cancelReason().trim(), [signature.id]);
+    if (!this.state.closingPetError()) {
+      this.cancelDialogOpen.set(false);
+    }
   }
 
   // Leitura manual pós-emissão: mesmo padrão da etapa 3 do assistente,
@@ -284,5 +308,17 @@ export class PetTechnicianComponent {
       nr: riskAreaNrs(pet.areas),
       gasLabel,
     };
+  }
+
+  signatureRoleLabel(role: SignaturePetRole): string {
+    if (role === 'emitente') return 'emitente';
+    if (role === 'executante') return 'executante';
+    return 'encerramento';
+  }
+
+  signatureMethodLabel(method: SignatureMethod): string {
+    if (method === 'biometria') return 'biometria';
+    if (method === 'cracha_pin') return 'crachá + PIN';
+    return 'código SMS/WhatsApp';
   }
 }

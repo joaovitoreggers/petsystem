@@ -68,9 +68,13 @@ export class PetSignaturePanelComponent implements OnInit, OnDestroy {
   readonly signing = signal(false);
   readonly error = signal<string | null>(null);
 
+  // 'emitente' e 'encerrante' são sempre quem está logado (mesma sessão que
+  // abre/fecha a PET) — biometria e SMS/WhatsApp fazem sentido, crachá não
+  // (não têm crachá, têm sessão). Só 'executante' é um membro da escala sem
+  // sessão própria, daí crachá+PIN em vez de biometria.
   readonly availableMethods = computed<MethodOption[]>(() => {
     const methods: SignatureMethod[] =
-      this.petRole === 'emitente' ? ['biometria', 'sms_otp'] : ['cracha_pin', 'sms_otp'];
+      this.petRole === 'executante' ? ['cracha_pin', 'sms_otp'] : ['biometria', 'sms_otp'];
     return methods.map((m) => METHOD_OPTIONS[m]);
   });
 
@@ -202,7 +206,7 @@ export class PetSignaturePanelComponent implements OnInit, OnDestroy {
       const result = await firstValueFrom(
         this.signaturesApi.sendOtp({
           ...this.requestBase(),
-          registration: this.petRole === 'emitente' ? undefined : this.registration,
+          registration: this.petRole === 'executante' ? this.registration : undefined,
           channel: this.otpChannel(),
         }),
       );
