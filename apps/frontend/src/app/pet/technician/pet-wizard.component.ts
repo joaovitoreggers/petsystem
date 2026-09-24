@@ -14,7 +14,6 @@ import {
   RiskAreaId,
   STEP_NAME,
   TeamMember,
-  buildChecklistGroups,
   isGasWithinLimit,
   riskAreaNrs,
 } from '../pet-mock-data';
@@ -203,10 +202,30 @@ export class PetWizardComponent {
   readonly atmosphereOk = computed(() => !this.state.atmosphereOutOfRange());
 
   // EPI é um bloco único da PET (não repete por área), seguido pelo
-  // checklist específico de cada área de risco selecionada.
-  readonly checkGroups = computed(() =>
-    buildChecklistGroups(this.state.selectedAreas()),
-  );
+  // checklist específico de cada área de risco selecionada — ver
+  // PetStateService.checklistGroups (também usado por canAdvance() pra
+  // bloquear item sem resposta ou marcado NÃO). Não é uma referência
+  // direta ao signal (`= this.state.checklistGroups`): campo de classe
+  // inicializa antes da property do construtor ser atribuída, e `state`
+  // ainda seria undefined nesse ponto — o wrapper adia a leitura pra
+  // quando o template efetivamente chamar checkGroups().
+  readonly checkGroups = computed(() => this.state.checklistGroups());
+
+  // Frase do banner de bloqueio — monta só as partes que existem (pode
+  // haver só sem-resposta, só NÃO, ou os dois) sem deixar pontuação
+  // sobrando quando uma das duas contagens é zero.
+  readonly checklistBlockedSummary = computed(() => {
+    const unanswered = this.state.checklistUnansweredCount();
+    const nao = this.state.checklistNaoCount();
+    const parts: string[] = [];
+    if (unanswered > 0) {
+      parts.push(unanswered === 1 ? '1 item sem resposta' : `${unanswered} itens sem resposta`);
+    }
+    if (nao > 0) {
+      parts.push(nao === 1 ? '1 item marcado como NÃO' : `${nao} itens marcados como NÃO`);
+    }
+    return parts.join(' · ');
+  });
 
   readonly checklistOptions: { value: ChecklistAnswer; label: string }[] = [
     { value: 'sim', label: 'SIM' },

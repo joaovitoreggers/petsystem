@@ -20,6 +20,7 @@ import {
   TEAM_MEMBERS,
   TeamMember,
   WizardStepId,
+  buildChecklistGroups,
   emptyFireWatchRounds,
   gasViolationMessage,
   petStatusView,
@@ -496,6 +497,32 @@ export class PetStateService {
       (k) => inputs[k].trim() !== '' && !Number.isNaN(Number(inputs[k])),
     );
   });
+
+  // Checklist bloqueante — mesmo princípio da atmosfera fora do limite
+  // (ver canAdvance()): item sem resposta ou marcado NÃO significa uma
+  // condição de segurança não atendida, e emitir a PET assim faria a
+  // permissão em papel mentir sobre o que foi de fato conferido. É
+  // literalmente o texto do Anexo II da NR-33 ("a entrada deve ser
+  // proibida se algum campo não for preenchido ou contiver a marca
+  // 'não'"), mas vale pro checklist inteiro (EPI + todas as áreas
+  // selecionadas), não só pros itens da NR-33 — a etapa é uma só.
+  readonly checklistGroups = computed(() =>
+    buildChecklistGroups(this.selectedAreas()),
+  );
+  readonly checklistUnansweredCount = computed(() => {
+    const answers = this.checklistState();
+    return this.checklistGroups().reduce(
+      (count, group) =>
+        count + group.items.filter((item) => !(item.key in answers)).length,
+      0,
+    );
+  });
+  readonly checklistNaoCount = computed(
+    () => Object.values(this.checklistState()).filter((a) => a === 'nao').length,
+  );
+  readonly checklistBlocked = computed(
+    () => this.checklistUnansweredCount() > 0 || this.checklistNaoCount() > 0,
+  );
 
   setRole(role: PortalRole): void {
     this.role.set(role);
@@ -1056,6 +1083,7 @@ export class PetStateService {
     if (step === 'area') return this.selectedAreas().length > 0;
     if (step === 'gases')
       return this.gasReadingComplete() && !this.atmosphereOutOfRange();
+    if (step === 'check') return !this.checklistBlocked();
     if (step === 'qr') return this.authorizedTeam().length > 0;
     if (step === 'sig') return this.technicianSigned() && this.executorSigned();
     return true;
