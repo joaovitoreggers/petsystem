@@ -24,6 +24,8 @@ import { EmergencyContact } from './emergency-contacts/entities/emergency-contac
 import { EmergencyContactsModule } from './emergency-contacts/emergency-contacts.module';
 import { EvacuationAlert } from './evacuation/entities/evacuation-alert.entity';
 import { EvacuationModule } from './evacuation/evacuation.module';
+import { ChecklistItem } from './checklist-items/entities/checklist-item.entity';
+import { ChecklistItemsModule } from './checklist-items/checklist-items.module';
 
 @Module({
   imports: [
@@ -50,6 +52,7 @@ import { EvacuationModule } from './evacuation/evacuation.module';
           CompanyLocation,
           EmergencyContact,
           EvacuationAlert,
+          ChecklistItem,
         ],
         synchronize: true,
       }),
@@ -65,6 +68,7 @@ import { EvacuationModule } from './evacuation/evacuation.module';
     CompanyLocationsModule,
     EmergencyContactsModule,
     EvacuationModule,
+    ChecklistItemsModule,
   ],
   controllers: [AppController],
 })
