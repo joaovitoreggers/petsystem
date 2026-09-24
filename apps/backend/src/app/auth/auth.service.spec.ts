@@ -350,6 +350,115 @@ describe('AuthService', () => {
     });
   });
 
+  describe('getSignatureAuthenticationOptions', () => {
+    it('rejects when the user has no biometric credential registered at all', async () => {
+      webAuthnCredentialRepository.findByUserId.mockResolvedValue([]);
+
+      await expect(
+        service.getSignatureAuthenticationOptions('u1', new Uint8Array([1, 2, 3])),
+      ).rejects.toThrow(UnauthorizedException);
+      expect(generateAuthenticationOptions).not.toHaveBeenCalled();
+    });
+
+    it('restricts allowCredentials to the caller own credentials and passes the given challenge through', async () => {
+      webAuthnCredentialRepository.findByUserId.mockResolvedValue([
+        credential({ id: 'cred-1', userId: 'u1', transports: ['internal'] }),
+      ]);
+      (generateAuthenticationOptions as jest.Mock).mockResolvedValue({ challenge: 'hash-as-challenge' });
+
+      const contentHash = new Uint8Array([9, 9, 9]);
+      await service.getSignatureAuthenticationOptions('u1', contentHash);
+
+      const call = (generateAuthenticationOptions as jest.Mock).mock.calls[0][0];
+      expect(call.allowCredentials).toEqual([{ id: 'cred-1', transports: ['internal'] }]);
+      expect(call.challenge).toBe(contentHash);
+    });
+  });
+
+  describe('verifySignatureAssertion', () => {
+    it('rejects an unknown or expired challengeId', async () => {
+      await expect(
+        service.verifySignatureAssertion('u1', 'missing-challenge', { id: 'cred-1' } as never),
+      ).rejects.toThrow(UnauthorizedException);
+      expect(webAuthnCredentialRepository.findById).not.toHaveBeenCalled();
+    });
+
+    it('rejects when the credential does not belong to the caller — even if it is a real credential', async () => {
+      webAuthnCredentialRepository.findByUserId.mockResolvedValue([credential({ id: 'cred-1', userId: 'u1' })]);
+      (generateAuthenticationOptions as jest.Mock).mockResolvedValue({ challenge: 'c1' });
+      const { challengeId } = await service.getSignatureAuthenticationOptions('u1', new Uint8Array([1]));
+      webAuthnCredentialRepository.findById.mockResolvedValue(credential({ id: 'cred-1', userId: 'someone-else' }));
+
+      await expect(
+        service.verifySignatureAssertion('u1', challengeId, { id: 'cred-1' } as never),
+      ).rejects.toThrow(UnauthorizedException);
+      expect(verifyAuthenticationResponse).not.toHaveBeenCalled();
+    });
+
+    it('rejects when the signature does not verify', async () => {
+      webAuthnCredentialRepository.findByUserId.mockResolvedValue([credential({ id: 'cred-1', userId: 'u1' })]);
+      (generateAuthenticationOptions as jest.Mock).mockResolvedValue({ challenge: 'c1' });
+      const { challengeId } = await service.getSignatureAuthenticationOptions('u1', new Uint8Array([1]));
+      webAuthnCredentialRepository.findById.mockResolvedValue(credential({ id: 'cred-1', userId: 'u1' }));
+      (verifyAuthenticationResponse as jest.Mock).mockResolvedValue({ verified: false });
+
+      await expect(
+        service.verifySignatureAssertion('u1', challengeId, { id: 'cred-1' } as never),
+      ).rejects.toThrow(UnauthorizedException);
+      expect(webAuthnCredentialRepository.updateCounter).not.toHaveBeenCalled();
+    });
+
+    it('advances the stored counter and returns the credential id on a verified assertion', async () => {
+      webAuthnCredentialRepository.findByUserId.mockResolvedValue([
+        credential({ id: 'cred-1', userId: 'u1', counter: 4 }),
+      ]);
+      (generateAuthenticationOptions as jest.Mock).mockResolvedValue({ challenge: 'c1' });
+      const { challengeId } = await service.getSignatureAuthenticationOptions('u1', new Uint8Array([1]));
+      webAuthnCredentialRepository.findById.mockResolvedValue(credential({ id: 'cred-1', userId: 'u1', counter: 4 }));
+      (verifyAuthenticationResponse as jest.Mock).mockResolvedValue({
+        verified: true,
+        authenticationInfo: { newCounter: 5 },
+      });
+
+      const result = await service.verifySignatureAssertion('u1', challengeId, { id: 'cred-1' } as never);
+
+      expect(result).toEqual({ credentialId: 'cred-1' });
+      expect(webAuthnCredentialRepository.updateCounter).toHaveBeenCalledWith('cred-1', 5);
+    });
+
+    it('cannot be replayed — the challenge is consumed on first use', async () => {
+      webAuthnCredentialRepository.findByUserId.mockResolvedValue([credential({ id: 'cred-1', userId: 'u1' })]);
+      (generateAuthenticationOptions as jest.Mock).mockResolvedValue({ challenge: 'c1' });
+      const { challengeId } = await service.getSignatureAuthenticationOptions('u1', new Uint8Array([1]));
+      webAuthnCredentialRepository.findById.mockResolvedValue(credential({ id: 'cred-1', userId: 'u1' }));
+      (verifyAuthenticationResponse as jest.Mock).mockResolvedValue({
+        verified: true,
+        authenticationInfo: { newCounter: 1 },
+      });
+
+      await service.verifySignatureAssertion('u1', challengeId, { id: 'cred-1' } as never);
+
+      await expect(
+        service.verifySignatureAssertion('u1', challengeId, { id: 'cred-1' } as never),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('never issues a session — the caller is already authenticated to reach here', async () => {
+      webAuthnCredentialRepository.findByUserId.mockResolvedValue([credential({ id: 'cred-1', userId: 'u1' })]);
+      (generateAuthenticationOptions as jest.Mock).mockResolvedValue({ challenge: 'c1' });
+      const { challengeId } = await service.getSignatureAuthenticationOptions('u1', new Uint8Array([1]));
+      webAuthnCredentialRepository.findById.mockResolvedValue(credential({ id: 'cred-1', userId: 'u1' }));
+      (verifyAuthenticationResponse as jest.Mock).mockResolvedValue({
+        verified: true,
+        authenticationInfo: { newCounter: 1 },
+      });
+
+      await service.verifySignatureAssertion('u1', challengeId, { id: 'cred-1' } as never);
+
+      expect(jwtService.sign).not.toHaveBeenCalled();
+    });
+  });
+
   describe('hasBiometricCredential', () => {
     it('is true once at least one credential is registered', async () => {
       webAuthnCredentialRepository.findByUserId.mockResolvedValue([credential({})]);
