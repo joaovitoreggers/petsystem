@@ -25,6 +25,82 @@
 
   <div class="wizard__body petscroll">
     @switch (state.currentStep()) {
+      @case ('metodo') {
+        <div class="step step--metodo">
+          <div class="section-kicker">Como você quer cadastrar essa PET?</div>
+          <div class="step-hint">
+            Cadastre manualmente pela norma aplicável, ou por um local já
+            cadastrado — a área de risco e o local específico vêm prontos.
+          </div>
+
+          @if (!showLocationPicker()) {
+            <div class="metodo__choices">
+              <button
+                type="button"
+                class="metodo__choice"
+                (click)="state.chooseManualArea()"
+              >
+                <app-icon name="document" [size]="26" />
+                <span class="metodo__choice-title">Cadastrar por NR</span>
+                <span class="metodo__choice-desc">
+                  Você marca à mão quais normas (NR-33, NR-35...) se aplicam
+                  a esta intervenção. Use quando o local não está cadastrado
+                  ou muda a cada serviço — cada norma marcada acrescenta seu
+                  próprio checklist ao formulário.
+                </span>
+              </button>
+              <button
+                type="button"
+                class="metodo__choice"
+                [disabled]="state.companyLocations().length === 0"
+                (click)="showLocationPicker.set(true)"
+              >
+                <app-icon name="pin" [size]="26" />
+                <span class="metodo__choice-title">
+                  Cadastrar por lugar de risco
+                </span>
+                <span class="metodo__choice-desc">
+                  @if (state.companyLocations().length > 0) {
+                    Você escolhe um local já cadastrado pela empresa e a
+                    PET preenche sozinha a área de risco, o nome do local e
+                    a unidade — só confere e segue, sem repetir o cadastro.
+                  } @else {
+                    Nenhum local cadastrado ainda. Cadastre um na aba
+                    "Locais" para usar este atalho.
+                  }
+                </span>
+              </button>
+            </div>
+          } @else {
+            <div class="metodo__locations">
+              <button
+                type="button"
+                class="btn btn-ghost metodo__locations-back"
+                (click)="showLocationPicker.set(false)"
+              >
+                <app-icon name="arrow-left" [size]="16" />
+                Voltar
+              </button>
+              @for (l of state.companyLocations(); track l.id) {
+                <button
+                  type="button"
+                  class="metodo__location-row"
+                  (click)="state.startFromCompanyLocation(l)"
+                >
+                  <app-icon name="pin" [size]="18" />
+                  <span class="metodo__location-row-info">
+                    <span class="metodo__location-row-name">{{ l.name }}</span>
+                    <span class="metodo__location-row-desc"
+                      >{{ l.unit }} · {{ riskAreaNames(l.riskAreas) }}</span
+                    >
+                  </span>
+                </button>
+              }
+            </div>
+          }
+        </div>
+      }
+
       @case ('area') {
         <div class="step step--area">
           <div class="section-kicker">Classificação do risco</div>
@@ -32,19 +108,6 @@
             Marque todas as áreas de risco da intervenção. Cada norma acrescenta
             seus próprios campos e checklist ao formulário.
           </div>
-          @if (state.companyLocations().length > 0) {
-            <div class="field step-area__location-picker">
-              <label>Local cadastrado (opcional)</label>
-              <select class="input" (change)="pickCompanyLocation($event)">
-                <option value="" selected>
-                  Selecione um local para pré-preencher
-                </option>
-                @for (l of state.companyLocations(); track l.id) {
-                  <option [value]="l.id">{{ l.name }} · {{ l.unit }}</option>
-                }
-              </select>
-            </div>
-          }
           @for (area of areas; track area.id) {
             <label
               class="area-option"
@@ -636,13 +699,15 @@
     >
       Voltar
     </button>
-    <button
-      type="button"
-      class="btn btn-primary wizard__footer-btn wizard__footer-btn--primary"
-      [disabled]="!state.canAdvance()"
-      (click)="state.advance()"
-    >
-      {{ state.advanceStepLabel() }}
-    </button>
+    @if (state.currentStep() !== 'metodo') {
+      <button
+        type="button"
+        class="btn btn-primary wizard__footer-btn wizard__footer-btn--primary"
+        [disabled]="!state.canAdvance()"
+        (click)="state.advance()"
+      >
+        {{ state.advanceStepLabel() }}
+      </button>
+    }
   </div>
 </div>

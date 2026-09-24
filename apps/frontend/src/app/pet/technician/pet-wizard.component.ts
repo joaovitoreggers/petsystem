@@ -5,7 +5,6 @@ import { TenancyApiService } from '../services/tenancy-api.service';
 import {
   AREA_NOTE,
   ChecklistAnswer,
-  CompanyLocation,
   GAS_LIMITS,
   GasKey,
   MOCK_BADGES,
@@ -16,6 +15,7 @@ import {
   TeamMember,
   buildChecklistGroups,
   isGasWithinLimit,
+  riskAreaNames,
   riskAreaNrs,
 } from '../pet-mock-data';
 import { IconComponent } from '../../shared/icon.component';
@@ -281,18 +281,11 @@ export class PetWizardComponent {
     this.state.toggleArea(id);
   }
 
-  // Escolher um local cadastrado pré-preenche área de risco, nome do local
-  // e unidade (ver PetStateService.selectCompanyLocation) — o <select> volta
-  // ao placeholder logo em seguida, porque isto é um atalho de preenchimento,
-  // não um campo com valor próprio.
-  pickCompanyLocation(event: Event): void {
-    const select = event.target as HTMLSelectElement;
-    const location = this.state
-      .companyLocations()
-      .find((l: CompanyLocation) => l.id === select.value);
-    if (location) this.state.selectCompanyLocation(location);
-    select.value = '';
-  }
+  // Etapa "metodo": qual dos dois cartões está em tela — a lista de locais
+  // só aparece depois de "Cadastrar por lugar de risco" (ver
+  // PetStateService.startFromCompanyLocation).
+  readonly showLocationPicker = signal(false);
+  readonly riskAreaNames = riskAreaNames;
 
   fieldValue(name: WizardFieldName): string {
     return this.state.fields()[name];

@@ -106,6 +106,9 @@
         @case ('locais') {
           <app-pet-locations />
         }
+        @case ('brigada') {
+          <app-pet-brigade />
+        }
         @case ('usuarios') {
           <app-pet-users />
         }
@@ -146,9 +149,9 @@
       <div class="dialog evac-picker" (click)="$event.stopPropagation()">
         <div class="dialog-title">Qual PET está sendo evacuada?</div>
         <div class="dialog-body">
-          Escolha a frente de trabalho atingida. A sirene local será ligada e a
-          brigada, a portaria e as equipes das frentes ativas recebem o alerta
-          imediatamente — use apenas em situação real de risco.
+          Escolha a frente de trabalho atingida. A brigada de emergência
+          cadastrada recebe um SMS/WhatsApp com a situação em tempo real —
+          use apenas em situação real de risco.
         </div>
         <div class="evac-picker__list">
           @for (c of state.evacuationCandidates(); track c.pet.id) {
@@ -201,7 +204,14 @@
           <div>
             <div class="evac__title">EVACUAÇÃO ACIONADA</div>
             <div class="evac__clock mono">
-              {{ evacStartedAt() }} · sirene local ativada
+              {{ evacStartedAt() }} ·
+              @switch (state.evacuationNotifyState()) {
+                @case ('sending') { enviando notificação à brigada… }
+                @case ('sent') { notificação enviada à brigada }
+                @case ('not_configured') { SMS/WhatsApp não configurado }
+                @case ('failed') { falha ao notificar a brigada }
+                @case ('error') { falha ao registrar a evacuação no servidor }
+              }
             </div>
           </div>
         </div>
@@ -218,18 +228,49 @@
         </div>
 
         <div class="evac__note">
-          brigada e portaria notificadas · equipes das frentes ativas recebendo
-          alerta no app
+          @if (state.evacuationNotifyState() === 'error') {
+            Não foi possível registrar a evacuação no servidor agora (sessão
+            ou conexão) — avise a brigada por outro meio.
+          } @else if (state.evacuationContactsNotified() === 0) {
+            Nenhum contato de brigada cadastrado — cadastre na aba "Brigada"
+            para que a evacuação avise alguém automaticamente.
+          } @else {
+            @switch (state.evacuationNotifyState()) {
+              @case ('sending') {
+                Enviando SMS/WhatsApp para {{ state.evacuationContactsNotified() }}
+                contato(s) da brigada…
+              }
+              @case ('sent') {
+                SMS/WhatsApp enviado para {{ state.evacuationContactsNotified() }}
+                contato(s) da brigada, com o link de acompanhamento.
+              }
+              @case ('not_configured') {
+                SMS/WhatsApp não configurado neste servidor — nenhuma mensagem
+                foi enviada aos {{ state.evacuationContactsNotified() }}
+                contato(s) cadastrados. Avise a brigada por outro meio.
+              }
+              @case ('failed') {
+                Não foi possível notificar a brigada agora — avise por outro
+                meio.
+              }
+            }
+          }
         </div>
 
+        @if (state.evacuationStatusLink(); as link) {
+          <div class="evac__link">
+            <span class="mono evac__link-text">{{ link }}</span>
+            <button
+              type="button"
+              class="btn evac__btn evac__btn--outline evac__link-copy"
+              (click)="copyStatusLink(link)"
+            >
+              {{ statusLinkCopied() ? 'Copiado!' : 'Copiar link' }}
+            </button>
+          </div>
+        }
+
         <div class="evac__actions">
-          <button
-            type="button"
-            class="btn btn-lg evac__btn evac__btn--solid"
-            (click)="state.silenceSiren()"
-          >
-            Silenciar sirene
-          </button>
           <button
             type="button"
             class="btn btn-lg evac__btn evac__btn--outline"

@@ -322,9 +322,10 @@ export const AREA_NOTE: Record<RiskAreaId, string> = {
   plataforma: 'Plataforma de petróleo (NR-37): o fluxo exige treinamento de sobrevivência (HUET) válido e detecção de gás antes de liberar a frente de trabalho.',
 };
 
-export type WizardStepId = 'area' | 'atividade' | 'gases' | 'qr' | 'check' | 'sig';
+export type WizardStepId = 'metodo' | 'area' | 'atividade' | 'gases' | 'qr' | 'check' | 'sig';
 
 export const STEP_NAME: Record<WizardStepId, string> = {
+  metodo: 'Como cadastrar',
   area: 'Área de risco',
   atividade: 'Atividade e local',
   gases: 'Medição atmosférica',
@@ -334,7 +335,7 @@ export const STEP_NAME: Record<WizardStepId, string> = {
 };
 
 export function stepsFor(ids: RiskAreaId[]): WizardStepId[] {
-  return ['area', 'atividade', ...(requiresGasMonitoring(ids) ? (['gases'] as const) : []), 'qr', 'check', 'sig'];
+  return ['metodo', 'area', 'atividade', ...(requiresGasMonitoring(ids) ? (['gases'] as const) : []), 'qr', 'check', 'sig'];
 }
 
 export type BadgeItemStatus = 'ok' | 'prox' | 'venc';
@@ -588,6 +589,14 @@ export interface CompanyLocation {
   name: string;
   riskAreas: RiskAreaId[];
   unit: string;
+}
+
+// Membro da brigada de emergência: recebe SMS/WhatsApp quando o botão de
+// evacuação é acionado (ver EvacuationApiService/PetStateService).
+export interface EmergencyContact {
+  id: string;
+  name: string;
+  phone: string;
 }
 
 export interface TeamMember {

@@ -1,0 +1,76 @@
+/* ── Brigada de emergência ─────────────────────────────────────────────
+   Cadastro pequeno: nome e telefone de quem recebe SMS/WhatsApp ao
+   acionar a evacuação. No celular a tabela vira lista de cards
+   (`.table--cards`, global). */
+
+:host {
+  display: block;
+  flex: 1;
+  min-width: 0;
+}
+
+.brigade {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding: var(--space-5) var(--space-4) var(--space-10);
+  max-width: var(--content-max);
+  margin: 0 auto;
+  width: 100%;
+}
+
+.brigade__title {
+  font-size: clamp(24px, 3.4vw, 34px);
+  margin: 2px 0 0;
+}
+.brigade__head-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-top: var(--space-3);
+  flex-wrap: wrap;
+}
+.brigade__head-text {
+  flex: 1 1 420px;
+  font-size: var(--text-base);
+  color: var(--text-muted);
+  line-height: 1.55;
+  max-width: 78ch;
+}
+.brigade__new {
+  flex: none;
+}
+
+.brigade__name {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text);
+  font-weight: 600;
+}
+.brigade__phone {
+  color: var(--text-muted);
+}
+
+.brigade__actions {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.brigade__form-row {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin-top: var(--space-3);
+}
+
+.brigade__form-error {
+  margin-top: var(--space-3);
+  color: var(--status-bad);
+  font-size: var(--text-sm);
+}
+
+.brigade__empty {
+  margin-top: var(--space-2);
+}
