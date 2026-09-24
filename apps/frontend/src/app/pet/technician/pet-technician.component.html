@@ -360,7 +360,7 @@
             <div class="detalhe__header">
               <button
                 type="button"
-                class="btn btn-secondary btn-icon detalhe__back"
+                class="btn btn-secondary btn-icon detalhe__back no-print"
                 aria-label="Voltar para a lista"
                 (click)="state.goHome()"
               >
@@ -579,7 +579,17 @@
               </div>
             </div>
 
-            <div class="detalhe__footer">
+            <div class="detalhe__footer no-print">
+              @if (pet.areas.includes('confinado')) {
+                <button
+                  type="button"
+                  class="btn btn-secondary detalhe__footer-btn"
+                  (click)="printPet()"
+                >
+                  <app-icon name="document" [size]="16" />
+                  Imprimir PET
+                </button>
+              }
               @if (pet.status !== 'fechada') {
                 <button
                   type="button"

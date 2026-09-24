@@ -244,6 +244,15 @@ export class PetTechnicianComponent {
     });
   });
 
+  // Só NR-33 por enquanto — ver comentário junto de CHECKLISTS.confinado
+  // em pet-mock-data.ts. .screen--detalhe não é diálogo (ocupa a tela
+  // inteira), então não precisa do truque de isolar via classe no body
+  // que o relatório de IA usa — os estilos globais de impressão já
+  // escondem o chrome do shell e desfazem a rolagem interna.
+  printPet(): void {
+    window.print();
+  }
+
   openMeasurement(): void {
     this.state.openMeasurementDialog();
   }

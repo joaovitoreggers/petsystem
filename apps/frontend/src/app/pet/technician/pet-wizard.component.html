@@ -530,7 +530,10 @@
             <div>
               <div class="section-kicker">{{ group.title }}</div>
               @for (item of group.items; track item.key) {
-                <div class="check-item">
+                <div
+                  class="check-item"
+                  [class.check-item--nao]="checklistAnswer(item.key) === 'nao'"
+                >
                   <span class="check-item__label">{{ item.label }}</span>
                   <div class="check-item__options">
                     @for (opt of checklistOptions; track opt.value) {
@@ -552,6 +555,17 @@
                   </div>
                 </div>
               }
+            </div>
+          }
+
+          @if (state.checklistBlocked()) {
+            <div class="callout callout--blocking callout--row">
+              <span aria-hidden="true">✕</span>
+              <span>
+                Emissão bloqueada — {{ checklistBlockedSummary() }}. Responda
+                todos os itens e resolva as pendências marcadas como NÃO
+                antes de avançar.
+              </span>
             </div>
           }
 

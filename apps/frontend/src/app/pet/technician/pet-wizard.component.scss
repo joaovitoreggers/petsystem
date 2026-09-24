@@ -415,8 +415,16 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-3) 0;
+  padding: var(--space-3) var(--space-2);
+  margin: 0 calc(var(--space-2) * -1);
+  border-radius: var(--radius-sm);
   border-bottom: 1px solid var(--border-subtle);
+}
+/* Mesmo alerta visual do item de checklist bloqueante — quem rola a lista
+   inteira precisa achar de relance qual dos vinte e poucos itens é o NÃO
+   que está travando a emissão. */
+.check-item--nao {
+  background: var(--status-bad-bg);
 }
 .check-item__label {
   flex: 1;

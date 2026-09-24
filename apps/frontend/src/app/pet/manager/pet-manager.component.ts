@@ -78,6 +78,21 @@ export class PetManagerComponent {
     this.detailPetId.set(null);
   }
 
+  // Só NR-33 por enquanto — ver comentário junto de CHECKLISTS.confinado
+  // em pet-mock-data.ts. Mesmo truque de printAiReport(): o detalhe é um
+  // diálogo, e a regra global de impressão esconde .dialog-backdrop por
+  // padrão — a classe no body isola só este diálogo (ver .pet-detail-
+  // printing em styles.scss) em vez de imprimir a tela toda por trás dele.
+  printPet(): void {
+    const cleanup = () => {
+      document.body.classList.remove('pet-detail-printing');
+      window.removeEventListener('afterprint', cleanup);
+    };
+    window.addEventListener('afterprint', cleanup);
+    document.body.classList.add('pet-detail-printing');
+    window.print();
+  }
+
   constructor(
     readonly state: PetStateService,
     private readonly petAnalysisApi: PetAnalysisApiService,
