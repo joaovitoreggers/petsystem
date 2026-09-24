@@ -1,5 +1,6 @@
 import { Component, computed, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
+import * as QRCode from 'qrcode';
 import { PetStateService } from '../pet-state.service';
 import {
   BADGE_STATUS,
@@ -8,6 +9,7 @@ import {
   TeamMember,
   dateToBr,
   daysUntil,
+  encodeBadgeQr,
 } from '../pet-mock-data';
 import { TenancyApiService } from '../services/tenancy-api.service';
 import { IconComponent } from '../../shared/icon.component';
@@ -94,6 +96,13 @@ export class PetTeamComponent {
   readonly deleteTarget = signal<TeamMember | null>(null);
   readonly deleting = signal(false);
   readonly deleteError = signal<string | null>(null);
+
+  // Crachá em QR — gerado aqui, lido pela câmera na etapa "Crachá e
+  // permissão" do assistente (ver PetWizardComponent.startQrScan /
+  // decodeBadgeQr em pet-mock-data.ts).
+  readonly qrTarget = signal<TeamMember | null>(null);
+  readonly qrDataUrl = signal<string | null>(null);
+  readonly qrError = signal<string | null>(null);
 
   // Lista de unidades do seletor "Unidade" — mesma lógica de fallback do
   // assistente "Nova PET" (ver PetWizardComponent): mock por padrão, troca
@@ -427,6 +436,35 @@ export class PetTeamComponent {
     } finally {
       this.deleting.set(false);
     }
+  }
+
+  async openQrDialog(member: TeamMember): Promise<void> {
+    this.qrTarget.set(member);
+    this.qrDataUrl.set(null);
+    this.qrError.set(null);
+    try {
+      const dataUrl = await QRCode.toDataURL(encodeBadgeQr(member.registration), {
+        width: 320,
+        margin: 2,
+      });
+      this.qrDataUrl.set(dataUrl);
+    } catch {
+      this.qrError.set('Não foi possível gerar o QR code agora. Tente de novo.');
+    }
+  }
+
+  closeQrDialog(): void {
+    this.qrTarget.set(null);
+  }
+
+  downloadQr(): void {
+    const dataUrl = this.qrDataUrl();
+    const member = this.qrTarget();
+    if (!dataUrl || !member) return;
+    const link = document.createElement('a');
+    link.href = dataUrl;
+    link.download = `crachá-${member.registration}.png`;
+    link.click();
   }
 }
 

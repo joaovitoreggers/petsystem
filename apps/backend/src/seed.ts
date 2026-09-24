@@ -8,6 +8,7 @@ import { UsersService } from './app/users/users.service';
 import { WorkPermitsService } from './app/work-permits/work-permits.service';
 import { TeamMembersService } from './app/team-members/team-members.service';
 import { CompanyLocationsService } from './app/company-locations/company-locations.service';
+import { EmergencyContactsService } from './app/emergency-contacts/emergency-contacts.service';
 
 const LAR_GROUP_NAME = 'Lar Cooperativa Agroindustrial';
 const LAR_BRANCH_NAMES = [
@@ -106,6 +107,14 @@ const SEED_COMPANY_LOCATIONS = [
   { name: 'Linha de abate — nória', riskAreas: ['maquinas'], unit: 'Matelândia' },
 ];
 
+// Números fictícios (o DDD 45 é real — Cascavel/PR — mas a linha não é),
+// só para o cadastro não começar vazio. Trocar por gente de verdade antes
+// de configurar o Twilio de verdade.
+const SEED_EMERGENCY_CONTACTS = [
+  { name: 'Rafael Hoffmann · SESMT', phone: '+5545999010001' },
+  { name: 'Adriana Beal · SESMT', phone: '+5545999010002' },
+];
+
 const SEED_TEAM_MEMBERS = [
   { name: 'Jonas R. Kirchner', registration: '04812', role: 'Mecânico industrial', company: 'Lar · Manutenção', unit: 'Matelândia', documents: { ASO: '2027-03-14', 'NR-33': '2027-02-08', 'NR-35': '2026-11-21', 'NR-12': '2027-05-30' } },
   { name: 'Elaine M. Sobczak', registration: '07330', role: 'Eletricista', company: 'Termoeletro Ltda', unit: 'Medianeira', isThirdParty: true, documents: { ASO: '2027-01-09', 'NR-10': '2026-09-26', 'NR-33': '2026-09-14', 'NR-35': '2027-07-02' } },
@@ -156,6 +165,7 @@ async function seed() {
   const workPermitsService = app.get(WorkPermitsService);
   const teamMembersService = app.get(TeamMembersService);
   const companyLocationsService = app.get(CompanyLocationsService);
+  const emergencyContactsService = app.get(EmergencyContactsService);
   const companyGroupsService = app.get(CompanyGroupsService);
   const branchesService = app.get(BranchesService);
 
@@ -260,6 +270,21 @@ async function seed() {
       branchId: branchIdByName.get(data.unit) ?? null,
     });
     Logger.log(`Company location created: ${data.name}`);
+  }
+
+  const existingContacts = await emergencyContactsService.findAll({
+    role: 'platform-admin',
+    companyGroupId: null,
+    branchId: null,
+  });
+  for (const data of SEED_EMERGENCY_CONTACTS) {
+    const existing = existingContacts.find((contact) => contact.name === data.name);
+    if (existing) {
+      Logger.log(`Emergency contact already exists, skipping: ${data.name}`);
+      continue;
+    }
+    await emergencyContactsService.create({ ...data, companyGroupId: groupId });
+    Logger.log(`Emergency contact created: ${data.name}`);
   }
 
   await app.close();

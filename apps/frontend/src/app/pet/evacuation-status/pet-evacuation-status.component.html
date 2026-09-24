@@ -1,0 +1,78 @@
+<div class="pubstatus" [class.pubstatus--resolved]="status()?.resolvedAt">
+  @if (loading() && !status()) {
+    <div class="pubstatus__card">
+      <div class="pubstatus__title">Carregando situação…</div>
+    </div>
+  } @else if (notFound()) {
+    <div class="pubstatus__card">
+      <div class="pubstatus__title">Alerta não encontrado</div>
+      <div class="pubstatus__text">
+        Este link de evacuação não existe mais ou expirou.
+      </div>
+    </div>
+  } @else if (status(); as s) {
+    <div class="pubstatus__card">
+      <div class="pubstatus__head">
+        <span class="pulse-dot" [class.pulse-dot--ok]="s.resolvedAt"></span>
+        <div class="pubstatus__title">
+          {{ s.resolvedAt ? 'EVACUAÇÃO ENCERRADA' : 'EVACUAÇÃO EM ANDAMENTO' }}
+        </div>
+      </div>
+      <div class="pubstatus__clock mono">
+        acionada às {{ triggeredAtLabel() }}
+        @if (s.resolvedAt) {
+          · encerrada às {{ resolvedAtLabel() }}
+        }
+      </div>
+
+      @if (s.workPermit; as permit) {
+        <div class="pubstatus__grid">
+          <div class="pubstatus__fact">
+            <div class="pubstatus__fact-label">Local</div>
+            <div class="pubstatus__fact-value">{{ permit.location }} · {{ permit.unit }}</div>
+          </div>
+          <div class="pubstatus__fact">
+            <div class="pubstatus__fact-label">Permissão</div>
+            <div class="pubstatus__fact-value mono">{{ permit.id }}</div>
+          </div>
+          <div class="pubstatus__fact">
+            <div class="pubstatus__fact-label">Área de risco</div>
+            <div class="pubstatus__fact-value">{{ areaNames() }} · {{ areaNrs() }}</div>
+          </div>
+          <div class="pubstatus__fact">
+            <div class="pubstatus__fact-label">Pessoas na frente</div>
+            <div class="pubstatus__fact-value">{{ permit.teamSize }}</div>
+          </div>
+          <div class="pubstatus__fact">
+            <div class="pubstatus__fact-label">Responsável</div>
+            <div class="pubstatus__fact-value">{{ permit.technician }}</div>
+          </div>
+        </div>
+      } @else if (s.summary; as summary) {
+        <div class="pubstatus__grid">
+          <div class="pubstatus__fact">
+            <div class="pubstatus__fact-label">Frentes ativas</div>
+            <div class="pubstatus__fact-value">{{ summary.openPets }}</div>
+          </div>
+          <div class="pubstatus__fact">
+            <div class="pubstatus__fact-label">Pessoas em campo</div>
+            <div class="pubstatus__fact-value">{{ summary.peopleInField }}</div>
+          </div>
+          <div class="pubstatus__fact">
+            <div class="pubstatus__fact-label">Unidades envolvidas</div>
+            <div class="pubstatus__fact-value">{{ summary.units }}</div>
+          </div>
+        </div>
+      }
+
+      <div class="pubstatus__note">
+        @if (s.resolvedAt) {
+          A evacuação já foi registrada como concluída — esta página não
+          atualiza mais sozinha.
+        } @else {
+          Esta página atualiza sozinha a cada 20 segundos.
+        }
+      </div>
+    </div>
+  }
+</div>

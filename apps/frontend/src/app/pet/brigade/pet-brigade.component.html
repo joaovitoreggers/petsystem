@@ -1,0 +1,178 @@
+<div class="brigade">
+  <div class="brigade__head">
+    <div class="section-kicker">Brigada de emergência · SESMT</div>
+    <h1 class="brigade__title">Quem recebe o alerta de evacuação</h1>
+    <div class="brigade__head-row">
+      <div class="brigade__head-text">
+        Ao acionar a evacuação, cada contato cadastrado aqui recebe um
+        SMS/WhatsApp com a situação em tempo real e um link para
+        acompanhar. Cadastro separado do quadro de Funcionários — é só
+        quem responde a emergência.
+      </div>
+      <button
+        type="button"
+        class="btn btn-primary brigade__new"
+        (click)="openModal()"
+      >
+        <app-icon name="plus" [size]="17" />
+        Cadastrar contato
+      </button>
+    </div>
+  </div>
+
+  <!-- Ações usa canManageTeam(), não canEditRoster(): editar/excluir
+       contato não tem fallback local em modo demonstração (mesmo motivo
+       de Locais — ver updateEmergencyContact/deleteEmergencyContact em
+       PetStateService). -->
+  <div class="table-wrap brigade__table">
+    <table class="table table--cards-wide">
+      <thead>
+        <tr>
+          <th style="width: 40%">Nome</th>
+          <th>Telefone</th>
+          @if (state.canManageTeam()) {
+            <th style="width: 90px">Ações</th>
+          }
+        </tr>
+      </thead>
+      <tbody>
+        @for (c of contacts(); track c.id) {
+          <tr>
+            <td data-label="Nome">
+              <div class="brigade__name">
+                <app-icon name="shield" [size]="16" />
+                <span>{{ c.name }}</span>
+              </div>
+            </td>
+            <td data-label="Telefone" class="mono brigade__phone">
+              {{ c.phone }}
+            </td>
+            @if (state.canManageTeam()) {
+              <td data-label="Ações" class="brigade__actions">
+                <button
+                  type="button"
+                  class="btn-icon-ghost"
+                  title="Editar contato"
+                  (click)="openEditModal(c)"
+                >
+                  <app-icon name="pencil" [size]="16" />
+                </button>
+                <button
+                  type="button"
+                  class="btn-icon-ghost btn-icon-ghost--danger"
+                  title="Excluir contato"
+                  (click)="openDeleteDialog(c)"
+                >
+                  <app-icon name="trash" [size]="16" />
+                </button>
+              </td>
+            }
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  @if (contacts().length === 0) {
+    <div class="empty-state brigade__empty">
+      <app-industrial-art class="empty-state__art" scene="clipboard" />
+      <div class="empty-state__title">Nenhum contato cadastrado</div>
+      <div class="empty-state__text">
+        Sem contatos, o botão de evacuação não avisa ninguém automaticamente
+        — cadastre a brigada de emergência para que o alerta chegue direto
+        no celular de quem precisa saber.
+      </div>
+      <button type="button" class="btn btn-secondary" (click)="openModal()">
+        <app-icon name="plus" [size]="17" />
+        Cadastrar contato
+      </button>
+    </div>
+  }
+</div>
+
+@if (modalOpen()) {
+  <div class="dialog-backdrop" (click)="closeModal()">
+    <div class="dialog brigade__dialog" (click)="$event.stopPropagation()">
+      <div class="dialog-title">{{ dialogTitle() }}</div>
+      <div class="dialog-body">
+        @if (dialogMode() === 'edit') {
+          Atualize o nome ou o telefone deste contato.
+        } @else {
+          O telefone recebe SMS e WhatsApp em formato internacional, ex.
+          +5545999999999.
+        }
+      </div>
+
+      <div class="brigade__form-row">
+        <div class="field" style="flex: 2; min-width: 220px">
+          <label>Nome</label>
+          <input
+            class="input"
+            placeholder="ex. Rafael Hoffmann · SESMT"
+            [value]="cadName()"
+            (input)="cadName.set($any($event.target).value)"
+          />
+        </div>
+        <div class="field" style="flex: 1; min-width: 200px">
+          <label>Telefone</label>
+          <input
+            class="input"
+            placeholder="+5545999999999"
+            [value]="cadPhone()"
+            (input)="cadPhone.set($any($event.target).value)"
+          />
+        </div>
+      </div>
+
+      @if (saveError()) {
+        <div class="brigade__form-error">{{ saveError() }}</div>
+      }
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-secondary" (click)="closeModal()">
+          Cancelar
+        </button>
+        <button
+          type="button"
+          class="btn btn-primary"
+          [disabled]="cadDisabled()"
+          (click)="save()"
+        >
+          {{ dialogActionLabel() }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (deleteTarget(); as target) {
+  <div class="dialog-backdrop" (click)="closeDeleteDialog()">
+    <div class="dialog brigade__delete-dialog" (click)="$event.stopPropagation()">
+      <div class="dialog-title">Excluir contato</div>
+      <div class="dialog-body">
+        Tem certeza que quer excluir <strong>{{ target.name }}</strong>? Ele
+        deixa de receber alerta na próxima evacuação. Essa ação não pode
+        ser desfeita.
+      </div>
+      @if (deleteError()) {
+        <div class="brigade__form-error">{{ deleteError() }}</div>
+      }
+      <div class="dialog-actions">
+        <button
+          type="button"
+          class="btn btn-secondary"
+          (click)="closeDeleteDialog()"
+        >
+          Cancelar
+        </button>
+        <button
+          type="button"
+          class="btn btn-danger"
+          [disabled]="deleting()"
+          (click)="confirmDelete()"
+        >
+          {{ deleting() ? 'Excluindo…' : 'Excluir definitivamente' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

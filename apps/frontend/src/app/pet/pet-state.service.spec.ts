@@ -63,6 +63,11 @@ function createState(
   const workPermitsApi = { findAll: jest.fn(() => throwError(() => new Error('unauthenticated'))) };
   const teamMembersApi = { findAll: jest.fn(() => throwError(() => new Error('unauthenticated'))) };
   const companyLocationsApi = { findAll: jest.fn(() => throwError(() => new Error('unauthenticated'))) };
+  const emergencyContactsApi = { findAll: jest.fn(() => throwError(() => new Error('unauthenticated'))) };
+  const evacuationApi = {
+    trigger: jest.fn(() => throwError(() => new Error('unauthenticated'))),
+    resolve: jest.fn(() => throwError(() => new Error('unauthenticated'))),
+  };
   const authApi = {
     login: jest.fn(() => of(loginResult)),
     getBiometricRegistrationOptions: jest.fn(() =>
@@ -89,6 +94,8 @@ function createState(
     workPermitsApi as never,
     teamMembersApi as never,
     companyLocationsApi as never,
+    emergencyContactsApi as never,
+    evacuationApi as never,
     authApi as never,
     authToken as never,
     deviceAuth as never,

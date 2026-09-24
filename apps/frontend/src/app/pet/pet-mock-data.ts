@@ -352,9 +352,10 @@ export const AREA_NOTE: Record<RiskAreaId, string> = {
   plataforma: 'Plataforma de petróleo (NR-37): o fluxo exige treinamento de sobrevivência (HUET) válido e detecção de gás antes de liberar a frente de trabalho.',
 };
 
-export type WizardStepId = 'area' | 'atividade' | 'gases' | 'qr' | 'check' | 'sig';
+export type WizardStepId = 'metodo' | 'area' | 'atividade' | 'gases' | 'qr' | 'check' | 'sig';
 
 export const STEP_NAME: Record<WizardStepId, string> = {
+  metodo: 'Como cadastrar',
   area: 'Área de risco',
   atividade: 'Atividade e local',
   gases: 'Medição atmosférica',
@@ -364,7 +365,7 @@ export const STEP_NAME: Record<WizardStepId, string> = {
 };
 
 export function stepsFor(ids: RiskAreaId[]): WizardStepId[] {
-  return ['area', 'atividade', ...(requiresGasMonitoring(ids) ? (['gases'] as const) : []), 'qr', 'check', 'sig'];
+  return ['metodo', 'area', 'atividade', ...(requiresGasMonitoring(ids) ? (['gases'] as const) : []), 'qr', 'check', 'sig'];
 }
 
 export type BadgeItemStatus = 'ok' | 'prox' | 'venc';
@@ -620,6 +621,14 @@ export interface CompanyLocation {
   unit: string;
 }
 
+// Membro da brigada de emergência: recebe SMS/WhatsApp quando o botão de
+// evacuação é acionado (ver EvacuationApiService/PetStateService).
+export interface EmergencyContact {
+  id: string;
+  name: string;
+  phone: string;
+}
+
 export interface TeamMember {
   name: string;
   registration: string;
@@ -682,6 +691,23 @@ export function teamMemberToBadge(member: TeamMember): Badge {
     company: member.isThirdParty ? `${member.company} · terceiro` : member.company,
     items,
   };
+}
+
+// Conteúdo do QR do crachá — cadastro (Funcionários, ver PetTeamComponent)
+// gera, assistente (etapa "Crachá e permissão") lê pela câmera e resolve de
+// volta pro mesmo TeamMember por matrícula. Prefixo evita que a câmera
+// aceite qualquer QR aleatório apontado por engano (um link, um Wi-Fi...)
+// como se fosse um crachá.
+const BADGE_QR_PREFIX = 'PETDIGITAL:MAT:';
+
+export function encodeBadgeQr(registration: string): string {
+  return `${BADGE_QR_PREFIX}${registration}`;
+}
+
+export function decodeBadgeQr(text: string): string | null {
+  if (!text.startsWith(BADGE_QR_PREFIX)) return null;
+  const registration = text.slice(BADGE_QR_PREFIX.length).trim();
+  return registration.length > 0 ? registration : null;
 }
 
 export interface MonitorArchive {

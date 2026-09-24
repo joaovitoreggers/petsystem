@@ -99,6 +99,7 @@
           <th style="width: 30%">Normas e vencimentos</th>
           <th>Próximo vencimento</th>
           <th>Situação</th>
+          <th style="width: 60px">Crachá</th>
           @if (state.canEditRoster()) {
             <th style="width: 90px">Ações</th>
           }
@@ -158,6 +159,16 @@
               >
                 {{ row.situationLabel }}
               </span>
+            </td>
+            <td data-label="Crachá">
+              <button
+                type="button"
+                class="btn-icon-ghost"
+                title="Gerar QR code do crachá"
+                (click)="openQrDialog(row.member)"
+              >
+                <app-icon name="qr" [size]="16" />
+              </button>
             </td>
             @if (state.canEditRoster()) {
               <td data-label="Ações" class="team__actions">
@@ -357,6 +368,41 @@
           (click)="confirmDelete()"
         >
           {{ deleting() ? 'Excluindo…' : 'Excluir definitivamente' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (qrTarget(); as member) {
+  <div class="dialog-backdrop" (click)="closeQrDialog()">
+    <div class="dialog team__qr-dialog" (click)="$event.stopPropagation()">
+      <div class="dialog-title">Crachá em QR code</div>
+      <div class="dialog-body">
+        {{ member.name }} · mat. {{ member.registration }}. Aponte a câmera
+        na etapa "Crachá e permissão" do assistente "Nova PET" pra liberar
+        este funcionário direto pelo QR.
+      </div>
+      <div class="team__qr-preview">
+        @if (qrDataUrl(); as dataUrl) {
+          <img [src]="dataUrl" alt="QR code do crachá de {{ member.name }}" />
+        } @else if (qrError()) {
+          <div class="team__form-error">{{ qrError() }}</div>
+        } @else {
+          <div class="team__qr-loading">Gerando…</div>
+        }
+      </div>
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-secondary" (click)="closeQrDialog()">
+          Fechar
+        </button>
+        <button
+          type="button"
+          class="btn btn-primary"
+          [disabled]="!qrDataUrl()"
+          (click)="downloadQr()"
+        >
+          Baixar QR code
         </button>
       </div>
     </div>

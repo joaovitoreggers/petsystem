@@ -130,6 +130,91 @@
     color-mix(in srgb, var(--color-accent) 45%, transparent);
 }
 
+/* ── Etapa "metodo" · como cadastrar ──────────────────────────────── */
+.metodo__choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+.metodo__choice {
+  flex: 1 1 260px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-5) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface-1);
+  border: 1px solid var(--border-subtle);
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  transition:
+    border-color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out);
+}
+.metodo__choice:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--color-accent) 45%, transparent);
+  box-shadow: var(--shadow-sm);
+}
+.metodo__choice:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+.metodo__choice-title {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: var(--text-lg);
+  color: var(--text-strong);
+}
+.metodo__choice-desc {
+  font-size: var(--text-base);
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.metodo__locations {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.metodo__locations-back {
+  align-self: flex-start;
+}
+.metodo__location-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface-1);
+  border: 1px solid var(--border-subtle);
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  transition: border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+}
+.metodo__location-row:hover {
+  border-color: color-mix(in srgb, var(--color-accent) 45%, transparent);
+  box-shadow: var(--shadow-sm);
+}
+.metodo__location-row-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.metodo__location-row-name {
+  font-weight: 600;
+  color: var(--text-strong);
+}
+.metodo__location-row-desc {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
 /* ── Etapa 2 · atividade ───────────────────────────────────────────── */
 .atividade__summary {
   display: flex;
@@ -224,6 +309,25 @@
   font-family: ui-monospace, monospace; font-size: 11px; color: var(--color-neutral-800);
 }
 .qr-scan__btn { height: 44px; margin: 0; }
+.qr-scan__video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.qr-scan__error {
+  font-size: var(--text-sm);
+  color: var(--status-bad);
+  text-align: center;
+  padding: var(--space-2) 0;
+}
+.qr-scan__simulate {
+  height: 36px;
+  margin: 0;
+  font-size: var(--text-sm);
+  opacity: 0.75;
+}
 
 .badge-card { padding: 12px; }
 .badge-card__head { display: flex; align-items: baseline; gap: 8px; }
