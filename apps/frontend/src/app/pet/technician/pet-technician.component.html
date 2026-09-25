@@ -577,6 +577,25 @@
                   }
                 </div>
               </div>
+
+              @if (state.detailPetSignatures().length > 0) {
+                <div>
+                  <div class="section-kicker">Assinaturas eletrônicas</div>
+                  <div class="timeline">
+                    @for (sig of state.detailPetSignatures(); track sig.id) {
+                      <div class="timeline__row">
+                        <div class="timeline__time">
+                          {{ sig.signedAt | date: 'dd/MM HH:mm' }}
+                        </div>
+                        <div class="timeline__text">
+                          {{ sig.signerName }} · {{ signatureRoleLabel(sig.petRole) }} ·
+                          {{ signatureMethodLabel(sig.method) }}
+                        </div>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
             </div>
 
             <div class="detalhe__footer no-print">
@@ -616,9 +635,9 @@
   @if (cancelDialogOpen()) {
     <div class="dialog-backdrop" (click)="closeCancelDialog()">
       <div class="dialog" (click)="$event.stopPropagation()">
-        <div class="dialog-title">Cancelamento da PET</div>
+        <div class="dialog-title">Encerramento da PET</div>
         <div class="dialog-body">
-          Registre o motivo do encerramento e o responsável pela decisão.
+          Registre o motivo e assine eletronicamente o encerramento.
         </div>
         <div class="field">
           <label>Motivo</label>
@@ -628,15 +647,17 @@
             (input)="onCancelReasonChange($event)"
           ></textarea>
         </div>
-        <div class="field">
-          <label>Supervisor / responsável</label>
-          <input
-            class="input"
-            placeholder="Nome · matrícula"
-            [value]="cancelClosedBy()"
-            (input)="onCancelClosedByChange($event)"
-          />
-        </div>
+        <app-pet-signature-panel
+          signerLabel="Quem está encerrando"
+          petRole="encerrante"
+          lifecycleEvent="encerramento"
+          [workPermitId]="state.detailPetId() ?? undefined"
+          [contentSnapshot]="closingContentSnapshot()"
+          (signed)="onClosingSigned($event)"
+        />
+        @if (state.closingPetError()) {
+          <div class="callout callout--bad">{{ state.closingPetError() }}</div>
+        }
         <div class="dialog-actions">
           <button
             type="button"
@@ -648,10 +669,10 @@
           <button
             type="button"
             class="btn btn-primary"
-            [disabled]="!canConfirmCancel()"
+            [disabled]="!canConfirmCancel() || state.closingPet()"
             (click)="confirmCancel()"
           >
-            Confirmar encerramento
+            {{ state.closingPet() ? 'Encerrando…' : 'Confirmar encerramento' }}
           </button>
         </div>
       </div>

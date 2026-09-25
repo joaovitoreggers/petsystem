@@ -11,6 +11,7 @@ import {
   PetTeamMember,
   RiskAreaId,
 } from '../pet-mock-data';
+import { WorkPermitSignature } from './work-permit-signatures-api.service';
 
 export interface CreateWorkPermitPayload {
   areas: RiskAreaId[];
@@ -44,7 +45,10 @@ export interface CloseWorkPermitPayload {
   end: string;
   durationMinutes: number;
   reason?: string;
-  closedBy?: string;
+  // Assinatura(s) de encerramento já coletadas (ver
+  // PetStateService.encerrarPet) — o back-end deriva `closedBy` do
+  // signerName da assinatura, nunca de um campo de texto livre.
+  signatureIds: string[];
 }
 
 @Injectable({ providedIn: 'root' })
@@ -67,5 +71,11 @@ export class WorkPermitsApiService {
 
   addReading(id: string, gas: GasReading): Observable<Pet> {
     return this.http.patch<Pet>(`${this.baseUrl}/${id}/reading`, { gas });
+  }
+
+  // Trilha de auditoria — quem assinou, quando, por qual método. Usada na
+  // tela de detalhe.
+  findSignatures(id: string): Observable<WorkPermitSignature[]> {
+    return this.http.get<WorkPermitSignature[]>(`${this.baseUrl}/${id}/signatures`);
   }
 }

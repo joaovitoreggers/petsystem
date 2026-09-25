@@ -1,7 +1,10 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { assertOwnedByScope, filterOwnedByScope, TenantScope } from '../auth/tenant-scope';
 import { WorkPermitSignaturesService } from '../work-permit-signatures/work-permit-signatures.service';
+import { WorkPermitSignature } from '../work-permit-signatures/entities/work-permit-signature.entity';
 import { BranchesService } from '../tenancy/branches.service';
+import { buildClosingSnapshot } from './closing-snapshot';
+import { CloseWorkPermitDto } from './dto/close-work-permit.dto';
 import { CreateWorkPermitDto } from './dto/create-work-permit.dto';
 import { WorkPermit, WorkPermitGasReading } from './entities/work-permit.entity';
 import { buildOpeningSnapshot } from './opening-snapshot';
@@ -19,10 +22,7 @@ export type CreateWorkPermitInput = CreateWorkPermitDto & {
   branchId?: string | null;
 };
 
-export interface CloseWorkPermitInput {
-  end: string;
-  durationMinutes: number;
-}
+export type CloseWorkPermitInput = CloseWorkPermitDto;
 
 export interface AddReadingInput {
   gas: WorkPermitGasReading;
@@ -108,7 +108,27 @@ export class WorkPermitsService {
     }
     assertOwnedByScope(current, scope, NOT_FOUND_MESSAGE);
 
-    const closed = await this.workPermitRepository.close(id, data);
+    // Sem signatureIds: caminho legado — usa `closedBy` do corpo
+    // diretamente, sem exigir assinatura (mesmo raciocínio de create()).
+    if (!data.signatureIds || data.signatureIds.length === 0) {
+      const closed = await this.workPermitRepository.close(id, data);
+      if (!closed) {
+        throw new NotFoundException(NOT_FOUND_MESSAGE);
+      }
+      return closed;
+    }
+
+    const snapshot = buildClosingSnapshot(id, data);
+    const signatures = await this.workPermitSignaturesService.requireClosingSignatures(
+      id,
+      data.signatureIds,
+      snapshot,
+      scope,
+    );
+    const closed = await this.workPermitRepository.close(id, {
+      ...data,
+      closedBy: signerNameFor(signatures),
+    });
     if (!closed) {
       throw new NotFoundException(NOT_FOUND_MESSAGE);
     }
@@ -148,6 +168,14 @@ export class WorkPermitsService {
     const branch = await this.branchesService.findByCompanyGroupAndName(companyGroupId, unit);
     return branch?.id ?? null;
   }
+}
+
+// `closedBy` vem sempre do nome capturado na(s) assinatura(s) de
+// encerramento — v1 espera uma só (a pessoa que está encerrando), mas
+// aceita mais de uma sem quebrar caso o encerramento venha a exigir
+// múltiplos signatários no futuro.
+function signerNameFor(signatures: WorkPermitSignature[]): string {
+  return signatures.map((s) => s.signerName).join(', ');
 }
 
 export type { WorkPermitGasReading };

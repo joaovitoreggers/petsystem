@@ -14,6 +14,8 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AuthenticatedUser } from '../auth/jwt-payload.interface';
 import { scopeFromUser } from '../auth/tenant-scope';
+import { WorkPermitSignature } from '../work-permit-signatures/entities/work-permit-signature.entity';
+import { WorkPermitSignaturesService } from '../work-permit-signatures/work-permit-signatures.service';
 import { AddReadingDto } from './dto/add-reading.dto';
 import { CloseWorkPermitDto } from './dto/close-work-permit.dto';
 import { CreateWorkPermitDto } from './dto/create-work-permit.dto';
@@ -28,7 +30,10 @@ import { WorkPermitsService } from './work-permits.service';
 @Controller('work-permits')
 @UseGuards(JwtAuthGuard)
 export class WorkPermitsController {
-  constructor(private readonly workPermitsService: WorkPermitsService) {}
+  constructor(
+    private readonly workPermitsService: WorkPermitsService,
+    private readonly workPermitSignaturesService: WorkPermitSignaturesService,
+  ) {}
 
   @Get()
   findAll(@CurrentUser() currentUser: AuthenticatedUser): Promise<WorkPermit[]> {
@@ -72,5 +77,15 @@ export class WorkPermitsController {
     @CurrentUser() currentUser: AuthenticatedUser,
   ): Promise<WorkPermit> {
     return this.workPermitsService.addReading(id, dto, scopeFromUser(currentUser));
+  }
+
+  // Trilha de auditoria da PET — quem assinou, quando, por qual método,
+  // usada pela tela de detalhe.
+  @Get(':id/signatures')
+  findSignatures(
+    @Param('id') id: string,
+    @CurrentUser() currentUser: AuthenticatedUser,
+  ): Promise<WorkPermitSignature[]> {
+    return this.workPermitSignaturesService.findByWorkPermitId(id, scopeFromUser(currentUser));
   }
 }

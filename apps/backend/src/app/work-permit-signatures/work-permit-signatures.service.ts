@@ -332,7 +332,10 @@ export class WorkPermitSignaturesService {
     signerName: string;
     phone: string | null;
   }> {
-    if (input.petRole === 'emitente') {
+    // 'emitente' e 'encerrante' são sempre quem está logado (mesma sessão
+    // que abre/fecha a PET) — só 'executante' é um membro da escala sem
+    // sessão própria, identificado por matrícula.
+    if (input.petRole === 'emitente' || input.petRole === 'encerrante') {
       const user = await this.usersService.findById(input.currentUserId);
       if (!user) {
         throw new UnauthorizedException('Usuário não encontrado');
@@ -437,6 +440,41 @@ export class WorkPermitSignaturesService {
 
   async linkDraftToWorkPermit(draftId: string, workPermitId: string): Promise<void> {
     await this.repository.linkDraftToWorkPermit(draftId, workPermitId);
+  }
+
+  /**
+   * Confere, no encerramento de fato, que cada assinatura referenciada
+   * existe, é de encerramento, pertence a esta PET e a este tenant, e que o
+   * hash bate com o conteúdo recebido agora — mesmo raciocínio de
+   * requireDraftSignatures(), mas mais simples porque a PET já tem id real
+   * (não precisa de draftId). Usada por WorkPermitsService.close().
+   */
+  async requireClosingSignatures(
+    workPermitId: string,
+    signatureIds: string[],
+    contentSnapshot: Record<string, unknown>,
+    scope: TenantScope | undefined,
+  ): Promise<WorkPermitSignature[]> {
+    if (signatureIds.length === 0) {
+      throw new BadRequestException('É necessário assinar o encerramento para fechar esta PET');
+    }
+    const signatures = filterOwnedByScope(await this.repository.findByWorkPermitId(workPermitId), scope);
+    const expectedHash = computeContentHash(contentSnapshot);
+
+    const matched: WorkPermitSignature[] = [];
+    for (const id of signatureIds) {
+      const signature = signatures.find((s) => s.id === id && s.lifecycleEvent === 'encerramento');
+      if (!signature) {
+        throw new BadRequestException('Assinatura de encerramento não encontrada para esta PET');
+      }
+      if (signature.contentHash !== expectedHash) {
+        throw new ConflictException(
+          'O conteúdo do encerramento mudou depois de assinado — assine de novo',
+        );
+      }
+      matched.push(signature);
+    }
+    return matched;
   }
 
   async findByDraftId(draftId: string, scope: TenantScope): Promise<WorkPermitSignature[]> {

@@ -60,7 +60,10 @@ describe('WorkPermitsService', () => {
   let repository: jest.Mocked<IWorkPermitRepository>;
   let branchesService: jest.Mocked<BranchesService>;
   let workPermitSignaturesService: jest.Mocked<
-    Pick<WorkPermitSignaturesService, 'requireDraftSignatures' | 'linkDraftToWorkPermit'>
+    Pick<
+      WorkPermitSignaturesService,
+      'requireDraftSignatures' | 'linkDraftToWorkPermit' | 'requireClosingSignatures'
+    >
   >;
 
   beforeEach(() => {
@@ -79,6 +82,7 @@ describe('WorkPermitsService', () => {
     workPermitSignaturesService = {
       requireDraftSignatures: jest.fn(),
       linkDraftToWorkPermit: jest.fn(),
+      requireClosingSignatures: jest.fn(),
     };
     service = new WorkPermitsService(
       repository,
@@ -286,6 +290,83 @@ describe('WorkPermitsService', () => {
         ),
       ).rejects.toThrow(NotFoundException);
       expect(repository.close).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('close — with signatureIds (real signatures)', () => {
+    const scope = { role: 'tecnico', companyGroupId: GROUP_ID, branchId: null };
+
+    it('derives closedBy from the signature, ignoring any closedBy in the body', async () => {
+      repository.findById.mockResolvedValue(workPermit({}));
+      workPermitSignaturesService.requireClosingSignatures.mockResolvedValue([
+        signature({ signerName: 'Bárbara M. Garlini' }),
+      ]);
+      repository.close.mockResolvedValue(workPermit({ status: 'fechada' }));
+
+      await service.close(
+        'PET-2026-0419',
+        { end: '10:00', durationMinutes: 30, signatureIds: ['sig-1'], closedBy: 'Nome Forjado' },
+        scope,
+      );
+
+      expect(repository.close).toHaveBeenCalledWith(
+        'PET-2026-0419',
+        expect.objectContaining({ closedBy: 'Bárbara M. Garlini' }),
+      );
+    });
+
+    it('propagates rejection when the referenced signature is missing/invalid', async () => {
+      repository.findById.mockResolvedValue(workPermit({}));
+      workPermitSignaturesService.requireClosingSignatures.mockRejectedValue(
+        new BadRequestException('Assinatura de encerramento não encontrada para esta PET'),
+      );
+
+      await expect(
+        service.close(
+          'PET-2026-0419',
+          { end: '10:00', durationMinutes: 30, signatureIds: ['sig-missing'] },
+          scope,
+        ),
+      ).rejects.toThrow(BadRequestException);
+      expect(repository.close).not.toHaveBeenCalled();
+    });
+
+    it('propagates a 409 when the signed content no longer matches', async () => {
+      repository.findById.mockResolvedValue(workPermit({}));
+      workPermitSignaturesService.requireClosingSignatures.mockRejectedValue(
+        new ConflictException('O conteúdo do encerramento mudou depois de assinado'),
+      );
+
+      await expect(
+        service.close(
+          'PET-2026-0419',
+          { end: '10:00', durationMinutes: 30, signatureIds: ['sig-1'] },
+          scope,
+        ),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('passes the canonical closing snapshot (with the permit id) to requireClosingSignatures', async () => {
+      repository.findById.mockResolvedValue(workPermit({}));
+      workPermitSignaturesService.requireClosingSignatures.mockResolvedValue([signature({})]);
+      repository.close.mockResolvedValue(workPermit({ status: 'fechada' }));
+
+      await service.close(
+        'PET-2026-0419',
+        { end: '10:00', durationMinutes: 30, reason: 'Fim do turno', signatureIds: ['sig-1'] },
+        scope,
+      );
+
+      const [workPermitId, signatureIds, snapshot] =
+        workPermitSignaturesService.requireClosingSignatures.mock.calls[0];
+      expect(workPermitId).toBe('PET-2026-0419');
+      expect(signatureIds).toEqual(['sig-1']);
+      expect(snapshot).toEqual({
+        workPermitId: 'PET-2026-0419',
+        end: '10:00',
+        durationMinutes: 30,
+        reason: 'Fim do turno',
+      });
     });
   });
 
