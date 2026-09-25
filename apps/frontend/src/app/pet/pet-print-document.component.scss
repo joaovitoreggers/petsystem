@@ -1,0 +1,9 @@
+/* Escondido por padrão — só fica visível durante a impressão, quando o
+   body ganha a classe `pet-detail-printing` (ver styles.scss e
+   PetTechnicianComponent/PetManagerComponent.printPet()). O resto do
+   vocabulário visual (.report, .report__head, .report-table, h4...) vem
+   inteiro de pet-report.scss, listado junto em styleUrls — mesmo arquivo
+   físico, cada componente com sua própria cópia isolada pelo Angular. */
+:host {
+  display: none;
+}

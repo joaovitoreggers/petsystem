@@ -1270,23 +1270,23 @@ input[type='checkbox'] {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
-   Impressão da PET individual (só NR-33 por enquanto — ver comentário
-   junto de CHECKLISTS.confinado em pet-mock-data.ts): mesmo truque do
-   relatório de IA acima. O detalhe da PET no painel de gestão
-   (PetManagerComponent) é um diálogo — sem isolar por visibility, a regra
-   de impressão global mais abaixo esconderia .dialog-backdrop e não
-   sobraria nada pra imprimir. O detalhe do técnico (.screen--detalhe) não
-   é diálogo, então não precisa deste bloco — a regra global já basta.
+   Impressão da PET individual: mesmo truque do relatório de IA acima —
+   isola <app-pet-print-document> (ver pet-print-document.component.ts),
+   que fica sempre no DOM escondida por `:host { display: none; }` e só
+   aparece aqui. Vale tanto pro detalhe do técnico (.screen--detalhe, tela
+   cheia) quanto pro diálogo do painel de gestão (.dialog-backdrop) — os
+   dois escondem tudo que não for o documento de impressão.
    ═══════════════════════════════════════════════════════════════════════ */
 @media print {
   body.pet-detail-printing {
     visibility: hidden;
   }
-  body.pet-detail-printing .pet-detail,
-  body.pet-detail-printing .pet-detail * {
+  body.pet-detail-printing app-pet-print-document,
+  body.pet-detail-printing app-pet-print-document * {
     visibility: visible;
   }
-  body.pet-detail-printing .pet-detail {
+  body.pet-detail-printing app-pet-print-document {
+    display: block;
     position: fixed;
     inset: 0;
     width: 100%;
@@ -1642,35 +1642,3 @@ input[type='checkbox'] {
   }
 }
 
-/* ═══════════════════════════════════════════════════════════════════════
-   Impressão da PET individual — acabamento.
-   Compartilhado pelas duas telas de detalhe (.detalhe__* no técnico,
-   .pet-detail__* no painel de gestão — ver PetTechnicianComponent.printPet
-   e PetManagerComponent.printPet), que duplicam a mesma estrutura com
-   nomes de classe diferentes. Sem cor de status preservada, a coluna
-   "situação" e o SIM/NÃO do checklist viram texto preto sem sentido.
-   ═══════════════════════════════════════════════════════════════════════ */
-@media print {
-  .detalhe__status,
-  .pet-detail .status-pill,
-  .detalhe__checklist-answer,
-  .pet-detail__checklist-answer {
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }
-
-  /* Grupo de checklist e grade de gases não partem no meio — um título de
-     grupo sozinho no rodapé da página, com os itens na próxima, é tão
-     ilegível quanto um item sem o SIM/NÃO ao lado. */
-  .detalhe__checklist-group,
-  .pet-detail__checklist-group,
-  .gauge-grid {
-    break-inside: avoid;
-    page-break-inside: avoid;
-  }
-
-  .detalhe__body,
-  .pet-detail {
-    font-size: 9.5pt;
-  }
-}
