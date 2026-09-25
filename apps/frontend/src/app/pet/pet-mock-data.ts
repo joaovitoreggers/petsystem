@@ -171,30 +171,19 @@ export const CHECKLISTS: Record<RiskAreaId, ChecklistGroup[]> = {
       items: ['Permissão de trabalhos a quente emitida, quando aplicável?'],
     },
   ],
+  // A partir daqui, os demais grupos foram reduzidos ao mínimo necessário
+  // pra abrir a PET — o que sobrou é só o essencial de cada norma. O que
+  // cada empresa quiser conferir além disso (itens específicos da própria
+  // operação) entra pela aba "Checklist" (ver ChecklistCustomItem), não
+  // aqui — esta lista é o ponto de partida fixo, não o teto.
   altura: [
     {
       title: 'Condições gerais · NR-35',
       items: [
         'Trabalhador com treinamento válido em NR-35?',
-        'Trabalhadores em condições físicas/clínicas?',
-        'Ausência de condições impeditivas? (clima, etc.)',
         'Área está sinalizada e isolada?',
-        'Meio seguro para deslocamento de material?',
-        'Local suficientemente afastado de redes energizadas?',
-        'Há comunicação clara entre os trabalhadores?',
-        'Foi instalada linha de vida?',
-        'Pontos seguros de ancoragem?',
-      ],
-    },
-    {
-      title: 'Escada e andaime',
-      items: [
-        'A escada está amarrada/estaiada?',
-        'A escada está com piso com aderência e nivelada?',
-        'O andaime está nivelado, com freio/trava nos rodízios?',
-        'O andaime possui forração completa?',
-        'O andaime possui escada, rodapé e guarda-corpo?',
-        'O andaime está estaiado? (altura +4 vezes a base menor)',
+        'Pontos seguros de ancoragem e linha de vida instalada?',
+        'Ausência de condições impeditivas? (clima, etc.)',
       ],
     },
   ],
@@ -206,16 +195,6 @@ export const CHECKLISTS: Record<RiskAreaId, ChecklistGroup[]> = {
         'Certificado de teste atmosférico (gás-livre) válido para a área?',
         'Área isolada e sinalizada a bordo ou no estaleiro?',
         'Rotas de fuga e ponto de encontro identificados?',
-        'Trabalhadores em condições físicas/clínicas?',
-      ],
-    },
-    {
-      title: 'Atmosfera e prevenção de incêndio',
-      items: [
-        'Ventilação forçada mantida durante o serviço em tanques/porões?',
-        'Extintores posicionados próximos à frente de trabalho?',
-        'Materiais inflamáveis removidos da área?',
-        'Equipamentos elétricos adequados para atmosfera classificada?',
       ],
     },
   ],
@@ -225,69 +204,60 @@ export const CHECKLISTS: Record<RiskAreaId, ChecklistGroup[]> = {
       items: [
         'Treinamento de sobrevivência e escape (HUET) válido?',
         'Permissão de Trabalho (PT) da plataforma emitida e assinada?',
-        'Isolamento de energia dos sistemas de processo relacionados?',
-        'Trabalhadores em condições físicas/clínicas?',
-      ],
-    },
-    {
-      title: 'Atmosfera e emergência',
-      items: [
         'Detecção de gás (H₂S/LEL) testada na área?',
-        'Colete salva-vidas e EPI de embarque conferidos?',
         'Rota de abandono de plataforma e ponto de reunião confirmados?',
-        'Comunicação com a sala de controle estabelecida?',
       ],
     },
   ],
   descarga: [
     {
-      title: 'Motorista e condições',
+      title: 'Motorista, veículo e área · NR-20',
       items: [
         'Motorista capacitado NR-20 / MOPP?',
-        'Trabalhadores em condições físicas/clínicas?',
-        'Ausência de condições impeditivas? (clima, raios, etc.)',
-        'Ausência de equipamentos elétricos/eletrônicos?',
-      ],
-    },
-    {
-      title: 'Veículo e área',
-      items: [
         'Área está sinalizada e isolada?',
-        'Equipamento de combate a incêndio próximo?',
-        'Caminhão direcionado para saída?',
         'Caminhão está aterrado?',
-        'Caminhão, mangueiras e bombas em boas condições?',
+        'Ausência de fontes de ignição/equipamentos elétricos na área?',
       ],
     },
   ],
   eletrico: [
-    { title: 'EPI conferido em campo', items: ['Vestimenta antiarco com ATPV compatível', 'Luva isolante de classe adequada', 'Capacete com viseira de policarbonato', 'Calçado isolante'] },
-    { title: 'Desenergização · NR-10', items: ['Seccionamento do circuito', 'Impedimento de reenergização — cadeado e etiqueta', 'Constatação da ausência de tensão', 'Instalação de aterramento temporário', 'Sinalização e delimitação da zona controlada'] },
+    {
+      title: 'Desenergização · NR-10',
+      items: [
+        'Seccionamento do circuito realizado?',
+        'Impedimento de reenergização (cadeado e etiqueta) aplicado?',
+        'Constatação da ausência de tensão realizada?',
+        'Aterramento temporário instalado?',
+      ],
+    },
   ],
   maquinas: [
-    { title: 'EPI conferido em campo', items: ['Luvas de proteção mecânica', 'Óculos de segurança', 'Capacete', 'Calçado de segurança'] },
-    { title: 'Bloqueio LOTO · NR-12', items: ['Parada do equipamento pelo comando local', 'Cadeado e etiqueta individual por executante', 'Energias residuais dissipadas', 'Teste de tentativa de partida realizado', 'Proteções fixas e móveis mapeadas para remontagem'] },
+    {
+      title: 'Bloqueio LOTO · NR-12',
+      items: [
+        'Parada do equipamento pelo comando local confirmada?',
+        'Cadeado e etiqueta individual por executante aplicados?',
+        'Energias residuais dissipadas?',
+        'Teste de tentativa de partida realizado?',
+      ],
+    },
   ],
 };
 
-// Bloco único de EPI da PET em papel — vale para a permissão inteira, não é
-// repetido por área de risco.
+// Bloco único de EPI da PET — vale para a permissão inteira, não é repetido
+// por área de risco. Reduzido ao mínimo universal (o que qualquer
+// intervenção usa); EPI específico de uma área ou operação — respirador
+// autônomo, vestimenta antiarco, proteção pra solda — entra como item de
+// checklist da própria área (já cobertos em CHECKLISTS.confinado, por
+// exemplo) ou como item adicional cadastrado pela empresa, não aqui.
 export const EPI_CHECKLIST: ChecklistGroup = {
   title: 'Equipamento de Proteção Individual (EPI)',
   items: [
     'Capacete com jugular?',
-    'Protetor auricular?',
     'Óculos de segurança?',
-    'Luvas de proteção? (mecânica/química)',
-    'Botina de segurança? (mecânica/química)',
-    'Cinto de segurança com talabarte ou trava-quedas?',
-    'Proteção para solda, luva, avental e máscara?',
-    'Vestimenta impermeável? (amônia)',
-    'Respirador semifacial? (PFF1/2)',
-    'Respirador facial completo? (cartucho HN3/multi gases)',
-    'Proteção respiratória — EPR ou ar mandado (usando ou próximo)?',
-    'Outros EPIs necessários foram fornecidos?',
-    'Todos os EPIs foram inspecionados?',
+    'Luvas de proteção adequadas à atividade?',
+    'Calçado de segurança adequado à atividade?',
+    'Todos os EPIs foram inspecionados e estão em condições de uso?',
   ],
 };
 
@@ -315,12 +285,29 @@ export interface ChecklistGroupView {
   items: { key: string; label: string }[];
 }
 
+// Item de checklist que a própria empresa cadastra pra uma NR (aba
+// "Checklist", ver PetChecklistItemsComponent) — o que CHECKLISTS não cobre
+// porque é específico da operação de quem usa o sistema, não da norma em
+// si. Chave da resposta é `custom:<id>` (não posicional): ao contrário dos
+// itens fixos de CHECKLISTS, estes podem ser criados e excluídos a
+// qualquer momento, e uma chave por índice (`<área>:<grupo>:<índice>`)
+// desalinharia toda vez que a lista mudasse de tamanho.
+export interface ChecklistCustomItem {
+  id: string;
+  riskAreaId: RiskAreaId;
+  label: string;
+}
+
 // EPI (bloco único) seguido do checklist específico de cada área de risco
-// selecionada, com a mesma chave usada pelo assistente ("epi:0:<índice>" /
-// "<área>:<grupo>:<índice>") — usado tanto para renderizar a etapa
-// "Checklist e foto" quanto para reconstituir as respostas salvas no
-// detalhe de uma PET já emitida.
-export function buildChecklistGroups(areas: RiskAreaId[]): ChecklistGroupView[] {
+// selecionada — normas primeiro (mesma chave de sempre: "epi:0:<índice>" /
+// "<área>:<grupo>:<índice>"), itens adicionais da empresa por último (chave
+// "custom:<id>") — usado tanto pra renderizar a etapa "Checklist e foto"
+// quanto pra reconstituir as respostas salvas no detalhe de uma PET já
+// emitida.
+export function buildChecklistGroups(
+  areas: RiskAreaId[],
+  customItems: ChecklistCustomItem[] = [],
+): ChecklistGroupView[] {
   const epiGroup: ChecklistGroupView = {
     title: EPI_CHECKLIST.title,
     areaId: null,
@@ -329,16 +316,31 @@ export function buildChecklistGroups(areas: RiskAreaId[]): ChecklistGroupView[] 
       label,
     })),
   };
-  const areaGroups = areas.flatMap((areaId) =>
-    CHECKLISTS[areaId].map((group, groupIndex) => ({
+  const areaGroups = areas.flatMap((areaId) => {
+    const fixedGroups = CHECKLISTS[areaId].map((group, groupIndex) => ({
       title: group.title,
       areaId,
       items: group.items.map((label, itemIndex) => ({
         key: `${areaId}:${groupIndex}:${itemIndex}`,
         label,
       })),
-    })),
-  );
+    }));
+    const custom = customItems.filter((item) => item.riskAreaId === areaId);
+    const customGroup: ChecklistGroupView[] =
+      custom.length > 0
+        ? [
+            {
+              title: `Itens adicionais da empresa · ${riskAreaNr(areaId)}`,
+              areaId,
+              items: custom.map((item) => ({
+                key: `custom:${item.id}`,
+                label: item.label,
+              })),
+            },
+          ]
+        : [];
+    return [...fixedGroups, ...customGroup];
+  });
   return [epiGroup, ...areaGroups];
 }
 

@@ -9,6 +9,7 @@ import { WorkPermitsService } from './app/work-permits/work-permits.service';
 import { TeamMembersService } from './app/team-members/team-members.service';
 import { CompanyLocationsService } from './app/company-locations/company-locations.service';
 import { EmergencyContactsService } from './app/emergency-contacts/emergency-contacts.service';
+import { ChecklistItemsService } from './app/checklist-items/checklist-items.service';
 
 const LAR_GROUP_NAME = 'Lar Cooperativa Agroindustrial';
 const LAR_BRANCH_NAMES = [
@@ -115,6 +116,14 @@ const SEED_EMERGENCY_CONTACTS = [
   { name: 'Adriana Beal · SESMT', phone: '+5545999010002' },
 ];
 
+// Exemplos de itens que a própria Lar acrescentaria além do mínimo fixo de
+// cada NR (ver comentário em CHECKLISTS, pet-mock-data.ts) — só pra a aba
+// "Checklist" não começar vazia; não é lista oficial de norma nenhuma.
+const SEED_CHECKLIST_ITEMS = [
+  { riskAreaId: 'confinado', label: 'Silo identificado com placa de numeração atualizada?' },
+  { riskAreaId: 'altura', label: 'Talabarte duplo (Y) disponível para troca de ponto de ancoragem?' },
+];
+
 const SEED_TEAM_MEMBERS = [
   { name: 'Jonas R. Kirchner', registration: '04812', role: 'Mecânico industrial', company: 'Lar · Manutenção', unit: 'Matelândia', documents: { ASO: '2027-03-14', 'NR-33': '2027-02-08', 'NR-35': '2026-11-21', 'NR-12': '2027-05-30' } },
   { name: 'Elaine M. Sobczak', registration: '07330', role: 'Eletricista', company: 'Termoeletro Ltda', unit: 'Medianeira', isThirdParty: true, documents: { ASO: '2027-01-09', 'NR-10': '2026-09-26', 'NR-33': '2026-09-14', 'NR-35': '2027-07-02' } },
@@ -166,6 +175,7 @@ async function seed() {
   const teamMembersService = app.get(TeamMembersService);
   const companyLocationsService = app.get(CompanyLocationsService);
   const emergencyContactsService = app.get(EmergencyContactsService);
+  const checklistItemsService = app.get(ChecklistItemsService);
   const companyGroupsService = app.get(CompanyGroupsService);
   const branchesService = app.get(BranchesService);
 
@@ -285,6 +295,21 @@ async function seed() {
     }
     await emergencyContactsService.create({ ...data, companyGroupId: groupId });
     Logger.log(`Emergency contact created: ${data.name}`);
+  }
+
+  const existingChecklistItems = await checklistItemsService.findAll({
+    role: 'platform-admin',
+    companyGroupId: null,
+    branchId: null,
+  });
+  for (const data of SEED_CHECKLIST_ITEMS) {
+    const existing = existingChecklistItems.find((item) => item.label === data.label);
+    if (existing) {
+      Logger.log(`Checklist item already exists, skipping: ${data.label}`);
+      continue;
+    }
+    await checklistItemsService.create({ ...data, companyGroupId: groupId });
+    Logger.log(`Checklist item created: ${data.label}`);
   }
 
   await app.close();
