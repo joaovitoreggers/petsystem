@@ -1,4 +1,4 @@
-import { IsBoolean, IsObject, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsBoolean, IsObject, IsOptional, IsString, Matches, MinLength } from 'class-validator';
 
 export class CreateTeamMemberDto {
   @IsString()
@@ -27,4 +27,10 @@ export class CreateTeamMemberDto {
 
   @IsObject()
   documents!: Record<string, string>;
+
+  // Formato E.164 (+55...) — usado para envio de código SMS/WhatsApp na
+  // assinatura eletrônica de PET.
+  @IsOptional()
+  @Matches(/^\+?[1-9]\d{7,14}$/)
+  phone?: string;
 }

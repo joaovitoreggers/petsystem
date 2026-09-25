@@ -33,8 +33,9 @@ export interface LoginResult {
   // exibido ficar desatualizado se o grupo/filial fosse renomeado depois
   // sem precisar logar de novo, e resolver de novo a cada requisição
   // custaria uma consulta a mais em toda rota protegida — só vale a pena
-  // pagar esse custo uma vez, no login.
-  user: AuthenticatedUser & { companyGroupName: string | null; branchName: string | null };
+  // pagar esse custo uma vez, no login. `name` segue o mesmo raciocínio —
+  // é o nome exibido como emitente na assinatura eletrônica de PET.
+  user: AuthenticatedUser & { name: string; companyGroupName: string | null; branchName: string | null };
 }
 
 interface PendingChallenge {
@@ -98,7 +99,8 @@ export class AuthService {
       branchId: user.branchId,
     };
 
-    const [companyGroup, branch] = await Promise.all([
+    const [fullUser, companyGroup, branch] = await Promise.all([
+      this.usersService.findById(user.id),
       user.companyGroupId ? this.companyGroupsService.findById(user.companyGroupId) : null,
       user.branchId ? this.branchesService.findById(user.branchId) : null,
     ]);
@@ -107,6 +109,7 @@ export class AuthService {
       accessToken: this.jwtService.sign(payload),
       user: {
         ...user,
+        name: fullUser?.name ?? '',
         companyGroupName: companyGroup?.name ?? null,
         branchName: branch?.name ?? null,
       },

@@ -180,6 +180,16 @@
                 >
                   <app-icon name="pencil" [size]="16" />
                 </button>
+                @if (state.canSetTeamMemberPin()) {
+                  <button
+                    type="button"
+                    class="btn-icon-ghost"
+                    title="Definir/alterar PIN de assinatura"
+                    (click)="openPinDialog(row.member)"
+                  >
+                    <app-icon name="shield" [size]="16" />
+                  </button>
+                }
                 <button
                   type="button"
                   class="btn-icon-ghost btn-icon-ghost--danger"
@@ -289,6 +299,22 @@
             <option>Terceiro</option>
           </select>
         </div>
+      </div>
+      <div class="team__form-row">
+        <div class="field" style="flex: 1; min-width: 200px">
+          <label>Telefone (opcional)</label>
+          <input
+            class="input"
+            type="tel"
+            placeholder="+55 45 99999-9999"
+            [value]="cadPhone()"
+            (input)="cadPhone.set($any($event.target).value)"
+          />
+        </div>
+      </div>
+      <div class="text-muted" style="font-size: var(--text-sm); margin-top: -8px">
+        Telefone é usado para enviar o código de confirmação por SMS/WhatsApp
+        na assinatura eletrônica da PET.
       </div>
 
       <div class="section-kicker team__docs-kicker">
@@ -403,6 +429,47 @@
           (click)="downloadQr()"
         >
           Baixar QR code
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (pinTarget(); as member) {
+  <div class="dialog-backdrop" (click)="closePinDialog()">
+    <div class="dialog team__pin-dialog" (click)="$event.stopPropagation()">
+      <div class="dialog-title">PIN de assinatura</div>
+      <div class="dialog-body">
+        {{ member.name }} · mat. {{ member.registration }}. Este PIN, junto
+        com a leitura do crachá, é uma das formas de assinar a PET (abertura
+        e encerramento). De 4 a 6 dígitos numéricos.
+      </div>
+      <div class="field">
+        <label>PIN</label>
+        <input
+          class="input"
+          type="password"
+          inputmode="numeric"
+          maxlength="6"
+          placeholder="••••"
+          [value]="pinValue()"
+          (input)="pinValue.set($any($event.target).value)"
+        />
+      </div>
+      @if (pinError()) {
+        <div class="team__form-error">{{ pinError() }}</div>
+      }
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-secondary" (click)="closePinDialog()">
+          Cancelar
+        </button>
+        <button
+          type="button"
+          class="btn btn-primary"
+          [disabled]="pinDisabled()"
+          (click)="confirmSetPin()"
+        >
+          {{ pinSaving() ? 'Salvando…' : 'Salvar PIN' }}
         </button>
       </div>
     </div>

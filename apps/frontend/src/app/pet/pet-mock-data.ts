@@ -639,6 +639,10 @@ export interface TeamMember {
   unit: string;
   isThirdParty?: boolean;
   documents: Record<string, string>;
+  // Usado para enviar o código de confirmação por SMS/WhatsApp na
+  // assinatura eletrônica de PET. `pinHash` (crachá + PIN) nunca chega ao
+  // front-end — ver toPublic() em TeamMembersController no back-end.
+  phone?: string | null;
 }
 
 export const TEAM_MEMBERS: TeamMember[] = [

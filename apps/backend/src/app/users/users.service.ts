@@ -21,6 +21,7 @@ export interface CreateUserInput {
   email: string;
   password: string;
   role: string;
+  phone?: string;
   companyGroupId?: string;
   branchId?: string;
 }
@@ -30,6 +31,7 @@ export interface UpdateUserInput {
   email?: string;
   password?: string;
   role?: string;
+  phone?: string;
   companyGroupId?: string;
   branchId?: string | null;
 }
@@ -81,6 +83,7 @@ export class UsersService {
       email: data.email,
       passwordHash,
       role: data.role,
+      phone: data.phone,
       companyGroupId,
       branchId,
     });
@@ -117,6 +120,7 @@ export class UsersService {
       email: data.email,
       passwordHash,
       role: data.role,
+      phone: data.phone,
       companyGroupId,
       branchId,
     });

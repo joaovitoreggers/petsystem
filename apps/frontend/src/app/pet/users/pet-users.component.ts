@@ -57,6 +57,9 @@ export class PetUsersComponent implements OnInit {
   readonly formEmail = signal('');
   readonly formPassword = signal('');
   readonly formRole = signal('tecnico');
+  // Usado para enviar o código de confirmação por SMS/WhatsApp na
+  // assinatura eletrônica de PET (emitente).
+  readonly formPhone = signal('');
   // '' = sem filial (enxerga todas as filiais do grupo).
   readonly formBranchId = signal('');
   // Só usado quando quem está logado é platform-admin (sem grupo próprio) —
@@ -181,6 +184,7 @@ export class PetUsersComponent implements OnInit {
     this.formEmail.set('');
     this.formPassword.set('');
     this.formRole.set('tecnico');
+    this.formPhone.set('');
     this.formBranchId.set('');
     this.formCompanyGroupId.set('');
     this.modalOpen.set(true);
@@ -194,6 +198,7 @@ export class PetUsersComponent implements OnInit {
     this.formEmail.set(user.email);
     this.formPassword.set('');
     this.formRole.set(user.role);
+    this.formPhone.set(user.phone ?? '');
     this.formBranchId.set(user.branchId ?? '');
     this.formCompanyGroupId.set(user.companyGroupId ?? '');
     this.modalOpen.set(true);
@@ -218,6 +223,7 @@ export class PetUsersComponent implements OnInit {
           name: this.formName().trim(),
           email: this.formEmail().trim(),
           role: this.formRole(),
+          phone: this.formPhone().trim() || undefined,
           // Sempre explícito na edição: '' precisa virar `null` (limpar a
           // filial) e não `undefined` (que o back-end lê como "não mexer").
           branchId: this.formBranchId() || null,
@@ -234,6 +240,7 @@ export class PetUsersComponent implements OnInit {
           email: this.formEmail().trim(),
           password: this.formPassword().trim(),
           role: this.formRole(),
+          phone: this.formPhone().trim() || undefined,
           branchId: this.formBranchId() || undefined,
           companyGroupId,
         };

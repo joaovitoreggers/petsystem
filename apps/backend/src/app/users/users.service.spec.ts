@@ -12,6 +12,7 @@ function user(overrides: Partial<User>): User {
     email: 'test@petsystem.local',
     password: 'hash',
     role: 'funcionario',
+    phone: null,
     companyGroupId: GROUP_ID,
     branchId: null,
     createdAt: new Date(),

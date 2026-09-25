@@ -3,7 +3,7 @@ import { TenantScope } from '../auth/tenant-scope';
 import { EmergencyContactsService } from '../emergency-contacts/emergency-contacts.service';
 import { WorkPermit } from '../work-permits/entities/work-permit.entity';
 import { WorkPermitsService } from '../work-permits/work-permits.service';
-import { NotificationsService } from './notifications.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import {
   EVACUATION_ALERT_REPOSITORY,
   IEvacuationAlertRepository,

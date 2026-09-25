@@ -1,4 +1,4 @@
-import { IsEmail, IsIn, IsOptional, IsString, IsUUID, MinLength } from 'class-validator';
+import { IsEmail, IsIn, IsOptional, IsString, IsUUID, Matches, MinLength } from 'class-validator';
 
 export const USER_ROLES = [
   'platform-admin',
@@ -23,6 +23,12 @@ export class CreateUserDto {
 
   @IsIn(USER_ROLES)
   role!: string;
+
+  // Formato E.164 (+55...) — usado para envio de código SMS/WhatsApp na
+  // assinatura eletrônica de PET.
+  @IsOptional()
+  @Matches(/^\+?[1-9]\d{7,14}$/)
+  phone?: string;
 
   // Opcional: se ausente, admin/gestor cadastram dentro do próprio grupo
   // (o controller resolve isso a partir da sessão). Só precisa ser

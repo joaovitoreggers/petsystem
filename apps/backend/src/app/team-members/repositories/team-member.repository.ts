@@ -34,6 +34,7 @@ export class TeamMemberRepository implements ITeamMemberRepository {
       branchId: data.branchId ?? null,
       isThirdParty: data.isThirdParty ?? false,
       documents: data.documents,
+      phone: data.phone ?? null,
     });
     return this.repository.save(member);
   }
@@ -51,6 +52,8 @@ export class TeamMemberRepository implements ITeamMemberRepository {
     if (data.branchId !== undefined) member.branchId = data.branchId;
     if (data.isThirdParty !== undefined) member.isThirdParty = data.isThirdParty;
     if (data.documents !== undefined) member.documents = data.documents;
+    if (data.phone !== undefined) member.phone = data.phone;
+    if (data.pinHash !== undefined) member.pinHash = data.pinHash;
     return this.repository.save(member);
   }
 

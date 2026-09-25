@@ -17,9 +17,19 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { AuthenticatedUser } from '../auth/jwt-payload.interface';
 import { scopeFromUser } from '../auth/tenant-scope';
 import { CreateTeamMemberDto } from './dto/create-team-member.dto';
+import { SetTeamMemberPinDto } from './dto/set-team-member-pin.dto';
 import { UpdateTeamMemberDto } from './dto/update-team-member.dto';
 import { TeamMember } from './entities/team-member.entity';
 import { TeamMembersService } from './team-members.service';
+
+type PublicTeamMember = Omit<TeamMember, 'pinHash'>;
+
+// `pinHash` nunca deve sair do backend — mesmo padrão de toSummary() em
+// UsersController, que esconde `password`.
+function toPublic(member: TeamMember): PublicTeamMember {
+  const { pinHash: _pinHash, ...rest } = member;
+  return rest;
+}
 
 /**
  * Cadastro de funcionários (registro de trabalhadores autorizados do SESMT).
@@ -35,28 +45,46 @@ export class TeamMembersController {
   constructor(private readonly teamMembersService: TeamMembersService) {}
 
   @Get()
-  findAll(@CurrentUser() currentUser: AuthenticatedUser): Promise<TeamMember[]> {
-    return this.teamMembersService.findAll(scopeFromUser(currentUser));
+  async findAll(@CurrentUser() currentUser: AuthenticatedUser): Promise<PublicTeamMember[]> {
+    const members = await this.teamMembersService.findAll(scopeFromUser(currentUser));
+    return members.map(toPublic);
   }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  create(
+  async create(
     @Body() dto: CreateTeamMemberDto,
     @CurrentUser() currentUser: AuthenticatedUser,
-  ): Promise<TeamMember> {
-    return this.teamMembersService.create(dto, scopeFromUser(currentUser));
+  ): Promise<PublicTeamMember> {
+    const member = await this.teamMembersService.create(dto, scopeFromUser(currentUser));
+    return toPublic(member);
   }
 
   @Patch(':registration')
   @UseGuards(RolesGuard)
   @Roles('admin', 'gestor')
-  update(
+  async update(
     @Param('registration') registration: string,
     @Body() dto: UpdateTeamMemberDto,
     @CurrentUser() currentUser: AuthenticatedUser,
-  ): Promise<TeamMember> {
-    return this.teamMembersService.update(registration, dto, scopeFromUser(currentUser));
+  ): Promise<PublicTeamMember> {
+    const member = await this.teamMembersService.update(registration, dto, scopeFromUser(currentUser));
+    return toPublic(member);
+  }
+
+  // Rota própria, separada de update(): um técnico pode definir/resetar o
+  // PIN de assinatura de um funcionário sem precisar de alçada para
+  // reescrever o resto do cadastro (nome, empresa, cargo).
+  @Patch(':registration/pin')
+  @UseGuards(RolesGuard)
+  @Roles('admin', 'gestor', 'tecnico')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async setPin(
+    @Param('registration') registration: string,
+    @Body() dto: SetTeamMemberPinDto,
+    @CurrentUser() currentUser: AuthenticatedUser,
+  ): Promise<void> {
+    await this.teamMembersService.setPin(registration, dto.pin, scopeFromUser(currentUser));
   }
 
   @Delete(':registration')

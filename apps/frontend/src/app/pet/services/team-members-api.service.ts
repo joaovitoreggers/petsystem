@@ -7,7 +7,7 @@ import { TeamMember } from '../pet-mock-data';
 export type CreateTeamMemberPayload = TeamMember;
 
 export type UpdateTeamMemberPayload = Partial<
-  Pick<TeamMember, 'name' | 'role' | 'company' | 'unit' | 'isThirdParty' | 'documents'>
+  Pick<TeamMember, 'name' | 'role' | 'company' | 'unit' | 'isThirdParty' | 'documents' | 'phone'>
 >;
 
 @Injectable({ providedIn: 'root' })
@@ -30,5 +30,9 @@ export class TeamMembersApiService {
 
   remove(registration: string): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/${registration}`);
+  }
+
+  setPin(registration: string, pin: string): Observable<void> {
+    return this.http.patch<void>(`${this.baseUrl}/${registration}/pin`, { pin });
   }
 }

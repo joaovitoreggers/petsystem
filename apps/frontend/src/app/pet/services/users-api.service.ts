@@ -8,6 +8,7 @@ export interface SystemUser {
   name: string;
   email: string;
   role: string;
+  phone: string | null;
   companyGroupId: string | null;
   branchId: string | null;
 }
@@ -17,6 +18,7 @@ export interface CreateUserPayload {
   email: string;
   password: string;
   role: string;
+  phone?: string;
   companyGroupId?: string;
   branchId?: string;
 }

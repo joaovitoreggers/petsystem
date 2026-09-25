@@ -92,10 +92,19 @@ export class PetTeamComponent {
   readonly cadUnit = signal('Matelândia');
   readonly cadVinculo = signal<'Próprio' | 'Terceiro'>('Próprio');
   readonly cadDocDates = signal<Record<string, string>>({ ASO: '' });
+  readonly cadPhone = signal('');
 
   readonly deleteTarget = signal<TeamMember | null>(null);
   readonly deleting = signal(false);
   readonly deleteError = signal<string | null>(null);
+
+  // PIN de assinatura (crachá + PIN) — definido por um técnico/gestor, não
+  // pela própria pessoa (ver PetStateService.setTeamMemberPin). Diálogo
+  // separado do cadastro: só o PIN, sem tocar no resto dos dados.
+  readonly pinTarget = signal<TeamMember | null>(null);
+  readonly pinValue = signal('');
+  readonly pinSaving = signal(false);
+  readonly pinError = signal<string | null>(null);
 
   // Crachá em QR — gerado aqui, lido pela câmera na etapa "Crachá e
   // permissão" do assistente (ver PetWizardComponent.startQrScan /
@@ -270,6 +279,7 @@ export class PetTeamComponent {
     this.cadUnit.set(this.unitOptions()[0] ?? 'Matelândia');
     this.cadVinculo.set('Próprio');
     this.cadDocDates.set({ ASO: '' });
+    this.cadPhone.set('');
     this.modalOpen.set(true);
   }
 
@@ -284,6 +294,7 @@ export class PetTeamComponent {
     this.cadUnit.set(member.unit);
     this.cadVinculo.set(member.isThirdParty ? 'Terceiro' : 'Próprio');
     this.cadDocDates.set({ ...member.documents });
+    this.cadPhone.set(member.phone ?? '');
     this.modalOpen.set(true);
   }
 
@@ -380,6 +391,7 @@ export class PetTeamComponent {
           unit: this.cadUnit(),
           isThirdParty: this.cadVinculo() === 'Terceiro',
           documents,
+          phone: this.cadPhone().trim() || undefined,
         });
         this.modalOpen.set(false);
       } catch (err) {
@@ -402,6 +414,7 @@ export class PetTeamComponent {
       unit: this.cadUnit(),
       isThirdParty: this.cadVinculo() === 'Terceiro',
       documents,
+      phone: this.cadPhone().trim() || undefined,
     });
     this.modalOpen.set(false);
     this.filter.set('todos');
@@ -412,6 +425,7 @@ export class PetTeamComponent {
     this.cadUnit.set(this.unitOptions()[0] ?? 'Matelândia');
     this.cadVinculo.set('Próprio');
     this.cadDocDates.set({ ASO: '' });
+    this.cadPhone.set('');
   }
 
   openDeleteDialog(member: TeamMember): void {
@@ -465,6 +479,33 @@ export class PetTeamComponent {
     link.href = dataUrl;
     link.download = `crachá-${member.registration}.png`;
     link.click();
+  }
+
+  openPinDialog(member: TeamMember): void {
+    this.pinTarget.set(member);
+    this.pinValue.set('');
+    this.pinError.set(null);
+  }
+
+  closePinDialog(): void {
+    this.pinTarget.set(null);
+  }
+
+  readonly pinDisabled = computed(() => !/^\d{4,6}$/.test(this.pinValue()) || this.pinSaving());
+
+  async confirmSetPin(): Promise<void> {
+    const target = this.pinTarget();
+    if (!target || this.pinDisabled()) return;
+    this.pinSaving.set(true);
+    this.pinError.set(null);
+    try {
+      await this.state.setTeamMemberPin(target.registration, this.pinValue());
+      this.pinTarget.set(null);
+    } catch (err) {
+      this.pinError.set(teamErrorMessage(err, 'salvar'));
+    } finally {
+      this.pinSaving.set(false);
+    }
   }
 }
 
