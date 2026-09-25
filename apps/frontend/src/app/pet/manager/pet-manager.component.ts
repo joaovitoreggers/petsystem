@@ -21,9 +21,12 @@ import {
   riskAreaNrs,
 } from '../pet-mock-data';
 import { PetAnalysisApiService } from '../services/pet-analysis-api.service';
+import { WorkPermitsApiService } from '../services/work-permits-api.service';
+import { WorkPermitSignature } from '../services/work-permit-signatures-api.service';
 import { HttpErrorResponse } from '@angular/common/http';
 import { IconComponent } from '../../shared/icon.component';
 import { IndustrialArtComponent } from '../../shared/industrial-art.component';
+import { PetPrintDocumentComponent } from '../pet-print-document.component';
 
 type HistoryFilter = 'todas' | 'aberta' | 'fechada' | 'ocorrencia' | RiskAreaId;
 
@@ -38,7 +41,7 @@ const HISTORY_FILTERS: { id: HistoryFilter; label: string }[] = [
 @Component({
   selector: 'app-pet-manager',
   standalone: true,
-  imports: [IconComponent, IndustrialArtComponent],
+  imports: [IconComponent, IndustrialArtComponent, PetPrintDocumentComponent],
   templateUrl: './pet-manager.component.html',
   styleUrls: ['./pet-manager.component.scss', './pet-report.scss'],
 })
@@ -70,19 +73,34 @@ export class PetManagerComponent {
   // audita, não opera a PET (isso é do técnico em campo).
   readonly detailPetId = signal<string | null>(null);
 
+  // Trilha de assinatura eletrônica da PET aberta no detalhe — usada só
+  // pelo documento de impressão (ver PetPrintDocumentComponent). Mesmo
+  // padrão de busca com fallback silencioso de
+  // PetStateService.openPetDetail(): sem sessão real ou servidor fora do
+  // ar, o documento mostra "nenhuma assinatura registrada" em vez de
+  // travar a abertura do detalhe.
+  readonly detailPetSignatures = signal<WorkPermitSignature[]>([]);
+
   openDetail(id: string): void {
     this.detailPetId.set(id);
+    this.detailPetSignatures.set([]);
+    firstValueFrom(this.workPermitsApi.findSignatures(id))
+      .then((signatures) => this.detailPetSignatures.set(signatures))
+      .catch(() => {
+        // sem sessão real ou servidor fora do ar — documento de impressão
+        // mostra "nenhuma assinatura registrada" nesse caso
+      });
   }
 
   closeDetail(): void {
     this.detailPetId.set(null);
   }
 
-  // Só NR-33 por enquanto — ver comentário junto de CHECKLISTS.confinado
-  // em pet-mock-data.ts. Mesmo truque de printAiReport(): o detalhe é um
-  // diálogo, e a regra global de impressão esconde .dialog-backdrop por
-  // padrão — a classe no body isola só este diálogo (ver .pet-detail-
-  // printing em styles.scss) em vez de imprimir a tela toda por trás dele.
+  // Isola a impressão em <app-pet-print-document> (ver
+  // pet-print-document.component.ts): o detalhe é um diálogo, e a regra
+  // global de impressão esconde .dialog-backdrop por padrão — a classe no
+  // body revela só o documento de impressão em vez da tela toda por trás
+  // dele. Mesmo truque de printAiReport().
   printPet(): void {
     const cleanup = () => {
       document.body.classList.remove('pet-detail-printing');
@@ -96,6 +114,7 @@ export class PetManagerComponent {
   constructor(
     readonly state: PetStateService,
     private readonly petAnalysisApi: PetAnalysisApiService,
+    private readonly workPermitsApi: WorkPermitsApiService,
   ) {}
 
   openAiModal(): void {
