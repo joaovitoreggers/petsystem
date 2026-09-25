@@ -1,0 +1,181 @@
+<div class="checklist-items">
+  <div class="checklist-items__head">
+    <div class="section-kicker">Checklist adicional por norma · SESMT</div>
+    <h1 class="checklist-items__title">Itens de checklist da empresa</h1>
+    <div class="checklist-items__head-row">
+      <div class="checklist-items__head-text">
+        O checklist fixo de cada NR já traz o mínimo necessário pra abrir a
+        PET. O que a sua operação verifica além disso — específico do
+        equipamento, do local, do processo — entra aqui, por norma. Some ao
+        checklist do assistente "Nova PET" e bloqueia a emissão igual aos
+        itens fixos.
+      </div>
+      <button
+        type="button"
+        class="btn btn-primary checklist-items__new"
+        (click)="openModal()"
+      >
+        <app-icon name="plus" [size]="17" />
+        Cadastrar item
+      </button>
+    </div>
+  </div>
+
+  <div class="checklist-items__filters">
+    @for (area of areas; track area.id) {
+      <button
+        type="button"
+        class="tag checklist-items__filter"
+        [class.checklist-items__filter--active]="filterAreaId() === area.id"
+        (click)="setFilterArea(area.id)"
+      >
+        {{ area.nr }} · {{ area.name }}
+      </button>
+    }
+  </div>
+
+  <!-- Ações usa canManageTeam(), não canEditRoster(): editar/excluir item
+       não tem fallback local em modo demonstração (mesmo motivo de
+       Locais/Brigada — ver updateChecklistItem/deleteChecklistItem em
+       PetStateService). -->
+  <div class="table-wrap checklist-items__table">
+    <table class="table table--cards-wide">
+      <thead>
+        <tr>
+          <th>Item do checklist</th>
+          @if (state.canManageTeam()) {
+            <th style="width: 90px">Ações</th>
+          }
+        </tr>
+      </thead>
+      <tbody>
+        @for (item of filteredItems(); track item.id) {
+          <tr>
+            <td data-label="Item do checklist">{{ item.label }}</td>
+            @if (state.canManageTeam()) {
+              <td data-label="Ações" class="checklist-items__actions">
+                <button
+                  type="button"
+                  class="btn-icon-ghost"
+                  title="Editar item"
+                  (click)="openEditModal(item)"
+                >
+                  <app-icon name="pencil" [size]="16" />
+                </button>
+                <button
+                  type="button"
+                  class="btn-icon-ghost btn-icon-ghost--danger"
+                  title="Excluir item"
+                  (click)="openDeleteDialog(item)"
+                >
+                  <app-icon name="trash" [size]="16" />
+                </button>
+              </td>
+            }
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  @if (filteredItems().length === 0) {
+    <div class="empty-state checklist-items__empty">
+      <app-industrial-art class="empty-state__art" scene="clipboard" />
+      <div class="empty-state__title">Nenhum item adicional nesta norma</div>
+      <div class="empty-state__text">
+        O checklist fixo continua valendo — cadastre aqui só o que sua
+        operação verifica além dele para esta norma.
+      </div>
+      <button type="button" class="btn btn-secondary" (click)="openModal()">
+        <app-icon name="plus" [size]="17" />
+        Cadastrar item
+      </button>
+    </div>
+  }
+</div>
+
+@if (modalOpen()) {
+  <div class="dialog-backdrop" (click)="closeModal()">
+    <div class="dialog checklist-items__dialog" (click)="$event.stopPropagation()">
+      <div class="dialog-title">{{ dialogTitle() }}</div>
+      <div class="dialog-body">
+        Some ao checklist fixo desta norma no assistente "Nova PET" — SIM,
+        NÃO ou NA como qualquer outro item, e bloqueia a emissão do mesmo
+        jeito se ficar sem resposta ou marcado NÃO.
+      </div>
+
+      <div class="field">
+        <label>Norma</label>
+        <select
+          class="input"
+          [value]="cadAreaId()"
+          [disabled]="dialogMode() === 'edit'"
+          (change)="cadAreaId.set($any($event.target).value)"
+        >
+          @for (area of areas; track area.id) {
+            <option [value]="area.id">{{ area.nr }} · {{ area.name }}</option>
+          }
+        </select>
+      </div>
+      <div class="field checklist-items__label-field">
+        <label>Texto do item</label>
+        <textarea
+          class="input"
+          placeholder="ex. Sinalização adicional do silo conferida?"
+          [value]="cadLabel()"
+          (input)="cadLabel.set($any($event.target).value)"
+        ></textarea>
+      </div>
+
+      @if (saveError()) {
+        <div class="checklist-items__form-error">{{ saveError() }}</div>
+      }
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-secondary" (click)="closeModal()">
+          Cancelar
+        </button>
+        <button
+          type="button"
+          class="btn btn-primary"
+          [disabled]="cadDisabled()"
+          (click)="save()"
+        >
+          {{ dialogActionLabel() }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (deleteTarget(); as target) {
+  <div class="dialog-backdrop" (click)="closeDeleteDialog()">
+    <div class="dialog checklist-items__delete-dialog" (click)="$event.stopPropagation()">
+      <div class="dialog-title">Excluir item</div>
+      <div class="dialog-body">
+        Tem certeza que quer excluir <strong>"{{ target.label }}"</strong>?
+        Ele deixa de aparecer no checklist de novas PETs desta norma. Essa
+        ação não pode ser desfeita.
+      </div>
+      @if (deleteError()) {
+        <div class="checklist-items__form-error">{{ deleteError() }}</div>
+      }
+      <div class="dialog-actions">
+        <button
+          type="button"
+          class="btn btn-secondary"
+          (click)="closeDeleteDialog()"
+        >
+          Cancelar
+        </button>
+        <button
+          type="button"
+          class="btn btn-danger"
+          [disabled]="deleting()"
+          (click)="confirmDelete()"
+        >
+          {{ deleting() ? 'Excluindo…' : 'Excluir definitivamente' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

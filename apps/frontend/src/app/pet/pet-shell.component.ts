@@ -5,6 +5,7 @@ import { PetManagerComponent } from './manager/pet-manager.component';
 import { PetTeamComponent } from './team/pet-team.component';
 import { PetLocationsComponent } from './locations/pet-locations.component';
 import { PetBrigadeComponent } from './brigade/pet-brigade.component';
+import { PetChecklistItemsComponent } from './checklist-items/pet-checklist-items.component';
 import { PetUsersComponent } from './users/pet-users.component';
 import { PetCompaniesComponent } from './companies/pet-companies.component';
 import { IconComponent, IconName } from '../shared/icon.component';
@@ -29,6 +30,7 @@ interface NavItem {
     PetTeamComponent,
     PetLocationsComponent,
     PetBrigadeComponent,
+    PetChecklistItemsComponent,
     PetUsersComponent,
     PetCompaniesComponent,
     IconComponent,
@@ -76,6 +78,14 @@ export class PetShellComponent {
       shortLabel: 'Brigada',
       description: 'Quem recebe o alerta de evacuação',
       icon: 'alert',
+      badge: () => null,
+    },
+    {
+      id: 'checklist',
+      label: 'Checklist',
+      shortLabel: 'Checklist',
+      description: 'Itens adicionais do checklist por norma',
+      icon: 'check',
       badge: () => null,
     },
     {

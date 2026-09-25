@@ -69,6 +69,7 @@ function createState(
     trigger: jest.fn(() => throwError(() => new Error('unauthenticated'))),
     resolve: jest.fn(() => throwError(() => new Error('unauthenticated'))),
   };
+  const checklistItemsApi = { findAll: jest.fn(() => throwError(() => new Error('unauthenticated'))) };
   const authApi = {
     login: jest.fn(() => of(loginResult)),
     getBiometricRegistrationOptions: jest.fn(() =>
@@ -97,6 +98,7 @@ function createState(
     companyLocationsApi as never,
     emergencyContactsApi as never,
     evacuationApi as never,
+    checklistItemsApi as never,
     authApi as never,
     authToken as never,
     deviceAuth as never,

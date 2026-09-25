@@ -5,6 +5,7 @@ import {
   Badge,
   BadgeItem,
   ChecklistAnswer,
+  ChecklistCustomItem,
   CompanyLocation,
   CriticalAlert,
   EmergencyContact,
@@ -44,12 +45,17 @@ import {
   UpdateEmergencyContactPayload,
 } from './services/emergency-contacts-api.service';
 import { EvacuationApiService } from './services/evacuation-api.service';
+import {
+  ChecklistItemsApiService,
+  CreateChecklistItemPayload,
+  UpdateChecklistItemPayload,
+} from './services/checklist-items-api.service';
 import { AuthApiService, AuthenticatedUser } from './services/auth-api.service';
 import { AuthTokenService } from './services/auth-token.service';
 import { DeviceAuthService, BiometricEnrollment } from './services/device-auth.service';
 import { startAuthentication, startRegistration, WebAuthnError } from '@simplewebauthn/browser';
 
-export type PortalRole = 'tecnico' | 'gestor' | 'equipe' | 'locais' | 'brigada' | 'usuarios' | 'empresas';
+export type PortalRole = 'tecnico' | 'gestor' | 'equipe' | 'locais' | 'brigada' | 'checklist' | 'usuarios' | 'empresas';
 export type TechnicianScreen =
   'login' | 'home' | 'nova' | 'emitida' | 'detalhe';
 export type HomeTab = 'abertas' | 'fechadas';
@@ -246,12 +252,18 @@ export class PetStateService {
   // loadFromBackend() responder.
   readonly emergencyContacts = signal<EmergencyContact[]>([]);
 
+  // Idem — itens de checklist que a empresa cadastrou além do mínimo fixo
+  // de cada NR (ver checklistGroups mais abaixo e buildChecklistGroups em
+  // pet-mock-data.ts).
+  readonly customChecklistItems = signal<ChecklistCustomItem[]>([]);
+
   constructor(
     private readonly workPermitsApi: WorkPermitsApiService,
     private readonly teamMembersApi: TeamMembersApiService,
     private readonly companyLocationsApi: CompanyLocationsApiService,
     private readonly emergencyContactsApi: EmergencyContactsApiService,
     private readonly evacuationApi: EvacuationApiService,
+    private readonly checklistItemsApi: ChecklistItemsApiService,
     private readonly authApi: AuthApiService,
     private readonly authToken: AuthTokenService,
     private readonly deviceAuth: DeviceAuthService,
@@ -289,6 +301,12 @@ export class PetStateService {
     try {
       const contacts = await firstValueFrom(this.emergencyContactsApi.findAll());
       this.emergencyContacts.set(contacts);
+    } catch {
+      // mantém a lista vazia — sem mock local pra este recurso
+    }
+    try {
+      const items = await firstValueFrom(this.checklistItemsApi.findAll());
+      this.customChecklistItems.set(items);
     } catch {
       // mantém a lista vazia — sem mock local pra este recurso
     }
@@ -353,6 +371,27 @@ export class PetStateService {
   async deleteEmergencyContact(id: string): Promise<void> {
     await firstValueFrom(this.emergencyContactsApi.remove(id));
     this.emergencyContacts.update((list) => list.filter((c) => c.id !== id));
+  }
+
+  // Mesmo padrão de registerEmergencyContact: qualquer sessão real pode
+  // cadastrar um item de checklist, com fallback local se a API falhar.
+  async registerChecklistItem(item: CreateChecklistItemPayload): Promise<void> {
+    try {
+      const created = await firstValueFrom(this.checklistItemsApi.create(item));
+      this.customChecklistItems.update((list) => [...list, created]);
+    } catch {
+      this.customChecklistItems.update((list) => [...list, { ...item, id: `local-${Date.now()}` }]);
+    }
+  }
+
+  async updateChecklistItem(id: string, patch: UpdateChecklistItemPayload): Promise<void> {
+    const updated = await firstValueFrom(this.checklistItemsApi.update(id, patch));
+    this.customChecklistItems.update((list) => list.map((i) => (i.id === id ? updated : i)));
+  }
+
+  async deleteChecklistItem(id: string): Promise<void> {
+    await firstValueFrom(this.checklistItemsApi.remove(id));
+    this.customChecklistItems.update((list) => list.filter((i) => i.id !== id));
   }
 
   /**
@@ -640,7 +679,7 @@ export class PetStateService {
   // 'não'"), mas vale pro checklist inteiro (EPI + todas as áreas
   // selecionadas), não só pros itens da NR-33 — a etapa é uma só.
   readonly checklistGroups = computed(() =>
-    buildChecklistGroups(this.selectedAreas()),
+    buildChecklistGroups(this.selectedAreas(), this.customChecklistItems()),
   );
   readonly checklistUnansweredCount = computed(() => {
     const answers = this.checklistState();
@@ -926,6 +965,7 @@ export class PetStateService {
     this.companyLocations.set([]);
     this.emergencyContacts.set([]);
     this.detailPetSignatures.set([]);
+    this.customChecklistItems.set([]);
   }
 
   selectHomeTab(tab: HomeTab): void {
