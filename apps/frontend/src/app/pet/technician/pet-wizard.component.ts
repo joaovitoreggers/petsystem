@@ -3,6 +3,7 @@ import { firstValueFrom } from 'rxjs';
 import jsQR from 'jsqr';
 import { PetStateService } from '../pet-state.service';
 import { TenancyApiService } from '../services/tenancy-api.service';
+import { WorkPermitSignature } from '../services/work-permit-signatures-api.service';
 import {
   AREA_NOTE,
   ChecklistAnswer,
@@ -20,6 +21,7 @@ import {
   riskAreaNrs,
 } from '../pet-mock-data';
 import { IconComponent } from '../../shared/icon.component';
+import { PetSignaturePanelComponent } from './pet-signature-panel.component';
 
 interface GaugeView {
   key: GasKey;
@@ -87,13 +89,11 @@ export const SITE_LOCATIONS = [
 @Component({
   selector: 'app-pet-wizard',
   standalone: true,
-  imports: [IconComponent],
+  imports: [IconComponent, PetSignaturePanelComponent],
   templateUrl: './pet-wizard.component.html',
   styleUrls: ['./pet-wizard.component.scss', './pet-wizard-instruments.scss'],
 })
 export class PetWizardComponent implements OnDestroy {
-  @ViewChild('tecnicoCanvas') tecnicoCanvasRef?: ElementRef<HTMLCanvasElement>;
-  @ViewChild('execCanvas') execCanvasRef?: ElementRef<HTMLCanvasElement>;
   @ViewChild('photoInput') photoInputRef?: ElementRef<HTMLInputElement>;
   @ViewChild('qrVideo') qrVideoRef?: ElementRef<HTMLVideoElement>;
 
@@ -119,6 +119,11 @@ export class PetWizardComponent implements OnDestroy {
     // "Crachá e permissão" saísse de tela.
     effect(() => {
       if (this.state.currentStep() !== 'qr') this.stopQrScan();
+    });
+    // `date`/`start` da PET precisam ficar fixos a partir daqui — ver
+    // PetStateService.ensureOpeningTimestamp().
+    effect(() => {
+      if (this.state.currentStep() === 'sig') this.state.ensureOpeningTimestamp();
     });
   }
 
@@ -419,59 +424,41 @@ export class PetWizardComponent implements OnDestroy {
     this.state.setField(name, value);
   }
 
-  clearSignature(which: 'tecnico' | 'exec'): void {
-    const ref =
-      which === 'tecnico' ? this.tecnicoCanvasRef : this.execCanvasRef;
-    const canvas = ref?.nativeElement;
-    if (canvas) {
-      canvas.getContext('2d')?.clearRect(0, 0, canvas.width, canvas.height);
+  // ── Assinatura eletrônica (etapa "sig") ───────────────────────────
+  readonly draftId = computed(() => this.state.draftId());
+  readonly openingContentSnapshot = computed(() => this.state.openingContentSnapshot());
+
+  readonly emitenteLabel = computed(() => {
+    const user = this.state.session()?.user;
+    return user?.name ? `${user.name} · ${user.email}` : 'Técnico responsável';
+  });
+
+  readonly executanteMember = computed(() => this.state.executorMember());
+  readonly executanteLabel = computed(() => {
+    const member = this.executanteMember();
+    return member ? `${member.name} · mat. ${member.registration}` : 'Executante responsável';
+  });
+
+  // Mais de um membro na equipe: deixa escolher quem é o executante
+  // responsável que assina (por padrão, o primeiro adicionado — ver
+  // PetStateService.executorRegistration).
+  readonly executorCandidates = computed(() => this.state.authorizedTeam());
+
+  onExecutorRegistrationChange(event: Event): void {
+    this.state.setExecutorRegistration((event.target as HTMLSelectElement).value);
+  }
+
+  onEmitenteSigned(signature: WorkPermitSignature): void {
+    this.state.setTechnicianSigned(true);
+    if (signature.geolocation) {
+      this.state.setEmitenteCoordinates(
+        `${signature.geolocation.lat.toFixed(6)}, ${signature.geolocation.lng.toFixed(6)}`,
+      );
     }
-    if (which === 'tecnico') this.state.setTechnicianSigned(false);
-    else this.state.setExecutorSigned(false);
   }
 
-  private drawing = false;
-
-  startDraw(event: PointerEvent, which: 'tecnico' | 'exec'): void {
-    this.drawing = true;
-    this.drawPoint(event, which, true);
-  }
-  moveDraw(event: PointerEvent, which: 'tecnico' | 'exec'): void {
-    if (!this.drawing) return;
-    this.drawPoint(event, which, false);
-  }
-  endDraw(): void {
-    this.drawing = false;
-  }
-
-  private drawPoint(
-    event: PointerEvent,
-    which: 'tecnico' | 'exec',
-    start: boolean,
-  ): void {
-    const ref =
-      which === 'tecnico' ? this.tecnicoCanvasRef : this.execCanvasRef;
-    const canvas = ref?.nativeElement;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    const x = (event.clientX - rect.left) * scaleX;
-    const y = (event.clientY - rect.top) * scaleY;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    ctx.lineWidth = 3;
-    ctx.lineCap = 'round';
-    ctx.strokeStyle = '#1d1f20';
-    if (start) {
-      ctx.beginPath();
-      ctx.moveTo(x, y);
-    } else {
-      ctx.lineTo(x, y);
-      ctx.stroke();
-    }
-    if (which === 'tecnico') this.state.setTechnicianSigned(true);
-    else this.state.setExecutorSigned(true);
+  onExecutanteSigned(): void {
+    this.state.setExecutorSigned(true);
   }
 }
 

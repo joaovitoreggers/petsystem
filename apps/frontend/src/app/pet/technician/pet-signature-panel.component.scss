@@ -1,0 +1,76 @@
+:host {
+  display: block;
+}
+
+.sig-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.sig-panel__name {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: var(--text-lg);
+  color: var(--text-strong);
+}
+
+.sig-panel__done {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.sig-panel__offline .callout__title {
+  margin-bottom: var(--space-1);
+}
+
+.sig-panel__methods {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.sig-panel__method-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.sig-panel__hint {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+.sig-panel__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-width: 320px;
+}
+
+.sig-panel__form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.sig-panel__channel {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.sig-panel__channel--active {
+  background: var(--color-accent-700);
+  border-color: var(--color-accent-700);
+  color: #f7fafd;
+}
+
+.sig-panel__devcode {
+  font-size: var(--text-sm);
+}
+
+.sig-panel__error {
+  font-size: var(--text-sm);
+  color: var(--status-bad);
+}

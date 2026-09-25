@@ -1,5 +1,5 @@
 import { randomInt, randomUUID } from 'crypto';
-import { BadRequestException, Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import type { AuthenticationResponseJSON, PublicKeyCredentialRequestOptionsJSON } from '@simplewebauthn/server';
 import * as bcrypt from 'bcrypt';
 import { AuthService } from '../auth/auth.service';
@@ -24,6 +24,12 @@ const OTP_TTL_MS = 5 * 60 * 1000;
 const OTP_MAX_ATTEMPTS = 5;
 const PIN_MAX_ATTEMPTS = 5;
 const PIN_LOCKOUT_MS = 15 * 60 * 1000;
+
+const SIGNATURE_ROLE_LABEL: Record<SignaturePetRole, string> = {
+  emitente: 'técnico emitente',
+  executante: 'executante responsável',
+  encerrante: 'quem está encerrando',
+};
 
 interface PendingBiometricSignature {
   userId: string;
@@ -394,6 +400,43 @@ export class WorkPermitSignaturesService {
       companyGroupId: input.scope.companyGroupId,
       branchId: input.scope.branchId,
     });
+  }
+
+  /**
+   * Confere, no momento de criar a PET de fato, que cada papel exigido
+   * (emitente/executante) tem uma assinatura para este draftId e que o
+   * hash bate com o conteúdo recebido agora — se o conteúdo mudou desde a
+   * assinatura (alguém voltou e editou algo), rejeita com 409 em vez de
+   * deixar a PET nascer com um conteúdo diferente do que foi realmente
+   * assinado. Usada por WorkPermitsService.create().
+   */
+  async requireDraftSignatures(
+    draftId: string,
+    contentSnapshot: Record<string, unknown>,
+    requiredRoles: SignaturePetRole[],
+    scope: TenantScope | undefined,
+  ): Promise<WorkPermitSignature[]> {
+    const signatures = filterOwnedByScope(await this.repository.findByDraftId(draftId), scope);
+    const expectedHash = computeContentHash(contentSnapshot);
+
+    for (const role of requiredRoles) {
+      const signature = signatures.find((s) => s.petRole === role);
+      if (!signature) {
+        throw new BadRequestException(
+          `Falta a assinatura de ${SIGNATURE_ROLE_LABEL[role]} para emitir esta PET`,
+        );
+      }
+      if (signature.contentHash !== expectedHash) {
+        throw new ConflictException(
+          'O conteúdo da PET mudou depois de assinado — volte à etapa de assinatura e assine de novo',
+        );
+      }
+    }
+    return signatures;
+  }
+
+  async linkDraftToWorkPermit(draftId: string, workPermitId: string): Promise<void> {
+    await this.repository.linkDraftToWorkPermit(draftId, workPermitId);
   }
 
   async findByDraftId(draftId: string, scope: TenantScope): Promise<WorkPermitSignature[]> {
