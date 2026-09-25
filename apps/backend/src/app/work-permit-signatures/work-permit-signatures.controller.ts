@@ -5,18 +5,23 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AuthenticatedUser } from '../auth/jwt-payload.interface';
 import { scopeFromUser } from '../auth/tenant-scope';
+import { DeliveryStatus } from '../notifications/notifications.service';
 import { RequestBiometricSignatureOptionsDto } from './dto/request-biometric-signature-options.dto';
+import { SendOtpSignatureDto } from './dto/send-otp-signature.dto';
 import { VerifyBiometricSignatureDto } from './dto/verify-biometric-signature.dto';
+import { VerifyCrachaPinSignatureDto } from './dto/verify-cracha-pin-signature.dto';
+import { VerifyOtpSignatureDto } from './dto/verify-otp-signature.dto';
 import { WorkPermitSignature } from './entities/work-permit-signature.entity';
 import { WorkPermitSignaturesService } from './work-permit-signatures.service';
 
 /**
- * Assinatura eletrônica de PET (abertura/encerramento) — nenhuma rota aqui
- * ainda é chamada pelo assistente "Nova PET" (isso é um PR seguinte); por
- * enquanto os 3 métodos vão sendo construídos e testados diretamente.
- * `JwtAuthGuard` a nível de classe: quem chama é sempre a sessão do
- * técnico/gestor já logado — um membro da escala (TeamMember) nunca loga
- * separadamente, se identifica por crachá+PIN ou OTP no mesmo aparelho.
+ * Assinatura eletrônica de PET (abertura/encerramento) — os 3 métodos
+ * (biometria, crachá+PIN, SMS/WhatsApp). Nenhuma rota aqui ainda é chamada
+ * pelo assistente "Nova PET" (isso é um PR seguinte); por enquanto os
+ * endpoints existem para serem testados diretamente. `JwtAuthGuard` a nível
+ * de classe: quem chama é sempre a sessão do técnico/gestor já logado — um
+ * membro da escala (TeamMember) nunca loga separadamente, se identifica por
+ * crachá+PIN ou OTP no mesmo aparelho.
  */
 @Controller('work-permit-signatures')
 @UseGuards(JwtAuthGuard)
@@ -50,6 +55,61 @@ export class WorkPermitSignaturesController {
       userId: currentUser.id,
       challengeId: dto.challengeId,
       response: dto.response,
+      geolocation: dto.geolocation ?? null,
+      ip: req.ip ?? null,
+      userAgent: req.headers['user-agent'] ?? null,
+      scope: scopeFromUser(currentUser),
+    });
+  }
+
+  @Post('cracha-pin/verify')
+  @HttpCode(HttpStatus.CREATED)
+  verifyCrachaPin(
+    @Body() dto: VerifyCrachaPinSignatureDto,
+    @CurrentUser() currentUser: AuthenticatedUser,
+  ): Promise<WorkPermitSignature> {
+    return this.signaturesService.verifyCrachaPinSignature({
+      registration: dto.registration,
+      pin: dto.pin,
+      petRole: dto.petRole,
+      lifecycleEvent: dto.lifecycleEvent,
+      draftId: dto.draftId,
+      workPermitId: dto.workPermitId,
+      contentSnapshot: dto.contentSnapshot,
+      geolocation: dto.geolocation ?? null,
+      scope: scopeFromUser(currentUser),
+    });
+  }
+
+  @Post('otp/send')
+  @HttpCode(HttpStatus.OK)
+  sendOtp(
+    @Body() dto: SendOtpSignatureDto,
+    @CurrentUser() currentUser: AuthenticatedUser,
+  ): Promise<{ otpId: string; delivery: DeliveryStatus; devCode?: string }> {
+    return this.signaturesService.sendOtpSignatureCode({
+      currentUserId: currentUser.id,
+      petRole: dto.petRole,
+      lifecycleEvent: dto.lifecycleEvent,
+      registration: dto.registration,
+      channel: dto.channel,
+      draftId: dto.draftId,
+      workPermitId: dto.workPermitId,
+      contentSnapshot: dto.contentSnapshot,
+      scope: scopeFromUser(currentUser),
+    });
+  }
+
+  @Post('otp/verify')
+  @HttpCode(HttpStatus.CREATED)
+  verifyOtp(
+    @Body() dto: VerifyOtpSignatureDto,
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Req() req: Request,
+  ): Promise<WorkPermitSignature> {
+    return this.signaturesService.verifyOtpSignatureCode({
+      otpId: dto.otpId,
+      code: dto.code,
       geolocation: dto.geolocation ?? null,
       ip: req.ip ?? null,
       userAgent: req.headers['user-agent'] ?? null,
