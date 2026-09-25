@@ -55,6 +55,12 @@ export class AuthService {
   // credencial "discoverable".
   private readonly registrationChallenges = new Map<string, PendingChallenge>();
   private readonly authenticationChallenges = new Map<string, PendingChallenge>();
+  // Mapa próprio (não authenticationChallenges) para a cerimônia de
+  // "assinar com biometria" — mesmo formato, mas conceitualmente separada
+  // do login: aqui o challenge é o hash do conteúdo assinado, não um valor
+  // aleatório qualquer, e nunca deve poder ser confundida com uma tentativa
+  // de login.
+  private readonly signatureChallenges = new Map<string, PendingChallenge>();
 
   constructor(
     private readonly usersService: UsersService,
@@ -256,6 +262,74 @@ export class AuthService {
       companyGroupId: user.companyGroupId,
       branchId: user.branchId,
     });
+  }
+
+  /**
+   * Cerimônia WebAuthn de "assinar com biometria" — não é login: não emite
+   * sessão nova, e o challenge não é aleatório, é o hash do conteúdo que
+   * está sendo assinado (calculado por quem chama, nunca a partir de dado
+   * vindo do cliente), o que liga a assinatura criptograficamente àquele
+   * conteúdo exato. `allowCredentials` restrito às credenciais do próprio
+   * usuário — diferente do login, aqui já se sabe quem está assinando (a
+   * sessão já é real).
+   */
+  async getSignatureAuthenticationOptions(
+    userId: string,
+    challenge: Uint8Array,
+  ): Promise<{ options: PublicKeyCredentialRequestOptionsJSON; challengeId: string }> {
+    const credentials = await this.webAuthnCredentialRepository.findByUserId(userId);
+    if (credentials.length === 0) {
+      throw new UnauthorizedException('Nenhuma biometria cadastrada para este usuário');
+    }
+    const options = await generateAuthenticationOptions({
+      rpID: this.rpID,
+      userVerification: 'required',
+      challenge,
+      allowCredentials: credentials.map((c) => ({ id: c.id, transports: c.transports })),
+    });
+    const challengeId = randomUUID();
+    this.signatureChallenges.set(challengeId, {
+      challenge: options.challenge,
+      expiresAt: Date.now() + CHALLENGE_TTL_MS,
+    });
+    return { options, challengeId };
+  }
+
+  async verifySignatureAssertion(
+    userId: string,
+    challengeId: string,
+    response: AuthenticationResponseJSON,
+  ): Promise<{ credentialId: string }> {
+    const pending = this.signatureChallenges.get(challengeId);
+    this.signatureChallenges.delete(challengeId);
+    if (!pending || pending.expiresAt < Date.now()) {
+      throw new UnauthorizedException('Assinatura por biometria expirou — tente novamente');
+    }
+    const credential = await this.webAuthnCredentialRepository.findById(response.id);
+    if (!credential || credential.userId !== userId) {
+      throw new UnauthorizedException('Biometria não reconhecida para este usuário');
+    }
+    const verification = await verifyAuthenticationResponse({
+      response,
+      expectedChallenge: pending.challenge,
+      expectedOrigin: this.rpOrigin,
+      expectedRPID: this.rpID,
+      credential: {
+        id: credential.id,
+        publicKey: new Uint8Array(credential.publicKey),
+        counter: credential.counter,
+        transports: credential.transports,
+      },
+      requireUserVerification: true,
+    });
+    if (!verification.verified) {
+      throw new UnauthorizedException('Biometria não reconhecida');
+    }
+    await this.webAuthnCredentialRepository.updateCounter(
+      credential.id,
+      verification.authenticationInfo.newCounter,
+    );
+    return { credentialId: credential.id };
   }
 
   async hasBiometricCredential(userId: string): Promise<boolean> {

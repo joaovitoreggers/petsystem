@@ -24,6 +24,8 @@ import { EmergencyContact } from './emergency-contacts/entities/emergency-contac
 import { EmergencyContactsModule } from './emergency-contacts/emergency-contacts.module';
 import { EvacuationAlert } from './evacuation/entities/evacuation-alert.entity';
 import { EvacuationModule } from './evacuation/evacuation.module';
+import { WorkPermitSignature } from './work-permit-signatures/entities/work-permit-signature.entity';
+import { WorkPermitSignaturesModule } from './work-permit-signatures/work-permit-signatures.module';
 import { ChecklistItem } from './checklist-items/entities/checklist-item.entity';
 import { ChecklistItemsModule } from './checklist-items/checklist-items.module';
 
@@ -52,6 +54,7 @@ import { ChecklistItemsModule } from './checklist-items/checklist-items.module';
           CompanyLocation,
           EmergencyContact,
           EvacuationAlert,
+          WorkPermitSignature,
           ChecklistItem,
         ],
         synchronize: true,
@@ -68,6 +71,7 @@ import { ChecklistItemsModule } from './checklist-items/checklist-items.module';
     CompanyLocationsModule,
     EmergencyContactsModule,
     EvacuationModule,
+    WorkPermitSignaturesModule,
     ChecklistItemsModule,
   ],
   controllers: [AppController],
