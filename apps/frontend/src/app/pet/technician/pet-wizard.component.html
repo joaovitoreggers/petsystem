@@ -196,7 +196,7 @@
                 (change)="onFieldChange('empresa', $event)"
               >
                 <option value="" disabled selected hidden>Selecione</option>
-                @for (c of companyOptions; track c) {
+                @for (c of companyOptions(); track c) {
                   <option>{{ c }}</option>
                 }
               </select>
@@ -449,13 +449,6 @@
                   } @else {
                     <button type="button" class="btn btn-primary btn-block qr-scan__btn" (click)="startQrScan()">
                       Ler QR do crachá
-                    </button>
-                    <button
-                      type="button"
-                      class="btn btn-ghost btn-block qr-scan__simulate"
-                      (click)="state.scanBadge()"
-                    >
-                      Simular leitura (sem câmera)
                     </button>
                   }
 

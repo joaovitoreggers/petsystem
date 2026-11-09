@@ -9,7 +9,6 @@ import {
   ChecklistAnswer,
   GAS_LIMITS,
   GasKey,
-  MOCK_BADGES,
   PetTeamRole,
   RISK_AREAS,
   RiskAreaId,
@@ -54,38 +53,6 @@ type WizardFieldName =
   | 'local'
   | 'unidade';
 
-export const PET_UNITS = [
-  'Matelândia',
-  'Medianeira',
-  'Céu Azul',
-  'Itaipulândia',
-  'Missal',
-];
-
-export const EXECUTING_COMPANIES = [
-  'Lar · Manutenção',
-  'Lar · Armazéns',
-  'Lar · SESMT',
-  'Lar · Utilidades',
-  'Termoeletro Ltda',
-  'Altura Serviços ME',
-];
-
-export const SITE_LOCATIONS = [
-  'Silo de milho 04',
-  'Silo de soja 09',
-  'Elevatória da ETE',
-  'Casa de caldeiras 02',
-  'Moega de recebimento 01',
-  'Tanque de efluente 02',
-  'Túnel de congelamento',
-  'Torre de resfriamento',
-  'Linha de extrusão',
-  'Oficina de manutenção',
-  'Subestação — pórtico 1',
-  'Linha de abate — nória',
-];
-
 @Component({
   selector: 'app-pet-wizard',
   standalone: true,
@@ -99,11 +66,9 @@ export class PetWizardComponent implements OnDestroy {
 
   readonly areas = RISK_AREAS;
 
-  // Lista de unidades do seletor "Unidade" — parte de PET_UNITS (mock) e
-  // troca pelas filiais reais do grupo da sessão assim que carregam. Sem
-  // sessão ou se a chamada falhar, fica no mock — mesmo padrão de fallback
-  // do resto do app.
-  readonly unitOptions = signal<string[]>(PET_UNITS);
+  // Lista de unidades do seletor "Unidade" — as filiais reais do grupo da
+  // sessão, assim que carregam. Sem sessão ou se a chamada falhar, fica vazia.
+  readonly unitOptions = signal<string[]>([]);
 
   constructor(
     readonly state: PetStateService,
@@ -134,7 +99,7 @@ export class PetWizardComponent implements OnDestroy {
         this.unitOptions.set(branches.map((b) => b.name).sort((a, b) => a.localeCompare(b)));
       }
     } catch {
-      // mantém PET_UNITS como fallback
+      // mantém a lista vazia
     }
   }
 
@@ -273,15 +238,15 @@ export class PetWizardComponent implements OnDestroy {
     });
   }
 
-  readonly companyOptions = EXECUTING_COMPANIES;
+  // Empresas executantes já presentes no cadastro de funcionários.
+  readonly companyOptions = computed(() =>
+    [...new Set(this.state.teamMembers().map((m) => m.company).filter(Boolean))].sort((a, b) =>
+      a.localeCompare(b),
+    ),
+  );
 
-  // Nomes dos locais cadastrados pela empresa (ver "Locais" no menu); cai
-  // para SITE_LOCATIONS só enquanto o cadastro real estiver vazio — mesmo
-  // padrão de fallback do unitOptions acima.
-  readonly locationOptions = computed(() => {
-    const names = this.state.companyLocations().map((l) => l.name);
-    return names.length > 0 ? names : SITE_LOCATIONS;
-  });
+  // Nomes dos locais cadastrados pela empresa (ver "Locais" no menu).
+  readonly locationOptions = computed(() => this.state.companyLocations().map((l) => l.name));
 
   readonly badgeStatusLabel = (status: 'ok' | 'prox' | 'venc') =>
     status === 'ok' ? '✓' : status === 'prox' ? '!' : '✕';
@@ -292,7 +257,6 @@ export class PetWizardComponent implements OnDestroy {
         ? 'var(--status-warn)'
         : 'var(--status-bad)';
 
-  readonly hasMoreBadgesToScan = computed(() => this.state.badgeCycleIndex() < MOCK_BADGES.length * 2);
   readonly teamRoleFields = TEAM_ROLE_FIELDS;
 
   onEmployeeSearchChange(event: Event): void {

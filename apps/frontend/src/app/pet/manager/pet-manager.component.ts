@@ -5,13 +5,13 @@ import {
   ChecklistAnswer,
   GAS_LIMITS,
   GasKey,
-  INCIDENT_CAUSE,
   petStatusView,
   PET_TEAM_ROLE_LABEL,
   Pet,
   RISK_AREAS,
   RiskAreaId,
-  THIRTY_DAY_READINGS,
+  buildDailyReadings,
+  todayIso,
   buildChecklistGroups,
   buildMonitorArchive,
   dateToBr,
@@ -29,6 +29,13 @@ import { IndustrialArtComponent } from '../../shared/industrial-art.component';
 import { PetPrintDocumentComponent } from '../pet-print-document.component';
 
 type HistoryFilter = 'todas' | 'aberta' | 'fechada' | 'ocorrencia' | RiskAreaId;
+
+function daysAgoIso(days: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  const pad = (v: number) => String(v).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
 
 const HISTORY_FILTERS: { id: HistoryFilter; label: string }[] = [
   { id: 'todas', label: 'Todas' },
@@ -54,12 +61,13 @@ export class PetManagerComponent {
     na: 'NA',
   };
   readonly historyFilters = HISTORY_FILTERS;
-  readonly thirtyDays = THIRTY_DAY_READINGS;
 
   readonly reportModalOpen = signal(false);
   readonly viewingReport = signal(false);
-  readonly reportFrom = signal('2026-08-01');
-  readonly reportTo = signal('2026-09-05');
+  readonly reportFrom = signal(daysAgoIso(30));
+  readonly reportTo = signal(todayIso());
+  // Medições dos últimos 30 dias, somadas das PETs reais (sem dado simulado).
+  private readonly thirtyDaysSignal = computed(() => buildDailyReadings(this.state.pets()));
   readonly historyFilter = signal<HistoryFilter>('todas');
 
   readonly aiModalOpen = signal(false);
@@ -211,8 +219,8 @@ export class PetManagerComponent {
             closed.length,
         )
       : 0;
-    const totalReadings = this.thirtyDays.reduce((sum, d) => sum + d.total, 0);
-    const totalOut = this.thirtyDays.reduce((sum, d) => sum + d.outOfRange, 0);
+    const totalReadings = this.thirtyDaysSignal().reduce((sum, d) => sum + d.total, 0);
+    const totalOut = this.thirtyDaysSignal().reduce((sum, d) => sum + d.outOfRange, 0);
     const compliance = totalReadings
       ? (((totalReadings - totalOut) / totalReadings) * 100).toFixed(1)
       : '100.0';
@@ -271,10 +279,10 @@ export class PetManagerComponent {
   );
 
   readonly totalMedicoes = computed(() =>
-    this.thirtyDays.reduce((sum, d) => sum + d.total, 0),
+    this.thirtyDaysSignal().reduce((sum, d) => sum + d.total, 0),
   );
   readonly totalFora = computed(() =>
-    this.thirtyDays.reduce((sum, d) => sum + d.outOfRange, 0),
+    this.thirtyDaysSignal().reduce((sum, d) => sum + d.outOfRange, 0),
   );
   readonly conformidade = computed(() => {
     const total = this.totalMedicoes();
@@ -282,15 +290,15 @@ export class PetManagerComponent {
     return total ? `${(((total - fora) / total) * 100).toFixed(1)}%` : '100.0%';
   });
   readonly piorDia = computed(() => {
-    const worst = [...this.thirtyDays].sort(
+    const worst = [...this.thirtyDaysSignal()].sort(
       (a, b) => b.outOfRange - a.outOfRange,
     )[0];
     return worst ? `${worst.dayLabel} · ${worst.outOfRange} leituras` : '—';
   });
 
   readonly chartDays = computed(() =>
-    this.thirtyDays.map((d) => {
-      const maxTotal = Math.max(...this.thirtyDays.map((x) => x.total));
+    this.thirtyDaysSignal().map((d) => {
+      const maxTotal = Math.max(1, ...this.thirtyDaysSignal().map((x) => x.total));
       const heightPct = Math.max(6, Math.round((d.total / maxTotal) * 100));
       const outPct = d.total
         ? Math.round((d.outOfRange / d.total) * heightPct)
@@ -339,7 +347,7 @@ export class PetManagerComponent {
       .map((p) => ({
         pet: p,
         cause:
-          INCIDENT_CAUSE[p.id] ??
+          p.closeReason ||
           'Ocorrência registrada durante a permissão. Detalhes no relatório interno do SESMT.',
         areaLabel: riskAreaNames(p.areas),
         nr: riskAreaNrs(p.areas),
@@ -384,7 +392,7 @@ export class PetManagerComponent {
     this.reportModalOpen.set(false);
   }
   setReportRange(days: number): void {
-    const to = new Date(2026, 8, 5);
+    const to = new Date();
     const from = new Date(to.getTime() - days * 86400000);
     const pad = (v: number) => String(v).padStart(2, '0');
     this.reportFrom.set(
@@ -508,7 +516,7 @@ export class PetManagerComponent {
   readonly reportDays = computed(() => {
     const from = this.reportFrom();
     const to = this.reportTo();
-    const days = this.thirtyDays.filter((d) => d.iso >= from && d.iso <= to);
+    const days = this.thirtyDaysSignal().filter((d) => d.iso >= from && d.iso <= to);
     const maxTotal = Math.max(1, ...days.map((d) => d.total));
     return days.map((d) => ({
       ...d,

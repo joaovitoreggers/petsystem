@@ -13,13 +13,10 @@ import {
   GAS_LIMITS,
   GasKey,
   GasReading,
-  MOCK_BADGES,
-  MOCK_PETS,
   Pet,
   PetTeamMember,
   PetTeamRole,
   RiskAreaId,
-  TEAM_MEMBERS,
   TeamMember,
   WizardStepId,
   buildChecklistGroups,
@@ -50,7 +47,7 @@ import {
   CreateChecklistItemPayload,
   UpdateChecklistItemPayload,
 } from './services/checklist-items-api.service';
-import { AuthApiService, AuthenticatedUser } from './services/auth-api.service';
+import { AuthApiService, AuthenticatedUser, LoginResult } from './services/auth-api.service';
 import { AuthTokenService } from './services/auth-token.service';
 import { DeviceAuthService, BiometricEnrollment } from './services/device-auth.service';
 import { startAuthentication, startRegistration, WebAuthnError } from '@simplewebauthn/browser';
@@ -82,27 +79,51 @@ const EMPTY_FIELDS: WizardFields = {
   inicio: '',
   fim: '',
   local: '',
-  unidade: 'Matelândia',
+  unidade: '',
 };
 
-/** Onde o cadastro editado sem servidor fica guardado no aparelho. */
-const ROSTER_KEY = 'artech.pet.roster';
+const SESSION_KEY = 'pitantech.pet.session';
+
+type StoredSession = LoginResult;
+
+/** Lê o `exp` (segundos) do JWT, ou null se o token não for decodificável. */
+function jwtExpiry(token: string): number | null {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+    return typeof payload.exp === 'number' ? payload.exp : null;
+  } catch {
+    return null;
+  }
+}
 
 /**
- * Cadastro guardado no aparelho, se houver; senão, os dados de exemplo.
- *
- * Vem antes de qualquer chamada de rede: assim que o servidor responder,
- * loadFromBackend() substitui tudo pelo que vier de lá.
+ * Sessão guardada na aba (sessionStorage): sobrevive ao reload, mas some ao
+ * fechar a aba — aparelho compartilhado não fica logado para o próximo.
+ * Token expirado ou ilegível é descartado.
  */
-function restoreRoster(): TeamMember[] {
+function restoreSession(): StoredSession | null {
   try {
-    const raw = localStorage.getItem(ROSTER_KEY);
-    const parsed = raw ? JSON.parse(raw) : null;
-    if (Array.isArray(parsed) && parsed.length > 0) return parsed as TeamMember[];
+    const raw = sessionStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as StoredSession;
+    const exp = parsed?.accessToken ? jwtExpiry(parsed.accessToken) : null;
+    if (!parsed?.user || exp === null || exp * 1000 <= Date.now()) {
+      sessionStorage.removeItem(SESSION_KEY);
+      return null;
+    }
+    return parsed;
   } catch {
-    // formato inesperado ou storage bloqueado — cai nos dados de exemplo
+    return null;
   }
-  return [...TEAM_MEMBERS];
+}
+
+function persistSession(session: StoredSession | null): void {
+  try {
+    if (session) sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
+    else sessionStorage.removeItem(SESSION_KEY);
+  } catch {
+    // armazenamento indisponível: vale só para a memória desta aba
+  }
 }
 
 @Injectable({ providedIn: 'root' })
@@ -141,7 +162,7 @@ export class PetStateService {
     const alert = pet.atmosphereAlerts?.[0];
     if (alert) return `${pet.id} · ${pet.location} · ${alert.message}`;
     if (!pet.gas) return '';
-    // Fallback para PETs de exemplo sem atmosphereAlerts (dado mockado).
+    // Sem atmosphereAlerts registrado, descreve o alarme pela leitura atual.
     return `${pet.id} · ${pet.location} · H₂S em ${pet.gas.h2s.toFixed(1)} ppm, acima do limite de 8 ppm.`;
   });
 
@@ -235,21 +256,17 @@ export class PetStateService {
     }
   }
 
-  // Estado inicial vem dos dados mockados; loadFromBackend() (chamado no
-  // constructor) tenta substituí-lo pelo conteúdo real da API assim que o
-  // back-end responde. Se a chamada falhar (back-end fora do ar, por
-  // exemplo), a tela continua funcionando normalmente com o mock — é assim
-  // que o MVP evita depender do back-end estar de pé para ser demonstrado.
-  readonly pets = signal<Pet[]>([...MOCK_PETS]);
-  readonly teamMembers = signal<TeamMember[]>(restoreRoster());
-  // Sem mock local de propósito — diferente de pets/teamMembers, não há um
-  // acervo de exemplo prévio à API pra cair de volta; começa vazio até
-  // loadFromBackend() responder, e a tela de Locais/o assistente mostram
-  // "nenhum local cadastrado ainda" nesse meio-tempo.
+  // Estado inicial vazio; loadFromBackend() (chamado no constructor)
+  // preenche com o conteúdo real da API assim que o back-end responde. Se a
+  // chamada falhar (back-end fora do ar), as listas ficam vazias.
+  readonly pets = signal<Pet[]>([]);
+  readonly teamMembers = signal<TeamMember[]>([]);
+  // Começa vazio até loadFromBackend() responder, e a tela de Locais/o
+  // assistente mostram "nenhum local cadastrado ainda" nesse meio-tempo.
   readonly companyLocations = signal<CompanyLocation[]>([]);
 
-  // Mesmo raciocínio de companyLocations: sem mock local, começa vazia até
-  // loadFromBackend() responder.
+  // Mesmo raciocínio de companyLocations: começa vazia até loadFromBackend()
+  // responder.
   readonly emergencyContacts = signal<EmergencyContact[]>([]);
 
   // Idem — itens de checklist que a empresa cadastrou além do mínimo fixo
@@ -268,6 +285,12 @@ export class PetStateService {
     private readonly authToken: AuthTokenService,
     private readonly deviceAuth: DeviceAuthService,
   ) {
+    const restored = restoreSession();
+    if (restored) {
+      this.authToken.setToken(restored.accessToken);
+      this.session.set(restored);
+      this.screen.set('home');
+    }
     this.loadFromBackend();
     const enrollment = this.deviceAuth.get();
     this.biometricEnrollment.set(enrollment);
@@ -284,31 +307,31 @@ export class PetStateService {
       const pets = await firstValueFrom(this.workPermitsApi.findAll());
       if (pets.length > 0) this.pets.set(pets);
     } catch {
-      // mantém os dados mockados como estão
+      // mantém a lista como está
     }
     try {
       const members = await firstValueFrom(this.teamMembersApi.findAll());
       if (members.length > 0) this.teamMembers.set(members);
     } catch {
-      // mantém os dados mockados como estão
+      // mantém a lista como está
     }
     try {
       const locations = await firstValueFrom(this.companyLocationsApi.findAll());
       this.companyLocations.set(locations);
     } catch {
-      // mantém a lista vazia — sem mock local pra este recurso
+      // mantém a lista vazia
     }
     try {
       const contacts = await firstValueFrom(this.emergencyContactsApi.findAll());
       this.emergencyContacts.set(contacts);
     } catch {
-      // mantém a lista vazia — sem mock local pra este recurso
+      // mantém a lista vazia
     }
     try {
       const items = await firstValueFrom(this.checklistItemsApi.findAll());
       this.customChecklistItems.set(items);
     } catch {
-      // mantém a lista vazia — sem mock local pra este recurso
+      // mantém a lista vazia
     }
   }
 
@@ -401,13 +424,6 @@ export class PetStateService {
    * "editar sem persistir" esconderia do usuário que a mudança não pegou.
    */
   async updateTeamMember(registration: string, patch: UpdateTeamMemberPayload): Promise<void> {
-    if (this.demoMode()) {
-      this.teamMembers.update((list) =>
-        list.map((m) => (m.registration === registration ? { ...m, ...patch } : m)),
-      );
-      this.persistRoster();
-      return;
-    }
     const updated = await firstValueFrom(this.teamMembersApi.update(registration, patch));
     this.teamMembers.update((list) =>
       list.map((m) => (m.registration === registration ? updated : m)),
@@ -415,11 +431,6 @@ export class PetStateService {
   }
 
   async deleteTeamMember(registration: string): Promise<void> {
-    if (this.demoMode()) {
-      this.teamMembers.update((list) => list.filter((m) => m.registration !== registration));
-      this.persistRoster();
-      return;
-    }
     await firstValueFrom(this.teamMembersApi.remove(registration));
     this.teamMembers.update((list) => list.filter((m) => m.registration !== registration));
   }
@@ -430,31 +441,6 @@ export class PetStateService {
   // servidor falharia silenciosamente na hora de assinar de verdade.
   async setTeamMemberPin(registration: string, pin: string): Promise<void> {
     await firstValueFrom(this.teamMembersApi.setPin(registration, pin));
-  }
-
-  /**
-   * Guarda o cadastro no aparelho, no modo demonstração.
-   *
-   * Sem isso, a edição sumia ao recarregar a página: o estado vivia só na
-   * memória da aba, e o F5 trazia de volta os dados de exemplo. Quando há
-   * servidor, quem guarda é ele, e esta cópia nem é usada.
-   */
-  private persistRoster(): void {
-    try {
-      localStorage.setItem(ROSTER_KEY, JSON.stringify(this.teamMembers()));
-    } catch {
-      // Armazenamento indisponível: vale para esta sessão apenas.
-    }
-  }
-
-  /** Descarta o cadastro local e volta aos dados de exemplo. */
-  resetRoster(): void {
-    try {
-      localStorage.removeItem(ROSTER_KEY);
-    } catch {
-      // nada a fazer
-    }
-    this.teamMembers.set([...TEAM_MEMBERS]);
   }
 
   // ── Técnico: navegação e autenticação ──────────────────────────────
@@ -507,7 +493,6 @@ export class PetStateService {
   readonly ventilationOn = signal(false);
   readonly gasReadingsLog = signal<{ time: string; text: string }[]>([]);
   readonly currentBadge = signal<Badge | null>(null);
-  readonly badgeCycleIndex = signal(0);
   // Alternativa à leitura de crachá: buscar o funcionário já cadastrado
   // pelo nome ou matrícula e selecioná-lo — cai no mesmo `currentBadge`
   // (convertido pelo mesmo formato), então o preview e o botão de confirmar
@@ -516,7 +501,7 @@ export class PetStateService {
   readonly employeeSearchResults = computed(() => {
     const q = this.employeeSearchQuery().trim().toLowerCase();
     if (!q) return [];
-    return TEAM_MEMBERS.filter(
+    return this.teamMembers().filter(
       (m) => m.name.toLowerCase().includes(q) || m.registration.includes(q),
     ).slice(0, 6);
   });
@@ -603,7 +588,7 @@ export class PetStateService {
     return {
       areas: this.selectedAreas(),
       location: fields.local || 'Local não informado',
-      unit: fields.unidade || 'Matelândia',
+      unit: fields.unidade || 'Não informada',
       teamSize: team.length,
       date: timestamp?.date ?? '',
       start: timestamp?.start ?? '',
@@ -726,11 +711,11 @@ export class PetStateService {
       const result = await firstValueFrom(
         this.authApi.verifyBiometricLogin(challengeId, response),
       );
-      this.session.set(result);
+      this.startSession(result);
       this.authToken.setToken(result.accessToken);
       // loadFromBackend() já rodou uma vez no construtor, sem token —
       // tudo que exige sessão (pets, funcionários, locais, brigada) tinha
-      // voltado 401 e ficado no mock/vazio. Com o token de verdade em
+      // voltado 401 e ficado vazio. Com o token de verdade em
       // mãos agora, busca de novo pra trocar isso pelos dados reais do
       // tenant.
       this.loadFromBackend();
@@ -827,16 +812,6 @@ export class PetStateService {
   // back-end aplica a mesma regra (RolesGuard em cada rota); isto é só
   // para a UI não oferecer um botão/aba que a API vai recusar.
   /**
-   * Sem sessão no servidor — antes de qualquer login, por qualquer meio.
-   *
-   * Neste estado o app roda inteiro sobre os dados de exemplo. Editar um
-   * funcionário aqui grava no aparelho, e a tela diz isso com todas as
-   * letras: o que não pode acontecer é a pessoa achar que gravou no
-   * servidor quando não gravou.
-   */
-  readonly demoMode = computed(() => this.session() === null);
-
-  /**
    * Alçada de verdade sobre o cadastro — a que o back-end também exige.
    *
    * Não afrouxa fora de sessão, de propósito: é o que decide se a aba
@@ -851,18 +826,13 @@ export class PetStateService {
   /**
    * A tela de Funcionários permite editar?
    *
-   * Sim com alçada real, e sim também no modo demonstração — onde a
-   * alteração fica gravada no aparelho e a tela diz isso. Sem esta
-   * distinção, sem servidor no ar a edição simplesmente não existia para
-   * quem usa o app: os botões nunca apareciam.
+   * Só com alçada real (admin/gestor) — a mesma que o back-end exige.
    *
    * Note que isto é permissão de interface, não de dados: quem decide o que
    * pode ser gravado no servidor é o back-end, que continua exigindo o JWT
    * com papel de admin ou gestor.
    */
-  readonly canEditRoster = computed(
-    () => this.canManageTeam() || this.demoMode(),
-  );
+  readonly canEditRoster = computed(() => this.canManageTeam());
 
   /**
    * Quem pode definir/alterar o PIN de assinatura (crachá + PIN) de um
@@ -915,10 +885,10 @@ export class PetStateService {
       const result = await firstValueFrom(
         this.authApi.login(this.loginEmail().trim(), this.loginPassword()),
       );
-      this.session.set(result);
+      this.startSession(result);
       this.authToken.setToken(result.accessToken);
       // Mesmo motivo do login por biometria: refaz a carga agora que há
-      // um token de verdade, pra sair do mock/vazio e mostrar os dados
+      // um token de verdade, pra sair do vazio e mostrar os dados
       // reais do tenant.
       this.loadFromBackend();
       this.loginPassword.set('');
@@ -946,7 +916,7 @@ export class PetStateService {
     // o cadastro deste aparelho, ver forgetBiometricEnrollment().
     this.screen.set('login');
     this.authPhase.set('idle');
-    this.session.set(null);
+    this.endSession();
     this.authToken.setToken(null);
     this.loginEmail.set('');
     this.loginPassword.set('');
@@ -955,13 +925,23 @@ export class PetStateService {
     this.authMethod.set(this.biometricEnrollment() ? 'biometria' : 'senha');
     // Sem isto, um aparelho compartilhado (portaria, tablet de chão de
     // fábrica) continuaria mostrando os dados do tenant anterior — em
-    // memória, não voltam ao mock sozinhos só porque o token sumiu.
+    // memória, não somem sozinhos só porque o token sumiu.
     this.resetTenantData();
   }
 
+  private startSession(result: LoginResult): void {
+    this.session.set(result);
+    persistSession(result);
+  }
+
+  private endSession(): void {
+    this.session.set(null);
+    persistSession(null);
+  }
+
   private resetTenantData(): void {
-    this.pets.set([...MOCK_PETS]);
-    this.teamMembers.set(restoreRoster());
+    this.pets.set([]);
+    this.teamMembers.set([]);
     this.companyLocations.set([]);
     this.emergencyContacts.set([]);
     this.detailPetSignatures.set([]);
@@ -1135,7 +1115,6 @@ export class PetStateService {
     this.ventilationOn.set(false);
     this.gasReadingsLog.set([]);
     this.currentBadge.set(null);
-    this.badgeCycleIndex.set(0);
     this.employeeSearchQuery.set('');
     this.addingRole.set(null);
     this.authorizedTeam.set([]);
@@ -1255,16 +1234,6 @@ export class PetStateService {
   }
 
   // ── Crachá ────────────────────────────────────────────────────────
-  scanBadge(): void {
-    const idx = this.badgeCycleIndex() % MOCK_BADGES.length;
-    this.currentBadge.set(MOCK_BADGES[idx]);
-    this.badgeCycleIndex.update((i) => i + 1);
-    // Sem isso, um texto ainda digitado na busca (sem resultado escolhido)
-    // ficava preso na tela junto do crachá recém-lido, sugerindo uma pessoa
-    // que não é a que será realmente adicionada.
-    this.employeeSearchQuery.set('');
-  }
-
   setEmployeeSearchQuery(value: string): void {
     this.employeeSearchQuery.set(value);
   }

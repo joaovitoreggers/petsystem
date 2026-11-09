@@ -775,7 +775,7 @@
         </div>
         <div class="report__meta mono">
           <div>emitido {{ reportTo() }}</div>
-          <div>B. M. Garlini · mat. 03177</div>
+          <div>{{ state.session()?.user?.name }}</div>
           <div>doc. PET-REL-{{ reportTo() }}</div>
         </div>
       </div>
@@ -954,7 +954,7 @@
 
       <div class="report__signatures">
         <div class="report__signature">
-          Bárbara M. Garlini · Téc. Segurança do Trabalho
+          {{ state.session()?.user?.name }} · Responsável pelo relatório
         </div>
         <div class="report__signature">Coordenação SESMT</div>
       </div>
