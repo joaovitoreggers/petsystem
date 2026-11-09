@@ -15,8 +15,6 @@ import { TenancyApiService } from '../services/tenancy-api.service';
 import { IconComponent } from '../../shared/icon.component';
 import { IndustrialArtComponent } from '../../shared/industrial-art.component';
 
-const FALLBACK_UNITS = ['Matelândia', 'Medianeira', 'Céu Azul', 'Itaipulândia', 'Missal'];
-
 type TeamFilter = 'todos' | 'vencimento próximo' | 'vencidos' | 'terceiros';
 
 interface DocumentView {
@@ -88,8 +86,8 @@ export class PetTeamComponent {
   readonly cadName = signal('');
   readonly cadRegistration = signal('');
   readonly cadRole = signal('');
-  readonly cadCompany = signal('Lar · Manutenção');
-  readonly cadUnit = signal('Matelândia');
+  readonly cadCompany = signal('');
+  readonly cadUnit = signal('');
   readonly cadVinculo = signal<'Próprio' | 'Terceiro'>('Próprio');
   readonly cadDocDates = signal<Record<string, string>>({ ASO: '' });
   readonly cadPhone = signal('');
@@ -116,7 +114,7 @@ export class PetTeamComponent {
   // Lista de unidades do seletor "Unidade" — mesma lógica de fallback do
   // assistente "Nova PET" (ver PetWizardComponent): mock por padrão, troca
   // pelas filiais reais do grupo assim que carregam.
-  readonly unitOptions = signal<string[]>(FALLBACK_UNITS);
+  readonly unitOptions = signal<string[]>([]);
 
   constructor(
     readonly state: PetStateService,
@@ -135,7 +133,7 @@ export class PetTeamComponent {
         this.unitOptions.set(branches.map((b) => b.name).sort((a, b) => a.localeCompare(b)));
       }
     } catch {
-      // mantém FALLBACK_UNITS
+      // mantém a lista vazia
     }
   }
 
@@ -275,8 +273,8 @@ export class PetTeamComponent {
     this.cadName.set('');
     this.cadRegistration.set('');
     this.cadRole.set('');
-    this.cadCompany.set('Lar · Manutenção');
-    this.cadUnit.set(this.unitOptions()[0] ?? 'Matelândia');
+    this.cadCompany.set('');
+    this.cadUnit.set(this.unitOptions()[0] ?? '');
     this.cadVinculo.set('Próprio');
     this.cadDocDates.set({ ASO: '' });
     this.cadPhone.set('');
@@ -421,8 +419,8 @@ export class PetTeamComponent {
     this.cadName.set('');
     this.cadRegistration.set('');
     this.cadRole.set('');
-    this.cadCompany.set('Lar · Manutenção');
-    this.cadUnit.set(this.unitOptions()[0] ?? 'Matelândia');
+    this.cadCompany.set('');
+    this.cadUnit.set(this.unitOptions()[0] ?? '');
     this.cadVinculo.set('Próprio');
     this.cadDocDates.set({ ASO: '' });
     this.cadPhone.set('');

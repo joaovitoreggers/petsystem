@@ -6,8 +6,6 @@ import { TenancyApiService } from '../services/tenancy-api.service';
 import { IconComponent } from '../../shared/icon.component';
 import { IndustrialArtComponent } from '../../shared/industrial-art.component';
 
-const FALLBACK_UNITS = ['Matelândia', 'Medianeira', 'Céu Azul', 'Itaipulândia', 'Missal'];
-
 interface LocationView {
   location: CompanyLocation;
   areaTags: { id: RiskAreaId; name: string; nr: string }[];
@@ -30,7 +28,7 @@ export class PetLocationsComponent {
   readonly saving = signal(false);
 
   readonly cadName = signal('');
-  readonly cadUnit = signal('Matelândia');
+  readonly cadUnit = signal('');
   readonly cadRiskAreas = signal<RiskAreaId[]>([]);
 
   readonly deleteTarget = signal<CompanyLocation | null>(null);
@@ -40,7 +38,7 @@ export class PetLocationsComponent {
   // Mesma lógica de fallback do seletor "Unidade" em Funcionários e no
   // assistente "Nova PET": mock por padrão, troca pelas filiais reais do
   // grupo assim que carregam.
-  readonly unitOptions = signal<string[]>(FALLBACK_UNITS);
+  readonly unitOptions = signal<string[]>([]);
 
   constructor(
     readonly state: PetStateService,
@@ -59,7 +57,7 @@ export class PetLocationsComponent {
         this.unitOptions.set(branches.map((b) => b.name).sort((a, b) => a.localeCompare(b)));
       }
     } catch {
-      // mantém FALLBACK_UNITS
+      // mantém a lista vazia
     }
   }
 
@@ -77,7 +75,7 @@ export class PetLocationsComponent {
     this.editingId.set(null);
     this.saveError.set(null);
     this.cadName.set('');
-    this.cadUnit.set(this.unitOptions()[0] ?? 'Matelândia');
+    this.cadUnit.set(this.unitOptions()[0] ?? '');
     this.cadRiskAreas.set([]);
     this.modalOpen.set(true);
   }
