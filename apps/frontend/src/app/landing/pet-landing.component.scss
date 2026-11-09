@@ -83,7 +83,12 @@ img { max-width: 100%; display: block; }
   color: #f4f6f8;
   text-decoration: none;
 }
-.brand__mark { flex: none; }
+.foot-logo {
+  background: #fff;
+  padding: 6px 10px;
+  border-radius: 8px;
+  flex: none;
+}
 .brand__word {
   font-family: 'Barlow Condensed', sans-serif;
   font-weight: 700;

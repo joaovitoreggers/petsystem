@@ -16,18 +16,6 @@
   overflow: hidden;
   isolation: isolate;
 }
-.login__logo-band {
-  background: #fff;
-  padding: var(--space-4) var(--space-6);
-  flex: none;
-  display: flex;
-  justify-content: center;
-}
-.login__logo {
-  width: min(196px, 58%);
-  height: auto;
-  mix-blend-mode: multiply;
-}
 
 /* Planta industrial isométrica ao fundo: dá profundidade sem competir
    com a leitura do quadro da câmera. */
