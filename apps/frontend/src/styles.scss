@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════
-   ARTECH · PET Digital — Design System
+   Pitantech · PET Digital — Design System
    ───────────────────────────────────────────────────────────────────────
    Fonte única de verdade do visual. Tokens (cor, espaço, raio, tipografia,
    elevação, movimento) + primitivas de UI compartilhadas por todas as
@@ -8,7 +8,7 @@
    gauge, timeline, tabela responsiva…) mora aqui para não duplicar CSS.
 
    A paleta da marca é preservada: cinza-claro industrial de fundo, azul
-   ARTECH como acento e a moldura "blueprint" de canto como motivo.
+   Pitantech como acento e a moldura "blueprint" de canto como motivo.
    ═══════════════════════════════════════════════════════════════════════ */
 
 @import url('https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@400;500;600;700&display=swap');
@@ -1405,7 +1405,13 @@ input[type='checkbox'] {
     break-inside: avoid;
   }
   .report__logo {
-    height: 13mm;
+    height: 17mm;
+  }
+  .report__logo--screen {
+    display: none !important;
+  }
+  .report__logo--print {
+    display: block !important;
   }
   .report__title {
     font-size: 16pt;

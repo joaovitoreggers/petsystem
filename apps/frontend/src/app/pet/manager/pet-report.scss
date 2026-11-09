@@ -38,9 +38,11 @@
   flex-wrap: wrap;
 }
 .report__logo {
-  height: 46px;
+  height: 72px;
   width: auto;
-  mix-blend-mode: multiply;
+}
+.report__logo--print {
+  display: none;
 }
 .report__head-main {
   flex: 1 1 260px;

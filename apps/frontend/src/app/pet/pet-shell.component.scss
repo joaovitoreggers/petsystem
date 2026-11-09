@@ -39,9 +39,8 @@
   border-bottom: 1px solid var(--border-subtle);
 }
 .shell__logo {
-  height: 34px;
+  height: 64px;
   width: auto;
-  mix-blend-mode: multiply;
 }
 .shell__brand-text {
   display: flex;
@@ -209,12 +208,6 @@
   position: sticky;
   top: 0;
   z-index: 25;
-}
-.shell__topbar-logo {
-  height: 28px;
-  width: auto;
-  mix-blend-mode: multiply;
-  flex: none;
 }
 .shell__topbar-title {
   display: flex;
