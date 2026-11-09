@@ -5,6 +5,7 @@
   "scripts": {
     "backend:serve": "nx serve backend",
     "backend:seed": "TS_NODE_PROJECT=apps/backend/tsconfig.seed.json TS_NODE_TRANSPILE_ONLY=true ts-node apps/backend/src/seed.ts",
+    "backend:bootstrap-admin": "TS_NODE_PROJECT=apps/backend/tsconfig.seed.json TS_NODE_TRANSPILE_ONLY=true ts-node apps/backend/src/bootstrap-admin.ts",
     "backend:test:integration": "DB_HOST=localhost DB_PORT=55432 DB_USERNAME=petsystem DB_PASSWORD=petsystem DB_NAME=petsystem_test jest --config apps/backend/jest.integration.config.cts --runInBand",
     "frontend:serve": "nx serve frontend",
     "test": "nx run-many -t test",

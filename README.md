@@ -57,6 +57,8 @@ Fronteira entre módulos do back-end: `AuthModule` acessa `User` só através de
 `EmployeesModule`) — nenhum módulo acessa o repositório interno de outro
 diretamente.
 
+> **Deploy em produção:** ver [DEPLOY-EASYPANEL.md](DEPLOY-EASYPANEL.md).
+
 ## Requisitos
 
 - Docker e Docker Compose (caminho recomendado — sobe tudo com persistência)
