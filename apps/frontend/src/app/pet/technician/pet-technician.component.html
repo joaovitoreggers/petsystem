@@ -599,16 +599,14 @@
             </div>
 
             <div class="detalhe__footer no-print">
-              @if (pet.areas.includes('confinado')) {
-                <button
-                  type="button"
-                  class="btn btn-secondary detalhe__footer-btn"
-                  (click)="printPet()"
-                >
-                  <app-icon name="document" [size]="16" />
-                  Imprimir PET
-                </button>
-              }
+              <button
+                type="button"
+                class="btn btn-secondary detalhe__footer-btn"
+                (click)="printPet()"
+              >
+                <app-icon name="document" [size]="16" />
+                Imprimir PET
+              </button>
               @if (pet.status !== 'fechada') {
                 <button
                   type="button"
@@ -627,6 +625,7 @@
               }
             </div>
           </div>
+          <app-pet-print-document [pet]="pet" [signatures]="state.detailPetSignatures()" />
         }
       }
     }

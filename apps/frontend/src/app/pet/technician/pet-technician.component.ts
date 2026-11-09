@@ -21,6 +21,7 @@ import {
 } from '../services/work-permit-signatures-api.service';
 import { PetWizardComponent } from './pet-wizard.component';
 import { PetSignaturePanelComponent } from './pet-signature-panel.component';
+import { PetPrintDocumentComponent } from '../pet-print-document.component';
 import { IconComponent } from '../../shared/icon.component';
 import { IndustrialArtComponent } from '../../shared/industrial-art.component';
 
@@ -46,7 +47,14 @@ interface MeasurementFieldView {
 @Component({
   selector: 'app-pet-technician',
   standalone: true,
-  imports: [PetWizardComponent, PetSignaturePanelComponent, IconComponent, IndustrialArtComponent, DatePipe],
+  imports: [
+    PetWizardComponent,
+    PetSignaturePanelComponent,
+    PetPrintDocumentComponent,
+    IconComponent,
+    IndustrialArtComponent,
+    DatePipe,
+  ],
   templateUrl: './pet-technician.component.html',
   styleUrls: ['./pet-technician.component.scss', './pet-login.scss'],
 })
@@ -268,12 +276,18 @@ export class PetTechnicianComponent {
     });
   });
 
-  // Só NR-33 por enquanto — ver comentário junto de CHECKLISTS.confinado
-  // em pet-mock-data.ts. .screen--detalhe não é diálogo (ocupa a tela
-  // inteira), então não precisa do truque de isolar via classe no body
-  // que o relatório de IA usa — os estilos globais de impressão já
-  // escondem o chrome do shell e desfazem a rolagem interna.
+  // Isola a impressão em <app-pet-print-document> (ver
+  // pet-print-document.component.ts e body.pet-detail-printing em
+  // styles.scss) — mesmo truque de printAiReport(): sem isolar, a
+  // impressão sairia com a tela de detalhe inteira (cards, ícones), não o
+  // documento tabulado.
   printPet(): void {
+    const cleanup = () => {
+      document.body.classList.remove('pet-detail-printing');
+      window.removeEventListener('afterprint', cleanup);
+    };
+    window.addEventListener('afterprint', cleanup);
+    document.body.classList.add('pet-detail-printing');
     window.print();
   }
 

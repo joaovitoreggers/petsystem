@@ -1,0 +1,233 @@
+<div class="report">
+  <div class="report__head">
+    <img
+      class="report__logo"
+      src="assets/artech-logo-trim.png"
+      alt="Artech — tecnologia que transforma"
+    />
+    <div class="report__head-main">
+      <div class="section-kicker">Lar Cooperativa Agroindustrial · SESMT</div>
+      <h2 class="report__title">Permissão de Entrada e Trabalho</h2>
+      <div class="report__period">
+        {{ pet.id }} · {{ areaLabel }} · {{ nr }}
+      </div>
+    </div>
+    <div class="report__meta mono">
+      <div>
+        <span
+          class="report-status"
+          [style.color]="statusView.fg"
+          [style.background]="statusView.bg"
+          >{{ statusView.label }}</span
+        >
+      </div>
+      <div>emitido {{ pet.date | date: 'dd/MM/yyyy' }} · {{ pet.start }}</div>
+      <div>{{ pet.technician }}</div>
+    </div>
+  </div>
+
+  <h4>{{ sectionNumber('fields') }}. Dados da permissão</h4>
+  <div class="table-wrap">
+    <table class="table report-table table--cards">
+      <tbody>
+        @for (row of fieldRows; track row.label) {
+          <tr>
+            <td data-label="Campo"><strong>{{ row.label }}</strong></td>
+            <td data-label="Valor">{{ row.value }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  @if (hasGas) {
+    <h4>{{ sectionNumber('gas') }}. Medição atmosférica</h4>
+    <div class="report__team">
+      <div class="report__team-head">Última leitura</div>
+      <div class="table-wrap">
+        <table class="table report-table table--cards">
+          <thead>
+            <tr>
+              <th>Gás</th>
+              <th>Leitura</th>
+              <th>Limite</th>
+              <th>Situação</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of gasRows; track row.label) {
+              <tr>
+                <td data-label="Gás">{{ row.label }}</td>
+                <td class="mono" data-label="Leitura">{{ row.value }}</td>
+                <td class="mono muted" data-label="Limite">{{ row.limit }}</td>
+                <td
+                  data-label="Situação"
+                  [style.color]="row.ok ? 'var(--status-ok)' : 'var(--status-bad)'"
+                >
+                  {{ row.ok ? 'dentro do limite' : 'fora do limite' }}
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+    @if (readingRows.length > 0) {
+      <div class="report__team">
+        <div class="report__team-head">Registro de medições</div>
+        <div class="table-wrap">
+          <table class="table report-table table--cards">
+            <thead>
+              <tr>
+                <th>Horário</th>
+                <th>Leitura</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of readingRows; track row.time + row.text) {
+                <tr>
+                  <td class="mono" data-label="Horário">{{ row.time }}</td>
+                  <td data-label="Leitura">{{ row.text }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    }
+  }
+
+  <h4>{{ sectionNumber('team') }}. Equipe autorizada</h4>
+  @if (teamRows.length > 0) {
+    <div class="table-wrap">
+      <table class="table report-table table--cards">
+        <thead>
+          <tr>
+            <th>Nome</th>
+            <th>Matrícula</th>
+            <th>Função</th>
+            <th>Papel na PET</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of teamRows; track row.registration + row.roleLabel) {
+            <tr>
+              <td data-label="Nome">{{ row.name }}</td>
+              <td class="mono" data-label="Matrícula">{{ row.registration }}</td>
+              <td data-label="Função">{{ row.role }}</td>
+              <td data-label="Papel na PET">{{ row.roleLabel }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  } @else {
+    <div class="report__team-empty">
+      Relação de funcionários não disponível para esta PET.
+    </div>
+  }
+
+  @if (checklistGroups.length > 0) {
+    <h4>{{ sectionNumber('checklist') }}. Checklist</h4>
+    @for (group of checklistGroups; track group.title) {
+      <div class="report__team">
+        <div class="report__team-head">{{ group.title }}</div>
+        <div class="table-wrap">
+          <table class="table report-table table--cards">
+            <thead>
+              <tr>
+                <th style="width: 90px">Resposta</th>
+                <th>Item</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of group.items; track item.key) {
+                <tr>
+                  <td data-label="Resposta">
+                    <span
+                      class="report-status"
+                      [style.color]="
+                        item.answer === 'nao' ? '#fdf3f3' : item.answer === 'na' ? 'var(--text-muted)' : '#1d4d33'
+                      "
+                      [style.background]="
+                        item.answer === 'nao'
+                          ? 'var(--status-bad)'
+                          : item.answer === 'na'
+                            ? 'var(--surface-2)'
+                            : '#dff0e6'
+                      "
+                      >{{ item.answer === 'sim' ? 'SIM' : item.answer === 'nao' ? 'NÃO' : 'NA' }}</span
+                    >
+                  </td>
+                  <td data-label="Item">{{ item.label }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    }
+  }
+
+  @if (eventRows.length > 0) {
+    <h4>{{ sectionNumber('events') }}. Registro de eventos</h4>
+    <div class="table-wrap">
+      <table class="table report-table table--cards">
+        <thead>
+          <tr>
+            <th>Horário</th>
+            <th>Tipo</th>
+            <th>Descrição</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of eventRows; track row.time + row.type + row.text) {
+            <tr>
+              <td class="mono" data-label="Horário">{{ row.time }}</td>
+              <td data-label="Tipo" [style.color]="'var(--status-bad)'">{{ row.type }}</td>
+              <td data-label="Descrição">{{ row.text }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  <h4>{{ sectionNumber('signatures') }}. Assinaturas eletrônicas</h4>
+  @if (signatureRows.length > 0) {
+    <div class="table-wrap">
+      <table class="table report-table table--cards">
+        <thead>
+          <tr>
+            <th>Assinante</th>
+            <th>Papel</th>
+            <th>Evento</th>
+            <th>Método</th>
+            <th>Quando</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of signatureRows; track row.signerName + row.event + row.signedAt) {
+            <tr>
+              <td data-label="Assinante">{{ row.signerName }}</td>
+              <td data-label="Papel">{{ row.role }}</td>
+              <td data-label="Evento">{{ row.event }}</td>
+              <td data-label="Método">{{ row.method }}</td>
+              <td class="mono" data-label="Quando">{{ row.signedAt | date: 'dd/MM/yyyy HH:mm' }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  } @else {
+    <div class="report__team-empty">Nenhuma assinatura eletrônica registrada.</div>
+  }
+
+  <div class="report__footnote mono">
+    Documento gerado pelo PET Digital a partir dos registros assinados em
+    campo. Esta PET carrega assinaturas eletrônicas avançadas (Lei
+    14.063/2020) — método, data/hora e, quando autorizado, coordenada de
+    quem assinou ficam registrados no histórico. Retenção mínima de 5 anos
+    conforme procedimento interno do SESMT.
+  </div>
+</div>
