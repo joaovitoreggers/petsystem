@@ -518,13 +518,75 @@
   padding: var(--space-2) 0;
 }
 .ai-dialog__report {
-  white-space: pre-wrap;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-height: 60vh;
+  overflow-y: auto;
+  padding-right: var(--space-2);
+}
+.ai-sec {
+  --ai-accent: var(--text-muted);
+  border: 1px solid var(--border-subtle);
+  border-left: 4px solid var(--ai-accent);
+  border-radius: var(--radius-md, 10px);
+  padding: var(--space-3) var(--space-4);
+  break-inside: avoid;
+}
+.ai-sec--warn {
+  --ai-accent: var(--status-warn, #b7791f);
+}
+.ai-sec--ok {
+  --ai-accent: var(--status-ok, #2f855a);
+}
+.ai-sec--info {
+  --ai-accent: var(--accent, #2b4c7e);
+}
+.ai-sec__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-base);
+  font-weight: 700;
+  color: var(--text-default);
+}
+.ai-sec__num {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--ai-accent);
+  color: #fff;
+  font-size: var(--text-sm);
+}
+.ai-sec__text {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-base);
+  line-height: 1.7;
+  color: var(--text-default);
+}
+.ai-sec__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.ai-sec__list li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
   font-size: var(--text-base);
   line-height: 1.65;
   color: var(--text-default);
-  max-height: 56vh;
-  overflow-y: auto;
-  padding-right: var(--space-2);
+  padding-left: var(--space-3);
+  border-left: 2px solid var(--border-subtle);
+}
+.ai-sec__list strong {
+  color: var(--ai-accent);
 }
 
 /* ── Telas maiores ─────────────────────────────────────────────────── */

@@ -501,7 +501,31 @@
             <span>{{ aiError() }}</span>
           </div>
         } @else if (aiReport()) {
-          <div class="ai-dialog__report">{{ aiReport() }}</div>
+          <div class="ai-dialog__report">
+            @for (sec of aiSections(); track sec.title; let i = $index) {
+              <section class="ai-sec ai-sec--{{ sec.kind }}">
+                <h3 class="ai-sec__title">
+                  <span class="ai-sec__num">{{ i + 1 }}</span>
+                  {{ sec.label }}
+                </h3>
+                @for (p of sec.paragraphs; track $index) {
+                  <p class="ai-sec__text">{{ p }}</p>
+                }
+                @if (sec.items.length) {
+                  <ul class="ai-sec__list">
+                    @for (it of sec.items; track $index) {
+                      <li>
+                        @if (it.lead) {
+                          <strong>{{ it.lead }}</strong>
+                        }
+                        <span>{{ it.body }}</span>
+                      </li>
+                    }
+                  </ul>
+                }
+              </section>
+            }
+          </div>
         } @else {
           <!-- Resposta vazia: o back-end já barra isso com 503, mas se um dia
                voltar 200 sem texto o operador precisa ver o porquê, não um
