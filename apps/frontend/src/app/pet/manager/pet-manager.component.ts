@@ -130,6 +130,51 @@ export class PetManagerComponent {
     this.runAiAnalysis();
   }
 
+  /** Relatório separado nas seções que o back-end devolve (título em
+   *  maiúsculas + ':'), cada uma com seus itens em linhas/bullets. */
+  readonly aiSections = computed(() => {
+    const text = this.aiReport();
+    if (!text) return [];
+    const titles = ['RESUMO', 'PRINCIPAIS CAUSAS POR ÁREA', 'ANOMALIAS DETECTADAS', 'RECOMENDAÇÕES'];
+    const meta: Record<string, { icon: string; kind: string }> = {
+      RESUMO: { icon: 'file', kind: 'info' },
+      'PRINCIPAIS CAUSAS POR ÁREA': { icon: 'search', kind: 'info' },
+      'ANOMALIAS DETECTADAS': { icon: 'alert', kind: 'warn' },
+      RECOMENDAÇÕES: { icon: 'check', kind: 'ok' },
+    };
+    const sections: { title: string; kind: string; paragraphs: string[]; items: string[] }[] = [];
+    let current: (typeof sections)[number] | null = null;
+    for (const raw of text.split(/\r?\n/)) {
+      const line = raw.replace(/\*\*/g, '').trim();
+      if (!line) continue;
+      const head = titles.find((t) => line.toUpperCase().replace(/^#+\s*/, '').startsWith(t + ':'));
+      if (head) {
+        current = { title: head, kind: meta[head].kind, paragraphs: [], items: [] };
+        sections.push(current);
+        const rest = line.replace(/^#+\s*/, '').slice(head.length + 1).trim();
+        if (rest) current.paragraphs.push(rest);
+        continue;
+      }
+      if (!current) {
+        current = { title: 'RESUMO', kind: 'info', paragraphs: [], items: [] };
+        sections.push(current);
+      }
+      const item = line.match(/^(?:[-•*]|\d+[.)])\s+(.*)$/);
+      if (item) current.items.push(item[1]);
+      else if (current.title === 'PRINCIPAIS CAUSAS POR ÁREA' || current.title === 'RECOMENDAÇÕES' || current.items.length) current.items.push(line);
+      else current.paragraphs.push(line);
+    }
+    return sections.map((sec) => ({
+      ...sec,
+      label: sec.title.charAt(0) + sec.title.slice(1).toLowerCase(),
+      // "Área: texto" vira destaque + texto
+      items: sec.items.map((it) => {
+        const m = it.match(/^([^:]{2,60}):\s+(.+)$/);
+        return m ? { lead: m[1], body: m[2] } : { lead: '', body: it };
+      }),
+    }));
+  });
+
   closeAiModal(): void {
     this.aiModalOpen.set(false);
   }
