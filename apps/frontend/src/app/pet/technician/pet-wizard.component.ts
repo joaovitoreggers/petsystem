@@ -66,9 +66,18 @@ export class PetWizardComponent implements OnDestroy {
 
   readonly areas = RISK_AREAS;
 
-  // Lista de unidades do seletor "Unidade" — as filiais reais do grupo da
-  // sessão, assim que carregam. Sem sessão ou se a chamada falhar, fica vazia.
-  readonly unitOptions = signal<string[]>([]);
+  // Filiais reais do grupo da sessão, assim que carregam.
+  private readonly branchNames = signal<string[]>([]);
+
+  // Lista do seletor "Unidade": as filiais do grupo e, como complemento (ou
+  // quando a chamada falha / o grupo não tem filiais cadastradas), as
+  // unidades já usadas nos locais e no quadro de funcionários.
+  readonly unitOptions = computed(() => {
+    const names = new Set<string>(this.branchNames());
+    for (const l of this.state.companyLocations()) if (l.unit) names.add(l.unit);
+    for (const m of this.state.teamMembers()) if (m.unit) names.add(m.unit);
+    return [...names].sort((a, b) => a.localeCompare(b));
+  });
 
   constructor(
     readonly state: PetStateService,
@@ -95,8 +104,11 @@ export class PetWizardComponent implements OnDestroy {
   private async loadBranchNames(companyGroupId: string): Promise<void> {
     try {
       const branches = await firstValueFrom(this.tenancyApi.findBranches(companyGroupId));
-      if (branches.length > 0) {
-        this.unitOptions.set(branches.map((b) => b.name).sort((a, b) => a.localeCompare(b)));
+      this.branchNames.set(branches.map((b) => b.name));
+      // Só uma unidade possível: já deixa selecionada.
+      const options = this.unitOptions();
+      if (options.length === 1 && !this.fieldValue('unidade')) {
+        this.state.setField('unidade', options[0]);
       }
     } catch {
       // mantém a lista vazia
