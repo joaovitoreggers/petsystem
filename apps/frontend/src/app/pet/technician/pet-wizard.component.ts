@@ -85,7 +85,11 @@ export class PetWizardComponent implements OnDestroy {
   ) {
     const companyGroupId = this.state.session()?.user.companyGroupId;
     if (companyGroupId) {
-      this.loadBranchNames(companyGroupId);
+      this.loadBranchNames([companyGroupId]);
+    } else if (this.state.session()?.user.role === 'platform-admin') {
+      // Administrador da plataforma não tem grupo na sessão: junta as
+      // filiais de todos os grupos.
+      this.loadAllGroupsBranchNames();
     }
     // Avançar/voltar pra outra etapa com a câmera ligada não destrói o
     // componente (é o mesmo assistente, só troca o stepIndex) — sem isto
@@ -101,10 +105,19 @@ export class PetWizardComponent implements OnDestroy {
     });
   }
 
-  private async loadBranchNames(companyGroupId: string): Promise<void> {
+  private async loadAllGroupsBranchNames(): Promise<void> {
     try {
-      const branches = await firstValueFrom(this.tenancyApi.findBranches(companyGroupId));
-      this.branchNames.set(branches.map((b) => b.name));
+      const groups = await firstValueFrom(this.tenancyApi.findGroups());
+      await this.loadBranchNames(groups.map((g) => g.id));
+    } catch {
+      // mantém a lista vazia
+    }
+  }
+
+  private async loadBranchNames(groupIds: string[]): Promise<void> {
+    try {
+      const lists = await Promise.all(groupIds.map((id) => firstValueFrom(this.tenancyApi.findBranches(id))));
+      this.branchNames.set(lists.flat().map((b) => b.name));
       // Só uma unidade possível: já deixa selecionada.
       const options = this.unitOptions();
       if (options.length === 1 && !this.fieldValue('unidade')) {
